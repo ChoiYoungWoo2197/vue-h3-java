@@ -1,0 +1,3 @@
+### 네이버 마스터 수집 - 수동 실행
+POST http://localhost:8080/api/collector/naver/master
+Content-Type: application/json

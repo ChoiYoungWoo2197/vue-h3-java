@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: h3-java
+
+  # MySQL
+  datasource:
+    url: jdbc:mysql://db-k3dlu.pub-cdb.ntruss.com:3306/heeil?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+    username: heeil
+    password: heeil@0801
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # MongoDB Atlas
+  data:
+    mongodb:
+      uri: mongodb+srv://dev:heeil%400801%21%40%23@cluster0.u0ykepl.mongodb.net/h3?appName=Cluster0
+
+  # RabbitMQ (추후 실제 서버 정보로 변경)
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+  # Spring Batch 메타 테이블 자동 생성 안 함
+  batch:
+    jdbc:
+      initialize-schema: never
+
+# MyBatis
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.h3.h3_java
+  configuration:
+    map-underscore-to-camel-case: true

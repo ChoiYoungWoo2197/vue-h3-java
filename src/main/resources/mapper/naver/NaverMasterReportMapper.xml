@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.h3.h3_java.collector.naver.mapper.NaverMasterReportMapper">
+
+    <select id="selectNaverAccounts" resultType="com.h3.h3_java.collector.naver.dto.NaverAccountDto">
+        SELECT
+            user_id                AS userId,
+            account_naver_access   AS accountNaverAccess,
+            account_naver_secret   AS accountNaverSecret,
+            account_naver_customer AS accountNaverCustomer
+        FROM h3_account
+        WHERE account_naver_access IS NOT NULL
+          AND account_naver_customer IS NOT NULL
+          AND account_naver_secret IS NOT NULL
+    </select>
+
+    <select id="selectNaverDelta" resultType="com.h3.h3_java.collector.naver.dto.NaverDeltaDto">
+        SELECT daily_seq AS dailySeq, deltakey, delta, jobid, name,
+               daily_update AS dailyUpdate, userid, success
+        FROM h3_naver_delta
+        WHERE deltakey = #{deltakey}
+          AND name     = #{name}
+          AND userid   = #{userid}
+        LIMIT 1
+    </select>
+
+    <select id="countNaverDelta" resultType="int">
+        SELECT COUNT(*) FROM h3_naver_delta
+        WHERE deltakey = #{deltakey}
+          AND name     = #{name}
+          AND userid   = #{userid}
+    </select>
+
+    <insert id="insertNaverDelta" parameterType="com.h3.h3_java.collector.naver.dto.NaverDeltaDto">
+        INSERT INTO h3_naver_delta (deltakey, delta, message, name, success, daily_update, jobid, userid)
+        VALUES (#{deltakey}, #{delta}, '', #{name}, 1, #{delta}, #{jobid}, #{userid})
+    </insert>
+
+    <update id="updateNaverDelta" parameterType="com.h3.h3_java.collector.naver.dto.NaverDeltaDto">
+        UPDATE h3_naver_delta
+        SET delta = #{delta}, daily_update = #{delta}, jobid = #{jobid}, success = 1
+        WHERE deltakey = #{deltakey}
+          AND name     = #{name}
+          AND userid   = #{userid}
+    </update>
+
+    <update id="updateNaverDeltaFail">
+        UPDATE h3_naver_delta SET success = 0
+        WHERE deltakey = #{deltakey}
+          AND name     = #{name}
+          AND userid   = #{userid}
+    </update>
+
+</mapper>
