@@ -1,7 +1,7 @@
-package com.h3.h3_java.collector.naver.mapper;
+package com.h3.h3_java.media.naver.mapper;
 
-import com.h3.h3_java.collector.naver.dto.NaverAccountDto;
-import com.h3.h3_java.collector.naver.dto.NaverDeltaDto;
+import com.h3.h3_java.media.naver.dto.NaverAccountDto;
+import com.h3.h3_java.media.naver.dto.NaverDeltaDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

@@ -1,4 +1,4 @@
-package com.h3.h3_java.collector.naver;
+package com.h3.h3_java.raw.mongo;
 
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;

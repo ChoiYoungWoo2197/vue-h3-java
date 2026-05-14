@@ -14,12 +14,13 @@ spring:
     mongodb:
       uri: mongodb+srv://dev:heeil%400801%21%40%23@cluster0.u0ykepl.mongodb.net/h3?appName=Cluster0
 
-  # RabbitMQ (추후 실제 서버 정보로 변경)
+  # RabbitMQ
   rabbitmq:
-    host: localhost
+    host: 101.101.211.31
     port: 5672
-    username: guest
-    password: guest
+    username: heeilh3
+    password: heeil@0801!@#
+    virtual-host: heeil.h3
 
   # Spring Batch 메타 테이블 자동 생성 안 함
   batch:

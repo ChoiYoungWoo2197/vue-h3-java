@@ -1,8 +1,11 @@
-package com.h3.h3_java.collector.naver;
+package com.h3.h3_java.batch.master;
 
-import com.h3.h3_java.collector.naver.dto.NaverAccountDto;
-import com.h3.h3_java.collector.naver.dto.NaverDeltaDto;
-import com.h3.h3_java.collector.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.media.naver.dto.NaverAccountDto;
+import com.h3.h3_java.media.naver.dto.NaverDeltaDto;
+import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.media.naver.NaverApiClient;
+import com.h3.h3_java.media.naver.NaverTsvParser;
+import com.h3.h3_java.raw.mongo.NaverMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -13,7 +16,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class NaverMasterReportCollector {
+public class NaverMasterReportJob {
 
     private final NaverMasterReportMapper mapper;
     private final NaverMasterMongoService mongoService;

@@ -1,4 +1,4 @@
-package com.h3.h3_java.collector.naver.dto;
+package com.h3.h3_java.media.naver.dto;
 
 import lombok.Data;
 
