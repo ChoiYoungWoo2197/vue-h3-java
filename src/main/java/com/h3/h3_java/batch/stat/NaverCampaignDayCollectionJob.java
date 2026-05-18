@@ -87,6 +87,8 @@ public class NaverCampaignDayCollectionJob {
             }
 
             Map<String, Object> res = getStats(client, campaignId, date);
+            log.info("[NaverCampaignDay][DEBUG] campaignId={} date={} response={}", campaignId, date, res);
+
             if (res == null || !res.containsKey("data")) continue;
 
             @SuppressWarnings("unchecked")
@@ -94,6 +96,8 @@ public class NaverCampaignDayCollectionJob {
             if (data == null || data.isEmpty()) continue;
 
             Map<String, Object> d = data.get(0);
+            log.info("[NaverCampaignDay][DEBUG] data[0]={}", d);
+
             long impCnt   = toLong(d.get("impCnt"));
             long clkCnt   = toLong(d.get("clkCnt"));
             long salesAmt = toLong(d.get("salesAmt"));
