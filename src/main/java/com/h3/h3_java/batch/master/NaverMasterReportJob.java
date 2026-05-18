@@ -1,16 +1,17 @@
 package com.h3.h3_java.batch.master;
 
+import com.h3.h3_java.media.naver.NaverApiClient;
+import com.h3.h3_java.media.naver.NaverTsvParser;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.dto.NaverDeltaDto;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
-import com.h3.h3_java.media.naver.NaverApiClient;
-import com.h3.h3_java.media.naver.NaverTsvParser;
 import com.h3.h3_java.raw.mongo.NaverMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -30,10 +31,14 @@ public class NaverMasterReportJob {
         "UNDER_REVIEW", 10, "APPROVED", 20, "ELIGIBLE", 30, "PENDING", 40, "DENIED", 50
     );
 
-    // 계정별 런타임 캐시
-    private Map<String, Map<String, Object>> kwCache;
-    private Map<String, Map<String, Object>> adCache;
-    private Map<String, Map<String, Object>> adextCache;
+    // 계정별 캐시 - 계정 간 격리, 스레드 안전
+    private static class AccountContext {
+        final ConcurrentHashMap<String, Map<String, Object>> kwCache    = new ConcurrentHashMap<>();
+        final ConcurrentHashMap<String, Map<String, Object>> adCache    = new ConcurrentHashMap<>();
+        final ConcurrentHashMap<String, Map<String, Object>> adextCache = new ConcurrentHashMap<>();
+    }
+
+    private record SpecResult(String spec, String reportId, String downloadUrl, boolean shouldDownload) {}
 
     public void collect() {
         List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
@@ -44,49 +49,67 @@ public class NaverMasterReportJob {
     }
 
     public boolean collectForUserId(String userId) {
-        List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
-        NaverAccountDto target = accounts.stream()
-                .filter(a -> userId.equals(a.getUserId()))
-                .findFirst()
-                .orElse(null);
+        NaverAccountDto target = mapper.selectNaverAccounts().stream()
+            .filter(a -> userId.equals(a.getUserId()))
+            .findFirst().orElse(null);
         if (target == null) return false;
         collectForAccount(target);
         return true;
     }
 
     private void collectForAccount(NaverAccountDto account) {
-        log.info("[NAVER][START] userId={} customerId={}", account.getUserId(), account.getAccountNaverCustomer());
-
-        kwCache = new HashMap<>();
-        adCache = new HashMap<>();
-        adextCache = new HashMap<>();
+        String customerId = account.getAccountNaverCustomer();
+        log.info("[NAVER][START] userId={} customerId={}", account.getUserId(), customerId);
 
         NaverApiClient client = new NaverApiClient(
             account.getAccountNaverAccess(),
             account.getAccountNaverSecret(),
-            account.getAccountNaverCustomer()
+            customerId
         );
+        AccountContext ctx = new AccountContext();
 
-        for (String spec : SPECS) {
-            try {
-                collectSpec(account, spec, client);
-            } catch (Exception e) {
-                log.error("[NAVER][{}][{}] error: {}", account.getAccountNaverCustomer(), spec, e.getMessage(), e);
-            }
+        // spec 수만큼 스레드 - submit/poll 동시 진행
+        ExecutorService executor = Executors.newFixedThreadPool(SPECS.length);
+        try {
+            // Phase 1: 모든 spec 동시 제출 + 폴링 (가장 오래 걸리는 부분)
+            List<CompletableFuture<SpecResult>> futures = Arrays.stream(SPECS)
+                .map(spec -> CompletableFuture.supplyAsync(
+                    () -> submitAndPoll(account, spec, client), executor))
+                .collect(Collectors.toList());
+
+            List<SpecResult> builtResults = futures.stream()
+                .map(f -> {
+                    try { return f.join(); }
+                    catch (Exception e) {
+                        log.error("[NAVER][{}] spec error: {}", customerId, e.getMessage(), e);
+                        return null;
+                    }
+                })
+                .filter(r -> r != null && r.shouldDownload() && r.downloadUrl() != null)
+                .collect(Collectors.toList());
+
+            // Phase 2: 다운로드 + 처리 병렬
+            List<CompletableFuture<Void>> processFutures = builtResults.stream()
+                .map(r -> CompletableFuture.runAsync(
+                    () -> downloadAndProcess(r, account, client, ctx), executor))
+                .collect(Collectors.toList());
+
+            CompletableFuture.allOf(processFutures.toArray(new CompletableFuture[0])).join();
+
+        } finally {
+            executor.shutdown();
         }
 
-        log.info("[NAVER][END] userId={} customerId={}", account.getUserId(), account.getAccountNaverCustomer());
+        log.info("[NAVER][END] userId={} customerId={}", account.getUserId(), customerId);
     }
 
-    private void collectSpec(NaverAccountDto account, String spec, NaverApiClient client) {
+    private SpecResult submitAndPoll(NaverAccountDto account, String spec, NaverApiClient client) {
         String customerId = account.getAccountNaverCustomer();
-        String userId = account.getUserId();
+        String userId     = account.getUserId();
 
-        // 1. delta 조회
         NaverDeltaDto delta = mapper.selectNaverDelta(customerId, spec, userId);
-        String deltaValue = (delta != null) ? delta.getDelta() : null;
+        String deltaValue   = (delta != null) ? delta.getDelta() : null;
 
-        // 2. 마스터 리포트 생성
         Map<String, Object> reqBody = new HashMap<>();
         reqBody.put("item", spec);
         if (deltaValue != null && !deltaValue.isEmpty()) {
@@ -96,14 +119,13 @@ public class NaverMasterReportJob {
         Map<String, Object> res = client.post("/master-reports", reqBody);
         if (res == null || !res.containsKey("id")) {
             log.warn("[NAVER][{}][{}] create fail", customerId, spec);
-            return;
+            return null;
         }
 
         String reportId = String.valueOf(res.get("id"));
-        String status = String.valueOf(res.get("status"));
-        log.info("[NAVER][{}][{}] registered id={} status={}", customerId, spec, reportId, status);
+        String status   = String.valueOf(res.get("status"));
+        log.info("[NAVER][{}][{}] submitted id={}", customerId, spec, reportId);
 
-        // 3. 상태 폴링
         Map<String, Object> checkResult = res;
         int waited = 0;
         while (("REGIST".equals(status) || "RUNNING".equals(status)) && waited < 300) {
@@ -111,65 +133,67 @@ public class NaverMasterReportJob {
             waited += 5;
             checkResult = client.get("/master-reports/" + reportId);
             status = checkResult != null ? String.valueOf(checkResult.get("status")) : "ERROR";
-            log.info("[NAVER][{}][{}] check id={} status={}", customerId, spec, reportId, status);
         }
 
-        // 4. BUILT → 다운로드 및 UPSERT
-        if ("BUILT".equals(status) && checkResult != null) {
-            String downloadUrl = (String) checkResult.get("downloadUrl");
-            String updateTime = (String) checkResult.get("updateTime");
-
-            int cnt = mapper.countNaverDelta(customerId, spec, userId);
-            String oldJobId = (delta != null) ? delta.getJobid() : null;
-            boolean shouldDownload = false;
-
-            if (cnt == 0) {
-                NaverDeltaDto newDelta = new NaverDeltaDto();
-                newDelta.setDeltakey(customerId);
-                newDelta.setDelta(updateTime);
-                newDelta.setName(spec);
-                newDelta.setJobid(reportId);
-                newDelta.setUserid(userId);
-                mapper.insertNaverDelta(newDelta);
-                shouldDownload = true;
-            } else if (!Objects.equals(updateTime, deltaValue)) {
-                NaverDeltaDto updDelta = new NaverDeltaDto();
-                updDelta.setDeltakey(customerId);
-                updDelta.setDelta(updateTime);
-                updDelta.setName(spec);
-                updDelta.setJobid(reportId);
-                updDelta.setUserid(userId);
-                mapper.updateNaverDelta(updDelta);
-                if (oldJobId != null) client.delete("/master-reports/" + oldJobId);
-                shouldDownload = true;
-            } else {
-                log.info("[NAVER][{}][{}] no changes, skip", customerId, spec);
-                client.delete("/master-reports/" + reportId);
-                return;
-            }
-
-            if (shouldDownload && downloadUrl != null) {
-                byte[] tsvBytes = client.download(downloadUrl);
-                if (tsvBytes != null && tsvBytes.length > 0) {
-                    List<Map<String, String>> rows = NaverTsvParser.parse(tsvBytes, spec);
-                    processSpecRows(spec, rows, client);
-                    log.info("[NAVER][{}][{}] rows={} upserted", customerId, spec, rows.size());
-                } else {
-                    mapper.updateNaverDeltaFail(customerId, spec, userId);
-                    log.warn("[NAVER][{}][{}] download failed", customerId, spec);
-                }
-            }
-        } else if ("NONE".equals(status)) {
+        if ("NONE".equals(status)) {
             log.info("[NAVER][{}][{}] no data", customerId, spec);
-        } else {
-            log.warn("[NAVER][{}][{}] build fail status={}", customerId, spec, status);
+            client.delete("/master-reports/" + reportId);
+            return null;
         }
 
-        // 5. cleanup
-        client.delete("/master-reports/" + reportId);
+        if (!"BUILT".equals(status)) {
+            log.warn("[NAVER][{}][{}] build fail status={}", customerId, spec, status);
+            return null;
+        }
+
+        String downloadUrl = (String) checkResult.get("downloadUrl");
+        String updateTime  = (String) checkResult.get("updateTime");
+        String oldJobId    = (delta != null) ? delta.getJobid() : null;
+        boolean shouldDownload = false;
+
+        int cnt = mapper.countNaverDelta(customerId, spec, userId);
+        if (cnt == 0) {
+            NaverDeltaDto d = new NaverDeltaDto();
+            d.setDeltakey(customerId); d.setDelta(updateTime);
+            d.setName(spec); d.setJobid(reportId); d.setUserid(userId);
+            mapper.insertNaverDelta(d);
+            shouldDownload = true;
+        } else if (!Objects.equals(updateTime, deltaValue)) {
+            NaverDeltaDto d = new NaverDeltaDto();
+            d.setDeltakey(customerId); d.setDelta(updateTime);
+            d.setName(spec); d.setJobid(reportId); d.setUserid(userId);
+            mapper.updateNaverDelta(d);
+            if (oldJobId != null) client.delete("/master-reports/" + oldJobId);
+            shouldDownload = true;
+        } else {
+            log.info("[NAVER][{}][{}] no changes, skip", customerId, spec);
+            client.delete("/master-reports/" + reportId);
+        }
+
+        return new SpecResult(spec, reportId, downloadUrl, shouldDownload);
     }
 
-    private void processSpecRows(String spec, List<Map<String, String>> rows, NaverApiClient client) {
+    private void downloadAndProcess(SpecResult result, NaverAccountDto account,
+                                    NaverApiClient client, AccountContext ctx) {
+        String customerId = account.getAccountNaverCustomer();
+        String userId     = account.getUserId();
+
+        byte[] tsvBytes = client.download(result.downloadUrl());
+        if (tsvBytes == null || tsvBytes.length == 0) {
+            mapper.updateNaverDeltaFail(customerId, result.spec(), userId);
+            log.warn("[NAVER][{}][{}] download failed", customerId, result.spec());
+            client.delete("/master-reports/" + result.reportId());
+            return;
+        }
+
+        List<Map<String, String>> rows = NaverTsvParser.parse(tsvBytes, result.spec());
+        processSpecRows(result.spec(), rows, client, ctx);
+        log.info("[NAVER][{}][{}] rows={} upserted", customerId, result.spec(), rows.size());
+        client.delete("/master-reports/" + result.reportId());
+    }
+
+    private void processSpecRows(String spec, List<Map<String, String>> rows,
+                                  NaverApiClient client, AccountContext ctx) {
         if (rows.isEmpty()) return;
         switch (spec) {
             case "Campaign"        -> rows.forEach(r -> mongoService.upsertCampaign(toIntRow(r, "onoff")));
@@ -177,31 +201,28 @@ public class NaverMasterReportJob {
             case "Adgroup"         -> rows.forEach(r -> mongoService.upsertAdgroup(toIntRow(r, "bidamount", "onoff")));
             case "AdgroupBudget"   -> rows.forEach(r -> mongoService.upsertAdgroupBudget(toIntRow(r, "usingdailybudget")));
             case "AdExtension"     -> rows.forEach(r -> mongoService.upsertAdExtension(toIntRow(r, "type", "tmonday", "ttuesday", "twednesday", "tthursday", "tfriday", "tsaturday", "tsunday", "onoff", "inspect")));
-            case "Keyword"         -> processKeywords(rows, client);
-            case "Ad"              -> processAds(rows, 1, client);
-            case "RsaAd"           -> processAds(rows, 2, client);
-            case "ContentsAd"      -> processAds(rows, 3, client);
-            case "ShoppingProduct" -> processShoppingProducts(rows, client);
+            case "Keyword"         -> processKeywords(rows, client, ctx);
+            case "Ad"              -> processAds(rows, 1, client, ctx);
+            case "RsaAd"           -> processAds(rows, 2, client, ctx);
+            case "ContentsAd"      -> processAds(rows, 3, client, ctx);
+            case "ShoppingProduct" -> processShoppingProducts(rows, client, ctx);
         }
     }
 
-    private void processKeywords(List<Map<String, String>> rows, NaverApiClient client) {
-        List<String> kwids = rows.stream()
-            .map(r -> r.get("kwid")).filter(id -> id != null && !id.isEmpty())
-            .distinct().collect(Collectors.toList());
-
-        for (String kwid : kwids) {
-            if (!kwCache.containsKey(kwid)) {
-                Map<String, Object> detail = client.get("/ncc/keywords/" + kwid);
-                kwCache.put(kwid, detail != null ? detail : new HashMap<>());
-            }
-        }
+    private void processKeywords(List<Map<String, String>> rows, NaverApiClient client, AccountContext ctx) {
+        rows.stream().map(r -> r.get("kwid"))
+            .filter(id -> id != null && !id.isEmpty())
+            .distinct()
+            .forEach(kwid -> ctx.kwCache.computeIfAbsent(kwid, id -> {
+                Map<String, Object> d = client.get("/ncc/keywords/" + id);
+                return d != null ? d : new HashMap<>();
+            }));
 
         for (List<Map<String, String>> chunk : partition(rows, 200)) {
             List<Map<String, Object>> upsertRows = new ArrayList<>();
             for (Map<String, String> r : chunk) {
                 if (r.get("kwid") == null || r.get("kwid").isEmpty()) continue;
-                upsertRows.add(buildKeywordRow(r, kwCache.getOrDefault(r.get("kwid"), new HashMap<>())));
+                upsertRows.add(buildKeywordRow(r, ctx.kwCache.getOrDefault(r.get("kwid"), new HashMap<>())));
             }
             if (!upsertRows.isEmpty()) {
                 mongoService.upsertKeywords(upsertRows);
@@ -231,24 +252,27 @@ public class NaverMasterReportJob {
                 if (pc != null) purl = String.valueOf(pc.getOrDefault("final", ""));
                 if (mo != null) murl = String.valueOf(mo.getOrDefault("final", ""));
             }
-            inspect = INSPECT_STATUS.getOrDefault(String.valueOf(detail.getOrDefault("inspectStatus", "")), 0);
-            usinggrp = "true".equals(String.valueOf(detail.getOrDefault("useGroupBidAmt", "false"))) ? 1 : 0;
+            inspect   = INSPECT_STATUS.getOrDefault(String.valueOf(detail.getOrDefault("inspectStatus", "")), 0);
+            usinggrp  = "true".equals(String.valueOf(detail.getOrDefault("useGroupBidAmt", "false"))) ? 1 : 0;
             Map<String, Object> qi = (Map<String, Object>) detail.get("nccQi");
             if (qi != null) qigrade = parseInt(qi.get("qiGrade"));
         }
 
-        row.put("bidamount", bidamount);
-        row.put("plandingurl", purl);
-        row.put("mlandingurl", murl);
-        row.put("kinspectstatus", inspect);
-        row.put("usinggrpbid", usinggrp);
-        row.put("qigrade", qigrade);
+        row.put("bidamount", bidamount); row.put("plandingurl", purl); row.put("mlandingurl", murl);
+        row.put("kinspectstatus", inspect); row.put("usinggrpbid", usinggrp); row.put("qigrade", qigrade);
         return row;
     }
 
     @SuppressWarnings("unchecked")
-    private void processAds(List<Map<String, String>> rows, int adType, NaverApiClient client) {
-        fetchToCache(rows, "adid", adCache, id -> client.get("/ncc/ads/" + id));
+    private void processAds(List<Map<String, String>> rows, int adType,
+                             NaverApiClient client, AccountContext ctx) {
+        rows.stream().map(r -> r.get("adid"))
+            .filter(id -> id != null && !id.isEmpty())
+            .distinct()
+            .forEach(adid -> ctx.adCache.computeIfAbsent(adid, id -> {
+                Map<String, Object> d = client.get("/ncc/ads/" + id);
+                return d != null ? d : new HashMap<>();
+            }));
 
         List<String> groupids = rows.stream().map(r -> r.get("groupid"))
             .filter(id -> id != null && !id.isEmpty()).distinct().collect(Collectors.toList());
@@ -256,24 +280,24 @@ public class NaverMasterReportJob {
         Map<String, List<String>> groupExtMap = new HashMap<>();
         if (!groupids.isEmpty()) {
             for (org.bson.Document er : mongoService.selectGroupExtIds(groupids)) {
-                groupExtMap.computeIfAbsent(er.getString("ownerid"), k -> new ArrayList<>()).add(er.getString("extid"));
+                groupExtMap.computeIfAbsent(er.getString("ownerid"), k -> new ArrayList<>())
+                           .add(er.getString("extid"));
             }
         }
 
-        List<String> allExtIds = groupExtMap.values().stream().flatMap(Collection::stream).distinct().collect(Collectors.toList());
-        for (String eid : allExtIds) {
-            if (!adextCache.containsKey(eid)) {
-                Map<String, Object> d = client.get("/ncc/ad-extensions/" + eid);
-                adextCache.put(eid, d != null ? d : new HashMap<>());
-            }
-        }
+        groupExtMap.values().stream().flatMap(Collection::stream).distinct()
+            .forEach(eid -> ctx.adextCache.computeIfAbsent(eid, id -> {
+                Map<String, Object> d = client.get("/ncc/ad-extensions/" + id);
+                return d != null ? d : new HashMap<>();
+            }));
 
         String imgHost = "https://searchad-phinf.pstatic.net";
         Map<String, List<String>> groupImgMap = new HashMap<>();
         for (Map.Entry<String, List<String>> e : groupExtMap.entrySet()) {
             List<String> imgs = new ArrayList<>();
             for (String eid : e.getValue()) {
-                Map<String, Object> ext = (Map<String, Object>) adextCache.getOrDefault(eid, new HashMap<>()).get("adExtension");
+                Map<String, Object> ext = (Map<String, Object>) ctx.adextCache
+                    .getOrDefault(eid, new HashMap<>()).get("adExtension");
                 if (ext != null) {
                     String path = (String) ext.get("imagePath");
                     if (path != null && !path.isEmpty()) imgs.add(imgHost + path);
@@ -285,7 +309,7 @@ public class NaverMasterReportJob {
 
         for (Map<String, String> r : rows) {
             mongoService.upsertAd(buildAdRow(r, adType,
-                adCache.getOrDefault(r.get("adid"), new HashMap<>()),
+                ctx.adCache.getOrDefault(r.get("adid"), new HashMap<>()),
                 groupImgMap.getOrDefault(r.get("groupid"), new ArrayList<>())));
         }
     }
@@ -299,7 +323,7 @@ public class NaverMasterReportJob {
         row.put("onoff", parseInt(base.get("onoff")));
 
         String subject = base.getOrDefault("subject", "");
-        String desc = base.getOrDefault("description", "");
+        String desc    = base.getOrDefault("description", "");
 
         if (!detail.isEmpty()) {
             List<Map<String, Object>> assets = (List<Map<String, Object>>) detail.get("assets");
@@ -309,22 +333,21 @@ public class NaverMasterReportJob {
                     Map<String, Object> ad = (Map<String, Object>) asset.get("assetData");
                     if (ad != null) {
                         String text = String.valueOf(ad.getOrDefault("text", ""));
-                        if ("HEADLINE".equals(asset.get("linkType"))) h.add(text);
-                        if ("DESCRIPTION".equals(asset.get("linkType"))) d.add(text);
+                        if ("HEADLINE".equals(asset.get("linkType")))     h.add(text);
+                        if ("DESCRIPTION".equals(asset.get("linkType")))  d.add(text);
                     }
                 }
                 if (!h.isEmpty()) subject = String.join("|", h);
-                if (!d.isEmpty()) desc = String.join("|", d);
+                if (!d.isEmpty()) desc    = String.join("|", d);
             }
             Map<String, Object> ad = (Map<String, Object>) detail.get("ad");
             if (ad != null) {
-                if (ad.get("headline") != null) subject = (String) ad.get("headline");
-                if (ad.get("description") != null) desc = (String) ad.get("description");
+                if (ad.get("headline")    != null) subject = (String) ad.get("headline");
+                if (ad.get("description") != null) desc    = (String) ad.get("description");
             }
         }
 
-        row.put("subject", subject);
-        row.put("description", desc);
+        row.put("subject", subject); row.put("description", desc);
         row.put("imgurl1", imgs.size() > 0 ? imgs.get(0) : "");
         row.put("imgurl2", imgs.size() > 1 ? imgs.get(1) : "");
         row.put("imgurl3", imgs.size() > 2 ? imgs.get(2) : "");
@@ -332,33 +355,40 @@ public class NaverMasterReportJob {
     }
 
     @SuppressWarnings("unchecked")
-    private void processShoppingProducts(List<Map<String, String>> rows, NaverApiClient client) {
-        fetchToCache(rows, "adid", adCache, id -> client.get("/ncc/ads/" + id));
+    private void processShoppingProducts(List<Map<String, String>> rows,
+                                         NaverApiClient client, AccountContext ctx) {
+        rows.stream().map(r -> r.get("adid"))
+            .filter(id -> id != null && !id.isEmpty())
+            .distinct()
+            .forEach(adid -> ctx.adCache.computeIfAbsent(adid, id -> {
+                Map<String, Object> d = client.get("/ncc/ads/" + id);
+                return d != null ? d : new HashMap<>();
+            }));
 
         for (Map<String, String> r : rows) {
-            Map<String, Object> detail = adCache.getOrDefault(r.get("adid"), new HashMap<>());
+            Map<String, Object> detail = ctx.adCache.getOrDefault(r.get("adid"), new HashMap<>());
             Map<String, Object> row = new HashMap<>(r);
-            row.put("onoff", parseInt(r.get("onoff")));
+            row.put("onoff",    parseInt(r.get("onoff")));
             row.put("usingbid", "true".equals(r.get("usingbid")) ? 1 : 0);
 
             String pname = "", productname = "", cnameofmall = "", brand = "", maker = "", imgurl = "";
             int bid = 0, qigrade = 0, deliveryfee = 0;
 
             if (!detail.isEmpty()) {
-                Map<String, Object> ad = (Map<String, Object>) detail.get("ad");
+                Map<String, Object> ad   = (Map<String, Object>) detail.get("ad");
                 if (ad != null) pname = String.valueOf(ad.getOrDefault("productName", ""));
                 Map<String, Object> attr = (Map<String, Object>) detail.get("adAttr");
                 if (attr != null) bid = parseInt(attr.get("bidAmt"));
-                Map<String, Object> qi = (Map<String, Object>) detail.get("nccQi");
+                Map<String, Object> qi   = (Map<String, Object>) detail.get("nccQi");
                 if (qi != null) qigrade = parseInt(qi.get("qiGrade"));
-                Map<String, Object> ref = (Map<String, Object>) detail.get("referenceData");
+                Map<String, Object> ref  = (Map<String, Object>) detail.get("referenceData");
                 if (ref != null) {
-                    deliveryfee = parseInt(ref.get("dvlryFeeCont"));
-                    cnameofmall = String.valueOf(ref.getOrDefault("fullMallCatNm", ""));
-                    brand = String.valueOf(ref.getOrDefault("brand", ""));
-                    maker = String.valueOf(ref.getOrDefault("maker", ""));
-                    imgurl = String.valueOf(ref.getOrDefault("imageUrl", ""));
-                    productname = String.valueOf(ref.getOrDefault("productName", ""));
+                    deliveryfee  = parseInt(ref.get("dvlryFeeCont"));
+                    cnameofmall  = String.valueOf(ref.getOrDefault("fullMallCatNm", ""));
+                    brand        = String.valueOf(ref.getOrDefault("brand", ""));
+                    maker        = String.valueOf(ref.getOrDefault("maker", ""));
+                    imgurl       = String.valueOf(ref.getOrDefault("imageUrl", ""));
+                    productname  = String.valueOf(ref.getOrDefault("productName", ""));
                 }
             }
 
@@ -368,18 +398,6 @@ public class NaverMasterReportJob {
             row.put("imageurl", imgurl); row.put("productname", productname);
             mongoService.upsertShoppingProduct(row);
         }
-    }
-
-    private void fetchToCache(List<Map<String, String>> rows, String idField,
-                              Map<String, Map<String, Object>> cache,
-                              java.util.function.Function<String, Map<String, Object>> fetcher) {
-        rows.stream().map(r -> r.get(idField))
-            .filter(id -> id != null && !id.isEmpty() && !cache.containsKey(id))
-            .distinct()
-            .forEach(id -> {
-                Map<String, Object> d = fetcher.apply(id);
-                cache.put(id, d != null ? d : new HashMap<>());
-            });
     }
 
     private Map<String, Object> toIntRow(Map<String, String> row, String... intFields) {

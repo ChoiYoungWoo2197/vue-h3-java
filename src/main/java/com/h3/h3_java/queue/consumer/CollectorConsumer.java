@@ -17,7 +17,7 @@ public class CollectorConsumer {
     private final NaverMasterReportJob naverMasterReportJob;
     private final NaverCampaignDayCollectionJob naverCampaignDayCollectionJob;
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_MASTER)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_MASTER, concurrency = "5")
     public void consumeNaverMaster(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER MASTER userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
