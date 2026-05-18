@@ -1,6 +1,7 @@
 package com.h3.h3_java.queue.consumer;
 
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
+import com.h3.h3_java.batch.stat.NaverCampaignDayCollectionJob;
 import com.h3.h3_java.common.config.RabbitMQConfig;
 import com.h3.h3_java.queue.message.CollectorMessage;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class CollectorConsumer {
 
     private final NaverMasterReportJob naverMasterReportJob;
+    private final NaverCampaignDayCollectionJob naverCampaignDayCollectionJob;
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_MASTER)
     public void consumeNaverMaster(CollectorMessage msg) {
@@ -22,6 +24,16 @@ public class CollectorConsumer {
             naverMasterReportJob.collectForUserId(msg.getUserId());
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER MASTER userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_CAMPAIGN_DAILY)
+    public void consumeNaverCampaignDaily(CollectorMessage msg) {
+        log.info("[MQ][RECV] NAVER CAMPAIGN DAILY userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
+        try {
+            naverCampaignDayCollectionJob.collectForUserId(msg.getUserId());
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] NAVER CAMPAIGN DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
     }
 }

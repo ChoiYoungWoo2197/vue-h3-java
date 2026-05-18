@@ -19,4 +19,10 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_MASTER, msg);
         log.info("[MQ][SEND] NAVER MASTER userId={} customerId={}", userId, customerId);
     }
+
+    public void sendNaverCampaignDaily(String userId, String customerId) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "CAMPAIGN_DAILY", userId, customerId);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_CAMPAIGN_DAILY, msg);
+        log.info("[MQ][SEND] NAVER CAMPAIGN DAILY userId={} customerId={}", userId, customerId);
+    }
 }
