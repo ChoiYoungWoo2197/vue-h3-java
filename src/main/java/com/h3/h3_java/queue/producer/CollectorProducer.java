@@ -14,14 +14,14 @@ public class CollectorProducer {
 
     private final RabbitTemplate rabbitTemplate;
 
-    public void sendNaverMaster(String userId, String customerId) {
-        CollectorMessage msg = new CollectorMessage("NAVER", "MASTER", userId, customerId);
+    public void sendNaverMaster(String userId, String customerId, boolean force) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "MASTER", userId, customerId, force);
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_MASTER, msg);
-        log.info("[MQ][SEND] NAVER MASTER userId={} customerId={}", userId, customerId);
+        log.info("[MQ][SEND] NAVER MASTER userId={} customerId={} force={}", userId, customerId, force);
     }
 
     public void sendNaverCampaignDaily(String userId, String customerId) {
-        CollectorMessage msg = new CollectorMessage("NAVER", "CAMPAIGN_DAILY", userId, customerId);
+        CollectorMessage msg = new CollectorMessage("NAVER", "CAMPAIGN_DAILY", userId, customerId, false);
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_CAMPAIGN_DAILY, msg);
         log.info("[MQ][SEND] NAVER CAMPAIGN DAILY userId={} customerId={}", userId, customerId);
     }

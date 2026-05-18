@@ -12,4 +12,5 @@ public class CollectorMessage {
     private String type;       // MASTER, DAILY
     private String userId;
     private String customerId;
+    private boolean force;
 }

@@ -2,11 +2,15 @@ package com.h3.h3_java.api.collector;
 
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
 import com.h3.h3_java.batch.stat.NaverCampaignDayCollectionJob;
+import com.h3.h3_java.media.naver.dto.NaverAccountDto;
+import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.queue.producer.CollectorProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -17,6 +21,8 @@ public class NaverCollectorController {
 
     private final NaverMasterReportJob job;
     private final NaverCampaignDayCollectionJob campaignDayJob;
+    private final NaverMasterReportMapper mapper;
+    private final CollectorProducer producer;
 
     @PostMapping("/master")
     public ResponseEntity<Map<String, String>> collectMaster() {
@@ -33,12 +39,18 @@ public class NaverCollectorController {
 
     @PostMapping("/master/force")
     public ResponseEntity<Map<String, String>> collectMasterForce() {
-        log.info("[NaverCollector] 전체 강제 수집 시작 (delta 무시)");
+        log.info("[NaverCollector] 전체 강제 수집 MQ 발행 시작 (delta 무시)");
         try {
-            job.collectForce();
-            return ResponseEntity.ok(Map.of("status", "ok", "message", "전체 강제 수집 완료"));
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                producer.sendNaverMaster(account.getUserId(), account.getAccountNaverCustomer(), true);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "전체 강제 수집 MQ 발행 완료 " + count + "건"));
         } catch (Exception e) {
-            log.error("[NaverCollector] 강제 수집 실패", e);
+            log.error("[NaverCollector] 강제 수집 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }
@@ -48,7 +60,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectMasterByUser(@PathVariable String userId) {
         log.info("[NaverCollector] 단일 수집 시작 userId={}", userId);
         try {
-            boolean found = job.collectForUserId(userId);
+            boolean found = job.collectForUserId(userId, false);
             if (!found) return ResponseEntity.badRequest()
                     .body(Map.of("status", "error", "message", "userId 없음: " + userId));
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " 수집 완료"));
@@ -61,14 +73,17 @@ public class NaverCollectorController {
 
     @PostMapping("/master/{userId}/force")
     public ResponseEntity<Map<String, String>> collectMasterByUserForce(@PathVariable String userId) {
-        log.info("[NaverCollector] 단일 강제 수집 시작 userId={} (delta 무시)", userId);
+        log.info("[NaverCollector] 단일 강제 수집 MQ 발행 userId={} (delta 무시)", userId);
         try {
-            boolean found = job.collectForUserIdForce(userId);
-            if (!found) return ResponseEntity.badRequest()
+            NaverAccountDto account = mapper.selectNaverAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return ResponseEntity.badRequest()
                     .body(Map.of("status", "error", "message", "userId 없음: " + userId));
-            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " 강제 수집 완료"));
+            producer.sendNaverMaster(account.getUserId(), account.getAccountNaverCustomer(), true);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " 강제 수집 MQ 발행 완료"));
         } catch (Exception e) {
-            log.error("[NaverCollector] 강제 수집 실패", e);
+            log.error("[NaverCollector] 강제 수집 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }

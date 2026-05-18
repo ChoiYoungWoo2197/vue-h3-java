@@ -56,21 +56,12 @@ public class NaverMasterReportJob {
         }
     }
 
-    public boolean collectForUserId(String userId) {
+    public boolean collectForUserId(String userId, boolean force) {
         NaverAccountDto target = mapper.selectNaverAccounts().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (target == null) return false;
-        collectForAccount(target, false);
-        return true;
-    }
-
-    public boolean collectForUserIdForce(String userId) {
-        NaverAccountDto target = mapper.selectNaverAccounts().stream()
-            .filter(a -> userId.equals(a.getUserId()))
-            .findFirst().orElse(null);
-        if (target == null) return false;
-        collectForAccount(target, true);
+        collectForAccount(target, force);
         return true;
     }
 

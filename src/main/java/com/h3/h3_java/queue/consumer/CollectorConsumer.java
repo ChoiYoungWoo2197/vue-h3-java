@@ -21,7 +21,7 @@ public class CollectorConsumer {
     public void consumeNaverMaster(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER MASTER userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
-            naverMasterReportJob.collectForUserId(msg.getUserId());
+            naverMasterReportJob.collectForUserId(msg.getUserId(), msg.isForce());
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER MASTER userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }

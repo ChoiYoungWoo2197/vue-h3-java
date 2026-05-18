@@ -25,7 +25,7 @@ public class CollectorScheduler {
         List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
         for (NaverAccountDto account : accounts) {
             if ("admin".equals(account.getUserId())) continue;
-            producer.sendNaverMaster(account.getUserId(), account.getAccountNaverCustomer());
+            producer.sendNaverMaster(account.getUserId(), account.getAccountNaverCustomer(), false);
         }
         log.info("[SCHEDULER] 네이버 마스터 메시지 발행 완료 총={}건", accounts.size());
     }
