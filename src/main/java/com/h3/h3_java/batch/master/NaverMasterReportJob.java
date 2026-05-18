@@ -31,6 +31,9 @@ public class NaverMasterReportJob {
         "UNDER_REVIEW", 10, "APPROVED", 20, "ELIGIBLE", 30, "PENDING", 40, "DENIED", 50
     );
 
+    // 배치 fetch 전용 가상 스레드 실행기 (Java 21)
+    private static final ExecutorService FETCH_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
+
     // 계정별 캐시 - 계정 간 격리, 스레드 안전
     private static class AccountContext {
         final ConcurrentHashMap<String, Map<String, Object>> kwCache    = new ConcurrentHashMap<>();
@@ -226,13 +229,27 @@ public class NaverMasterReportJob {
     }
 
     private void processKeywords(List<Map<String, String>> rows, NaverApiClient client, AccountContext ctx) {
-        rows.stream().map(r -> r.get("kwid"))
+        List<String> kwids = rows.stream()
+            .map(r -> r.get("kwid"))
             .filter(id -> id != null && !id.isEmpty())
             .distinct()
-            .forEach(kwid -> ctx.kwCache.computeIfAbsent(kwid, id -> {
-                Map<String, Object> d = client.get("/ncc/keywords/" + id);
-                return d != null ? d : new HashMap<>();
-            }));
+            .collect(Collectors.toList());
+
+        // 100개씩 배치 + 배치들 병렬 fetch
+        List<CompletableFuture<Void>> futures = partition(kwids, 100).stream()
+            .map(batch -> CompletableFuture.runAsync(() -> {
+                Map<String, String> params = new LinkedHashMap<>();
+                params.put("ids", String.join(",", batch));
+                List<Map<String, Object>> results = client.getList("/ncc/keywords", params);
+                if (results != null) {
+                    for (Map<String, Object> kw : results) {
+                        String id = String.valueOf(kw.getOrDefault("nccKeywordId", ""));
+                        if (!id.isEmpty()) ctx.kwCache.putIfAbsent(id, kw);
+                    }
+                }
+            }, FETCH_EXECUTOR))
+            .collect(Collectors.toList());
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         for (List<Map<String, String>> chunk : partition(rows, 200)) {
             List<Map<String, Object>> upsertRows = new ArrayList<>();
@@ -282,13 +299,27 @@ public class NaverMasterReportJob {
     @SuppressWarnings("unchecked")
     private void processAds(List<Map<String, String>> rows, int adType,
                              NaverApiClient client, AccountContext ctx) {
-        rows.stream().map(r -> r.get("adid"))
+        // ad 100개씩 배치 + 병렬 fetch
+        List<String> adids = rows.stream()
+            .map(r -> r.get("adid"))
             .filter(id -> id != null && !id.isEmpty())
             .distinct()
-            .forEach(adid -> ctx.adCache.computeIfAbsent(adid, id -> {
-                Map<String, Object> d = client.get("/ncc/ads/" + id);
-                return d != null ? d : new HashMap<>();
-            }));
+            .collect(Collectors.toList());
+
+        List<CompletableFuture<Void>> adFutures = partition(adids, 100).stream()
+            .map(batch -> CompletableFuture.runAsync(() -> {
+                Map<String, String> params = new LinkedHashMap<>();
+                params.put("ids", String.join(",", batch));
+                List<Map<String, Object>> results = client.getList("/ncc/ads", params);
+                if (results != null) {
+                    for (Map<String, Object> ad : results) {
+                        String id = String.valueOf(ad.getOrDefault("nccAdId", ""));
+                        if (!id.isEmpty()) ctx.adCache.putIfAbsent(id, ad);
+                    }
+                }
+            }, FETCH_EXECUTOR))
+            .collect(Collectors.toList());
+        CompletableFuture.allOf(adFutures.toArray(new CompletableFuture[0])).join();
 
         List<String> groupids = rows.stream().map(r -> r.get("groupid"))
             .filter(id -> id != null && !id.isEmpty()).distinct().collect(Collectors.toList());
@@ -301,11 +332,17 @@ public class NaverMasterReportJob {
             }
         }
 
-        groupExtMap.values().stream().flatMap(Collection::stream).distinct()
-            .forEach(eid -> ctx.adextCache.computeIfAbsent(eid, id -> {
-                Map<String, Object> d = client.get("/ncc/ad-extensions/" + id);
-                return d != null ? d : new HashMap<>();
-            }));
+        // ad-extension 병렬 fetch (배치 API 없음)
+        List<String> extIds = groupExtMap.values().stream()
+            .flatMap(Collection::stream).distinct().collect(Collectors.toList());
+        List<CompletableFuture<Void>> extFutures = extIds.stream()
+            .map(eid -> CompletableFuture.runAsync(() ->
+                ctx.adextCache.computeIfAbsent(eid, id -> {
+                    Map<String, Object> d = client.get("/ncc/ad-extensions/" + id);
+                    return d != null ? d : new HashMap<>();
+                }), FETCH_EXECUTOR))
+            .collect(Collectors.toList());
+        CompletableFuture.allOf(extFutures.toArray(new CompletableFuture[0])).join();
 
         String imgHost = "https://searchad-phinf.pstatic.net";
         Map<String, List<String>> groupImgMap = new HashMap<>();
@@ -373,13 +410,27 @@ public class NaverMasterReportJob {
     @SuppressWarnings("unchecked")
     private void processShoppingProducts(List<Map<String, String>> rows,
                                          NaverApiClient client, AccountContext ctx) {
-        rows.stream().map(r -> r.get("adid"))
+        // 100개씩 배치 + 병렬 fetch
+        List<String> adids = rows.stream()
+            .map(r -> r.get("adid"))
             .filter(id -> id != null && !id.isEmpty())
             .distinct()
-            .forEach(adid -> ctx.adCache.computeIfAbsent(adid, id -> {
-                Map<String, Object> d = client.get("/ncc/ads/" + id);
-                return d != null ? d : new HashMap<>();
-            }));
+            .collect(Collectors.toList());
+
+        List<CompletableFuture<Void>> adFutures = partition(adids, 100).stream()
+            .map(batch -> CompletableFuture.runAsync(() -> {
+                Map<String, String> params = new LinkedHashMap<>();
+                params.put("ids", String.join(",", batch));
+                List<Map<String, Object>> results = client.getList("/ncc/ads", params);
+                if (results != null) {
+                    for (Map<String, Object> ad : results) {
+                        String id = String.valueOf(ad.getOrDefault("nccAdId", ""));
+                        if (!id.isEmpty()) ctx.adCache.putIfAbsent(id, ad);
+                    }
+                }
+            }, FETCH_EXECUTOR))
+            .collect(Collectors.toList());
+        CompletableFuture.allOf(adFutures.toArray(new CompletableFuture[0])).join();
 
         for (Map<String, String> r : rows) {
             Map<String, Object> detail = ctx.adCache.getOrDefault(r.get("adid"), new HashMap<>());

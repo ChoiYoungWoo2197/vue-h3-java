@@ -10,6 +10,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 
@@ -171,6 +172,45 @@ public class NaverApiClient {
         } catch (Exception e) {
             log.warn("[NaverApi] DELETE {} failed: {}", path, e.getMessage());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getList(String basePath, Map<String, String> params) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(BASE_URL + basePath);
+        if (params != null) params.forEach(builder::queryParam);
+        URI uri = builder.build().encode().toUri();
+
+        for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+                rateLimiter.acquire();
+                try {
+                    ResponseEntity<List> res = restTemplate.exchange(
+                        uri, HttpMethod.GET,
+                        new HttpEntity<>(headers("GET", basePath)), List.class
+                    );
+                    return res.getBody();
+                } finally {
+                    rateLimiter.release();
+                }
+            } catch (HttpClientErrorException e) {
+                if (e.getStatusCode().value() == 429) {
+                    long wait = attempt * 3000L;
+                    log.warn("[NaverApi] 429 GET {} attempt={} wait={}ms", basePath, attempt, wait);
+                    sleep(wait);
+                } else {
+                    log.error("[NaverApi] GET {} failed: {}", basePath, e.getMessage());
+                    return null;
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            } catch (Exception e) {
+                log.error("[NaverApi] GET {} failed: {}", basePath, e.getMessage());
+                return null;
+            }
+        }
+        log.error("[NaverApi] GET {} failed after {} retries", basePath, MAX_RETRY);
+        return null;
     }
 
     public byte[] download(String url) {
