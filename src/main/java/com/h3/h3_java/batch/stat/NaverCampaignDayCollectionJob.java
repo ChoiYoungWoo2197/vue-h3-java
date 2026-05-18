@@ -9,8 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.springframework.stereotype.Component;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -124,13 +122,12 @@ public class NaverCampaignDayCollectionJob {
 
     private Map<String, Object> getStats(NaverApiClient client, String campaignId, String date) {
         try {
-            String fields = URLEncoder.encode(
-                "[\"clkCnt\",\"impCnt\",\"salesAmt\",\"ccnt\",\"convAmt\"]", StandardCharsets.UTF_8);
-            String timeRange = URLEncoder.encode(
-                String.format("{\"since\":\"%s\",\"until\":\"%s\"}", date, date), StandardCharsets.UTF_8);
-            String path = String.format("/stats?ids=%s&fields=%s&timeIncrement=allDays&timeRange=%s",
-                campaignId, fields, timeRange);
-            return client.get(path);
+            Map<String, String> params = new LinkedHashMap<>();
+            params.put("ids", campaignId);
+            params.put("fields", "[\"clkCnt\",\"impCnt\",\"salesAmt\",\"ccnt\",\"convAmt\"]");
+            params.put("timeIncrement", "allDays");
+            params.put("timeRange", String.format("{\"since\":\"%s\",\"until\":\"%s\"}", date, date));
+            return client.get("/stats", params);
         } catch (Exception e) {
             log.error("[NaverCampaignDay] stats 조회 실패 campaignId={} date={} error={}", campaignId, date, e.getMessage());
             return null;

@@ -6,6 +6,8 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 
@@ -55,6 +57,32 @@ public class NaverApiClient {
             return res.getBody();
         } catch (Exception e) {
             log.error("[NaverApi] GET {} failed: {}", path, e.getMessage());
+            return null;
+        }
+    }
+
+    // 서명은 basePath만으로, 실제 요청은 쿼리파라미터 포함 전체 URL 사용
+    public Map<String, Object> get(String basePath, Map<String, String> params) {
+        try {
+            StringBuilder fullPath = new StringBuilder(basePath);
+            if (params != null && !params.isEmpty()) {
+                fullPath.append("?");
+                for (Map.Entry<String, String> e : params.entrySet()) {
+                    fullPath.append(URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8))
+                            .append("=")
+                            .append(URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
+                            .append("&");
+                }
+                fullPath.deleteCharAt(fullPath.length() - 1);
+            }
+            ResponseEntity<Map> res = restTemplate.exchange(
+                BASE_URL + fullPath, HttpMethod.GET,
+                new HttpEntity<>(headers("GET", basePath)), // 서명은 basePath만
+                Map.class
+            );
+            return res.getBody();
+        } catch (Exception e) {
+            log.error("[NaverApi] GET {} failed: {}", basePath, e.getMessage());
             return null;
         }
     }
