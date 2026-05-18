@@ -44,7 +44,15 @@ public class NaverMasterReportJob {
         List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
         for (NaverAccountDto account : accounts) {
             if ("admin".equals(account.getUserId())) continue;
-            collectForAccount(account);
+            collectForAccount(account, false);
+        }
+    }
+
+    public void collectForce() {
+        List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+        for (NaverAccountDto account : accounts) {
+            if ("admin".equals(account.getUserId())) continue;
+            collectForAccount(account, true);
         }
     }
 
@@ -53,11 +61,20 @@ public class NaverMasterReportJob {
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (target == null) return false;
-        collectForAccount(target);
+        collectForAccount(target, false);
         return true;
     }
 
-    private void collectForAccount(NaverAccountDto account) {
+    public boolean collectForUserIdForce(String userId) {
+        NaverAccountDto target = mapper.selectNaverAccounts().stream()
+            .filter(a -> userId.equals(a.getUserId()))
+            .findFirst().orElse(null);
+        if (target == null) return false;
+        collectForAccount(target, true);
+        return true;
+    }
+
+    private void collectForAccount(NaverAccountDto account, boolean force) {
         String customerId = account.getAccountNaverCustomer();
         log.info("[NAVER][START] userId={} customerId={}", account.getUserId(), customerId);
 
@@ -74,7 +91,7 @@ public class NaverMasterReportJob {
             // Phase 1: 모든 spec 동시 제출 + 폴링 (가장 오래 걸리는 부분)
             List<CompletableFuture<SpecResult>> futures = Arrays.stream(SPECS)
                 .map(spec -> CompletableFuture.supplyAsync(
-                    () -> submitAndPoll(account, spec, client), executor))
+                    () -> submitAndPoll(account, spec, client, force), executor))
                 .collect(Collectors.toList());
 
             List<SpecResult> builtResults = futures.stream()
@@ -103,7 +120,7 @@ public class NaverMasterReportJob {
         log.info("[NAVER][END] userId={} customerId={}", account.getUserId(), customerId);
     }
 
-    private SpecResult submitAndPoll(NaverAccountDto account, String spec, NaverApiClient client) {
+    private SpecResult submitAndPoll(NaverAccountDto account, String spec, NaverApiClient client, boolean force) {
         String customerId = account.getAccountNaverCustomer();
         String userId     = account.getUserId();
 
@@ -112,7 +129,8 @@ public class NaverMasterReportJob {
 
         Map<String, Object> reqBody = new HashMap<>();
         reqBody.put("item", spec);
-        if (deltaValue != null && !deltaValue.isEmpty()) {
+        // force=true 이면 fromTime 생략 → 전체 수집
+        if (!force && deltaValue != null && !deltaValue.isEmpty()) {
             reqBody.put("fromTime", deltaValue);
         }
 
@@ -164,6 +182,9 @@ public class NaverMasterReportJob {
             d.setName(spec); d.setJobid(reportId); d.setUserid(userId);
             mapper.updateNaverDelta(d);
             if (oldJobId != null) client.delete("/master-reports/" + oldJobId);
+            shouldDownload = true;
+        } else if (force) {
+            // force 모드: 변경 없어도 강제 다운로드
             shouldDownload = true;
         } else {
             log.info("[NAVER][{}][{}] no changes, skip", customerId, spec);

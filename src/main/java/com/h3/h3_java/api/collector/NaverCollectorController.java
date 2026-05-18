@@ -31,6 +31,19 @@ public class NaverCollectorController {
         }
     }
 
+    @PostMapping("/master/force")
+    public ResponseEntity<Map<String, String>> collectMasterForce() {
+        log.info("[NaverCollector] 전체 강제 수집 시작 (delta 무시)");
+        try {
+            job.collectForce();
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "전체 강제 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 강제 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/master/{userId}")
     public ResponseEntity<Map<String, String>> collectMasterByUser(@PathVariable String userId) {
         log.info("[NaverCollector] 단일 수집 시작 userId={}", userId);
@@ -41,6 +54,21 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " 수집 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/master/{userId}/force")
+    public ResponseEntity<Map<String, String>> collectMasterByUserForce(@PathVariable String userId) {
+        log.info("[NaverCollector] 단일 강제 수집 시작 userId={} (delta 무시)", userId);
+        try {
+            boolean found = job.collectForUserIdForce(userId);
+            if (!found) return ResponseEntity.badRequest()
+                    .body(Map.of("status", "error", "message", "userId 없음: " + userId));
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " 강제 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 강제 수집 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }
