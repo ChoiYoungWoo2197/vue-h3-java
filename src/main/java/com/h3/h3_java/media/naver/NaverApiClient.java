@@ -2,6 +2,7 @@ package com.h3.h3_java.media.naver;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -10,11 +11,16 @@ import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.util.Base64;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 
 @Slf4j
 public class NaverApiClient {
 
-    private static final String BASE_URL = "https://api.searchad.naver.com";
+    private static final String BASE_URL  = "https://api.searchad.naver.com";
+    private static final int    MAX_RETRY = 5;
+
+    // 계정(API KEY)당 동시 요청 수 제한 - 429 방지
+    private final Semaphore rateLimiter = new Semaphore(3);
 
     private final String apiKey;
     private final String secretKey;
@@ -22,8 +28,8 @@ public class NaverApiClient {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public NaverApiClient(String apiKey, String secretKey, String customerId) {
-        this.apiKey = apiKey;
-        this.secretKey = secretKey;
+        this.apiKey     = apiKey;
+        this.secretKey  = secretKey;
         this.customerId = customerId;
     }
 
@@ -50,53 +56,117 @@ public class NaverApiClient {
     }
 
     public Map<String, Object> get(String path) {
-        try {
-            ResponseEntity<Map> res = restTemplate.exchange(
-                BASE_URL + path, HttpMethod.GET, new HttpEntity<>(headers("GET", path)), Map.class
-            );
-            return res.getBody();
-        } catch (Exception e) {
-            log.error("[NaverApi] GET {} failed: {}", path, e.getMessage());
-            return null;
+        for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+                rateLimiter.acquire();
+                try {
+                    ResponseEntity<Map> res = restTemplate.exchange(
+                        BASE_URL + path, HttpMethod.GET,
+                        new HttpEntity<>(headers("GET", path)), Map.class
+                    );
+                    return res.getBody();
+                } finally {
+                    rateLimiter.release();
+                }
+            } catch (HttpClientErrorException e) {
+                if (e.getStatusCode().value() == 429) {
+                    long wait = attempt * 3000L;
+                    log.warn("[NaverApi] 429 GET {} attempt={} wait={}ms", path, attempt, wait);
+                    sleep(wait);
+                } else {
+                    log.error("[NaverApi] GET {} failed: {}", path, e.getMessage());
+                    return null;
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            } catch (Exception e) {
+                log.error("[NaverApi] GET {} failed: {}", path, e.getMessage());
+                return null;
+            }
         }
+        log.error("[NaverApi] GET {} failed after {} retries", path, MAX_RETRY);
+        return null;
     }
 
     // 서명은 basePath만으로, 쿼리파라미터 인코딩은 UriComponentsBuilder에 위임
     public Map<String, Object> get(String basePath, Map<String, String> params) {
-        try {
-            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(BASE_URL + basePath);
-            if (params != null) {
-                params.forEach(builder::queryParam);
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(BASE_URL + basePath);
+        if (params != null) params.forEach(builder::queryParam);
+        URI uri = builder.build().encode().toUri();
+
+        for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+                rateLimiter.acquire();
+                try {
+                    ResponseEntity<Map> res = restTemplate.exchange(
+                        uri, HttpMethod.GET,
+                        new HttpEntity<>(headers("GET", basePath)), Map.class
+                    );
+                    return res.getBody();
+                } finally {
+                    rateLimiter.release();
+                }
+            } catch (HttpClientErrorException e) {
+                if (e.getStatusCode().value() == 429) {
+                    long wait = attempt * 3000L;
+                    log.warn("[NaverApi] 429 GET {} attempt={} wait={}ms", basePath, attempt, wait);
+                    sleep(wait);
+                } else {
+                    log.error("[NaverApi] GET {} failed: {}", basePath, e.getMessage());
+                    return null;
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            } catch (Exception e) {
+                log.error("[NaverApi] GET {} failed: {}", basePath, e.getMessage());
+                return null;
             }
-            URI uri = builder.build().encode().toUri();
-            ResponseEntity<Map> res = restTemplate.exchange(
-                uri, HttpMethod.GET,
-                new HttpEntity<>(headers("GET", basePath)),
-                Map.class
-            );
-            return res.getBody();
-        } catch (Exception e) {
-            log.error("[NaverApi] GET {} failed: {}", basePath, e.getMessage());
-            return null;
         }
+        log.error("[NaverApi] GET {} failed after {} retries", basePath, MAX_RETRY);
+        return null;
     }
 
     public Map<String, Object> post(String path, Map<String, Object> body) {
-        try {
-            ResponseEntity<Map> res = restTemplate.exchange(
-                BASE_URL + path, HttpMethod.POST, new HttpEntity<>(body, headers("POST", path)), Map.class
-            );
-            return res.getBody();
-        } catch (Exception e) {
-            log.error("[NaverApi] POST {} failed: {}", path, e.getMessage());
-            return null;
+        for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+                rateLimiter.acquire();
+                try {
+                    ResponseEntity<Map> res = restTemplate.exchange(
+                        BASE_URL + path, HttpMethod.POST,
+                        new HttpEntity<>(body, headers("POST", path)), Map.class
+                    );
+                    return res.getBody();
+                } finally {
+                    rateLimiter.release();
+                }
+            } catch (HttpClientErrorException e) {
+                if (e.getStatusCode().value() == 429) {
+                    long wait = attempt * 3000L;
+                    log.warn("[NaverApi] 429 POST {} attempt={} wait={}ms", path, attempt, wait);
+                    sleep(wait);
+                } else {
+                    log.error("[NaverApi] POST {} failed: {}", path, e.getMessage());
+                    return null;
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            } catch (Exception e) {
+                log.error("[NaverApi] POST {} failed: {}", path, e.getMessage());
+                return null;
+            }
         }
+        log.error("[NaverApi] POST {} failed after {} retries", path, MAX_RETRY);
+        return null;
     }
 
     public void delete(String path) {
         try {
             restTemplate.exchange(
-                BASE_URL + path, HttpMethod.DELETE, new HttpEntity<>(headers("DELETE", path)), Void.class
+                BASE_URL + path, HttpMethod.DELETE,
+                new HttpEntity<>(headers("DELETE", path)), Void.class
             );
         } catch (Exception e) {
             log.warn("[NaverApi] DELETE {} failed: {}", path, e.getMessage());
@@ -106,12 +176,17 @@ public class NaverApiClient {
     public byte[] download(String url) {
         try {
             ResponseEntity<byte[]> res = restTemplate.exchange(
-                url, HttpMethod.GET, new HttpEntity<>(headers("GET", "/report-download")), byte[].class
+                url, HttpMethod.GET,
+                new HttpEntity<>(headers("GET", "/report-download")), byte[].class
             );
             return res.getBody();
         } catch (Exception e) {
             log.error("[NaverApi] DOWNLOAD {} failed: {}", url, e.getMessage());
             return null;
         }
+    }
+
+    private void sleep(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
     }
 }
