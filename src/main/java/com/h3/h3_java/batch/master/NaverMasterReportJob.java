@@ -67,6 +67,10 @@ public class NaverMasterReportJob {
 
     private void collectForAccount(NaverAccountDto account, boolean force) {
         String customerId = account.getAccountNaverCustomer();
+        if (customerId == null || customerId.isBlank()) {
+            log.warn("[NAVER][SKIP] userId={} customerId 없음", account.getUserId());
+            return;
+        }
         log.info("[NAVER][START] userId={} customerId={}", account.getUserId(), customerId);
 
         NaverApiClient client = new NaverApiClient(
