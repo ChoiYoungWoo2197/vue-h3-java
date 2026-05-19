@@ -10,8 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @RestController
@@ -42,10 +44,13 @@ public class NaverCollectorController {
         log.info("[NaverCollector] 전체 강제 수집 MQ 발행 시작 (delta 무시)");
         try {
             List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
                 if ("admin".equals(account.getUserId())) continue;
-                producer.sendNaverMaster(account.getUserId(), account.getAccountNaverCustomer(), true);
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverMaster(account.getUserId(), cid, true);
                 count++;
             }
             return ResponseEntity.ok(Map.of("status", "ok", "message", "전체 강제 수집 MQ 발행 완료 " + count + "건"));

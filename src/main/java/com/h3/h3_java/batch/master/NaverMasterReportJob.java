@@ -45,16 +45,22 @@ public class NaverMasterReportJob {
 
     public void collect() {
         List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+        Set<String> seen = new HashSet<>();
         for (NaverAccountDto account : accounts) {
             if ("admin".equals(account.getUserId())) continue;
+            String cid = account.getAccountNaverCustomer();
+            if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
             collectForAccount(account, false);
         }
     }
 
     public void collectForce() {
         List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+        Set<String> seen = new HashSet<>();
         for (NaverAccountDto account : accounts) {
             if ("admin".equals(account.getUserId())) continue;
+            String cid = account.getAccountNaverCustomer();
+            if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
             collectForAccount(account, true);
         }
     }
