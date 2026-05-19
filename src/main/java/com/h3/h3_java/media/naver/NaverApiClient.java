@@ -2,6 +2,7 @@ package com.h3.h3_java.media.naver;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -26,12 +27,16 @@ public class NaverApiClient {
     private final String apiKey;
     private final String secretKey;
     private final String customerId;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     public NaverApiClient(String apiKey, String secretKey, String customerId) {
         this.apiKey     = apiKey;
         this.secretKey  = secretKey;
         this.customerId = customerId;
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10_000);
+        factory.setReadTimeout(180_000);
+        this.restTemplate = new RestTemplate(factory);
     }
 
     private String sign(long timestamp, String method, String path) {
