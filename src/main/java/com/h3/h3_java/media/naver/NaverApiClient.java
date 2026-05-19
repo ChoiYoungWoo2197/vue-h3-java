@@ -13,7 +13,10 @@ import java.net.URI;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Slf4j
 public class NaverApiClient {
@@ -219,12 +222,21 @@ public class NaverApiClient {
     }
 
     public byte[] download(String url) {
+        log.info("[NaverApi] DOWNLOAD start url={}", url);
         try {
-            ResponseEntity<byte[]> res = restTemplate.exchange(
-                url, HttpMethod.GET,
-                new HttpEntity<>(headers("GET", "/report-download")), byte[].class
-            );
-            return res.getBody();
+            CompletableFuture<byte[]> future = CompletableFuture.supplyAsync(() -> {
+                ResponseEntity<byte[]> res = restTemplate.exchange(
+                    url, HttpMethod.GET,
+                    new HttpEntity<>(headers("GET", "/report-download")), byte[].class
+                );
+                return res.getBody();
+            });
+            byte[] data = future.get(3, TimeUnit.MINUTES);
+            log.info("[NaverApi] DOWNLOAD done bytes={}", data != null ? data.length : 0);
+            return data;
+        } catch (TimeoutException e) {
+            log.error("[NaverApi] DOWNLOAD timeout(3min) url={}", url);
+            return null;
         } catch (Exception e) {
             log.error("[NaverApi] DOWNLOAD {} failed: {}", url, e.getMessage());
             return null;
