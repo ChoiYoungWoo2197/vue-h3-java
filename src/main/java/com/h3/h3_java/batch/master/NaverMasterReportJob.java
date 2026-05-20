@@ -5,6 +5,7 @@ import com.h3.h3_java.media.naver.NaverTsvParser;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.dto.NaverDeltaDto;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.queue.producer.CollectorProducer;
 import com.h3.h3_java.raw.mongo.NaverMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class NaverMasterReportJob {
 
     private final NaverMasterReportMapper mapper;
     private final NaverMasterMongoService mongoService;
+    private final CollectorProducer producer;
 
     private static final String[] SPECS = {
         "Campaign", "CampaignBudget", "Adgroup", "AdgroupBudget",
@@ -110,6 +112,7 @@ public class NaverMasterReportJob {
         }
 
         log.info("[NAVER][END] userId={} customerId={}", account.getUserId(), customerId);
+        producer.sendNaverAdDetail(account.getUserId(), customerId);
     }
 
     private SpecResult submitAndPoll(NaverAccountDto account, String spec, NaverApiClient client, boolean force) {
