@@ -229,21 +229,21 @@ public class NaverMasterReportJob {
             .distinct()
             .collect(Collectors.toList());
 
-        // 100개씩 배치 + 배치들 병렬 fetch
-        List<CompletableFuture<Void>> futures = partition(kwids, 100).stream()
-            .map(batch -> CompletableFuture.runAsync(() -> {
-                Map<String, String> params = new LinkedHashMap<>();
-                params.put("ids", String.join(",", batch));
-                List<Map<String, Object>> results = client.getList("/ncc/keywords", params);
-                if (results != null) {
-                    for (Map<String, Object> kw : results) {
-                        String id = String.valueOf(kw.getOrDefault("nccKeywordId", ""));
-                        if (!id.isEmpty()) ctx.kwCache.putIfAbsent(id, kw);
-                    }
-                }
-            }, FETCH_EXECUTOR))
-            .collect(Collectors.toList());
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        // [TEST] 키워드 API 호출 주석처리 - 성능 측정용
+//        List<CompletableFuture<Void>> futures = partition(kwids, 100).stream()
+//            .map(batch -> CompletableFuture.runAsync(() -> {
+//                Map<String, String> params = new LinkedHashMap<>();
+//                params.put("ids", String.join(",", batch));
+//                List<Map<String, Object>> results = client.getList("/ncc/keywords", params);
+//                if (results != null) {
+//                    for (Map<String, Object> kw : results) {
+//                        String id = String.valueOf(kw.getOrDefault("nccKeywordId", ""));
+//                        if (!id.isEmpty()) ctx.kwCache.putIfAbsent(id, kw);
+//                    }
+//                }
+//            }, FETCH_EXECUTOR))
+//            .collect(Collectors.toList());
+//        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         for (List<Map<String, String>> chunk : partition(rows, 200)) {
             List<Map<String, Object>> upsertRows = new ArrayList<>();
@@ -293,27 +293,27 @@ public class NaverMasterReportJob {
     @SuppressWarnings("unchecked")
     private void processAds(List<Map<String, String>> rows, int adType,
                              NaverApiClient client, AccountContext ctx) {
-        // ad 100개씩 배치 + 병렬 fetch
+        // [TEST] 소재/반응소재 API 호출 주석처리 - 성능 측정용
         List<String> adids = rows.stream()
             .map(r -> r.get("adid"))
             .filter(id -> id != null && !id.isEmpty())
             .distinct()
             .collect(Collectors.toList());
 
-        List<CompletableFuture<Void>> adFutures = partition(adids, 100).stream()
-            .map(batch -> CompletableFuture.runAsync(() -> {
-                Map<String, String> params = new LinkedHashMap<>();
-                params.put("ids", String.join(",", batch));
-                List<Map<String, Object>> results = client.getList("/ncc/ads", params);
-                if (results != null) {
-                    for (Map<String, Object> ad : results) {
-                        String id = String.valueOf(ad.getOrDefault("nccAdId", ""));
-                        if (!id.isEmpty()) ctx.adCache.putIfAbsent(id, ad);
-                    }
-                }
-            }, FETCH_EXECUTOR))
-            .collect(Collectors.toList());
-        CompletableFuture.allOf(adFutures.toArray(new CompletableFuture[0])).join();
+//        List<CompletableFuture<Void>> adFutures = partition(adids, 100).stream()
+//            .map(batch -> CompletableFuture.runAsync(() -> {
+//                Map<String, String> params = new LinkedHashMap<>();
+//                params.put("ids", String.join(",", batch));
+//                List<Map<String, Object>> results = client.getList("/ncc/ads", params);
+//                if (results != null) {
+//                    for (Map<String, Object> ad : results) {
+//                        String id = String.valueOf(ad.getOrDefault("nccAdId", ""));
+//                        if (!id.isEmpty()) ctx.adCache.putIfAbsent(id, ad);
+//                    }
+//                }
+//            }, FETCH_EXECUTOR))
+//            .collect(Collectors.toList());
+//        CompletableFuture.allOf(adFutures.toArray(new CompletableFuture[0])).join();
 
         List<String> groupids = rows.stream().map(r -> r.get("groupid"))
             .filter(id -> id != null && !id.isEmpty()).distinct().collect(Collectors.toList());
@@ -326,17 +326,17 @@ public class NaverMasterReportJob {
             }
         }
 
-        // ad-extension 병렬 fetch (배치 API 없음)
+        // [TEST] ad-extension API 호출 주석처리 - 성능 측정용
         List<String> extIds = groupExtMap.values().stream()
             .flatMap(Collection::stream).distinct().collect(Collectors.toList());
-        List<CompletableFuture<Void>> extFutures = extIds.stream()
-            .map(eid -> CompletableFuture.runAsync(() ->
-                ctx.adextCache.computeIfAbsent(eid, id -> {
-                    Map<String, Object> d = client.get("/ncc/ad-extensions/" + id);
-                    return d != null ? d : new HashMap<>();
-                }), FETCH_EXECUTOR))
-            .collect(Collectors.toList());
-        CompletableFuture.allOf(extFutures.toArray(new CompletableFuture[0])).join();
+//        List<CompletableFuture<Void>> extFutures = extIds.stream()
+//            .map(eid -> CompletableFuture.runAsync(() ->
+//                ctx.adextCache.computeIfAbsent(eid, id -> {
+//                    Map<String, Object> d = client.get("/ncc/ad-extensions/" + id);
+//                    return d != null ? d : new HashMap<>();
+//                }), FETCH_EXECUTOR))
+//            .collect(Collectors.toList());
+//        CompletableFuture.allOf(extFutures.toArray(new CompletableFuture[0])).join();
 
         String imgHost = "https://searchad-phinf.pstatic.net";
         Map<String, List<String>> groupImgMap = new HashMap<>();
