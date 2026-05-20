@@ -404,27 +404,27 @@ public class NaverMasterReportJob {
     @SuppressWarnings("unchecked")
     private void processShoppingProducts(List<Map<String, String>> rows,
                                          NaverApiClient client, AccountContext ctx) {
-        // 100개씩 배치 + 병렬 fetch
+        // [TEST] 쇼핑소재 API 호출 주석처리 - 성능 측정용
         List<String> adids = rows.stream()
             .map(r -> r.get("adid"))
             .filter(id -> id != null && !id.isEmpty())
             .distinct()
             .collect(Collectors.toList());
 
-        List<CompletableFuture<Void>> adFutures = partition(adids, 100).stream()
-            .map(batch -> CompletableFuture.runAsync(() -> {
-                Map<String, String> params = new LinkedHashMap<>();
-                params.put("ids", String.join(",", batch));
-                List<Map<String, Object>> results = client.getList("/ncc/ads", params);
-                if (results != null) {
-                    for (Map<String, Object> ad : results) {
-                        String id = String.valueOf(ad.getOrDefault("nccAdId", ""));
-                        if (!id.isEmpty()) ctx.adCache.putIfAbsent(id, ad);
-                    }
-                }
-            }, FETCH_EXECUTOR))
-            .collect(Collectors.toList());
-        CompletableFuture.allOf(adFutures.toArray(new CompletableFuture[0])).join();
+//        List<CompletableFuture<Void>> adFutures = partition(adids, 100).stream()
+//            .map(batch -> CompletableFuture.runAsync(() -> {
+//                Map<String, String> params = new LinkedHashMap<>();
+//                params.put("ids", String.join(",", batch));
+//                List<Map<String, Object>> results = client.getList("/ncc/ads", params);
+//                if (results != null) {
+//                    for (Map<String, Object> ad : results) {
+//                        String id = String.valueOf(ad.getOrDefault("nccAdId", ""));
+//                        if (!id.isEmpty()) ctx.adCache.putIfAbsent(id, ad);
+//                    }
+//                }
+//            }, FETCH_EXECUTOR))
+//            .collect(Collectors.toList());
+//        CompletableFuture.allOf(adFutures.toArray(new CompletableFuture[0])).join();
 
         for (Map<String, String> r : rows) {
             Map<String, Object> detail = ctx.adCache.getOrDefault(r.get("adid"), new HashMap<>());
