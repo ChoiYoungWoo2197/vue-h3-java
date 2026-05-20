@@ -2,6 +2,7 @@ package com.h3.h3_java.raw.mongo;
 
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
+import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -40,9 +41,16 @@ public class NaverMasterMongoService {
     }
 
     public void upsertKeywords(List<Map<String, Object>> rows) {
+        if (rows.isEmpty()) return;
+        BulkOperations bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, "naver_keyword");
         for (Map<String, Object> row : rows) {
-            upsert("naver_keyword", row, "advkey", "kwid");
+            Criteria criteria = Criteria.where("advkey").is(row.get("advkey"))
+                                        .and("kwid").is(row.get("kwid"));
+            Update update = new Update();
+            row.forEach(update::set);
+            bulk.upsert(Query.query(criteria), update);
         }
+        bulk.execute();
     }
 
     public void upsertAd(Map<String, Object> row) {
