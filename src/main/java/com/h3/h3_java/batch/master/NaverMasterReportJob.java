@@ -92,30 +92,18 @@ public class NaverMasterReportJob {
         // spec 수만큼 스레드 - submit/poll 동시 진행
         ExecutorService executor = Executors.newFixedThreadPool(SPECS.length);
         try {
-            // Phase 1: 모든 spec 동시 제출 + 폴링 (가장 오래 걸리는 부분)
-            List<CompletableFuture<SpecResult>> futures = Arrays.stream(SPECS)
-                .map(spec -> CompletableFuture.supplyAsync(
-                    () -> submitAndPoll(account, spec, client, force), executor))
+            // spec별 독립 파이프라인: 폴링 완료 즉시 다운로드 + 처리 (다른 spec 대기 없음)
+            List<CompletableFuture<Void>> futures = Arrays.stream(SPECS)
+                .map(spec -> CompletableFuture
+                    .supplyAsync(() -> submitAndPoll(account, spec, client, force), executor)
+                    .thenAcceptAsync(result -> {
+                        if (result != null && result.shouldDownload() && result.downloadUrl() != null) {
+                            downloadAndProcess(result, account, client, ctx);
+                        }
+                    }, executor))
                 .collect(Collectors.toList());
 
-            List<SpecResult> builtResults = futures.stream()
-                .map(f -> {
-                    try { return f.join(); }
-                    catch (Exception e) {
-                        log.error("[NAVER][{}] spec error: {}", customerId, e.getMessage(), e);
-                        return null;
-                    }
-                })
-                .filter(r -> r != null && r.shouldDownload() && r.downloadUrl() != null)
-                .collect(Collectors.toList());
-
-            // Phase 2: 다운로드 + 처리 병렬
-            List<CompletableFuture<Void>> processFutures = builtResults.stream()
-                .map(r -> CompletableFuture.runAsync(
-                    () -> downloadAndProcess(r, account, client, ctx), executor))
-                .collect(Collectors.toList());
-
-            CompletableFuture.allOf(processFutures.toArray(new CompletableFuture[0])).join();
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         } finally {
             executor.shutdown();
