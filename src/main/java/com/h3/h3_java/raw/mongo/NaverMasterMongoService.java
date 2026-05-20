@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -54,6 +56,47 @@ public class NaverMasterMongoService {
     public List<Document> selectGroupExtIds(List<String> groupids) {
         Query query = Query.query(Criteria.where("type").is(12).and("ownerid").in(groupids));
         return mongoTemplate.find(query, Document.class, "naver_adextension");
+    }
+
+    public List<String> selectKeywordIds(String advkey) {
+        Query query = Query.query(Criteria.where("advkey").is(advkey));
+        query.fields().include("kwid").exclude("_id");
+        return mongoTemplate.find(query, Document.class, "naver_keyword")
+            .stream().map(d -> d.getString("kwid")).filter(Objects::nonNull).collect(Collectors.toList());
+    }
+
+    public void updateKeywordDetail(String advkey, String kwid, Map<String, Object> update) {
+        Query query = Query.query(Criteria.where("advkey").is(advkey).and("kwid").is(kwid));
+        Update u = new Update();
+        update.forEach(u::set);
+        mongoTemplate.updateFirst(query, u, "naver_keyword");
+    }
+
+    public List<Document> selectAdDocs(String advkey) {
+        Query query = Query.query(Criteria.where("advkey").is(advkey));
+        query.fields().include("adid").include("groupid").exclude("_id");
+        return mongoTemplate.find(query, Document.class, "naver_ad");
+    }
+
+    public List<String> selectShoppingProductIds(String advkey) {
+        Query query = Query.query(Criteria.where("advkey").is(advkey));
+        query.fields().include("adid").exclude("_id");
+        return mongoTemplate.find(query, Document.class, "naver_shopping_product")
+            .stream().map(d -> d.getString("adid")).filter(Objects::nonNull).collect(Collectors.toList());
+    }
+
+    public void updateAdDetail(String advkey, String adid, Map<String, Object> update) {
+        Query query = Query.query(Criteria.where("advkey").is(advkey).and("adid").is(adid));
+        Update u = new Update();
+        update.forEach(u::set);
+        mongoTemplate.updateFirst(query, u, "naver_ad");
+    }
+
+    public void updateShoppingProductDetail(String advkey, String adid, Map<String, Object> update) {
+        Query query = Query.query(Criteria.where("advkey").is(advkey).and("adid").is(adid));
+        Update u = new Update();
+        update.forEach(u::set);
+        mongoTemplate.updateFirst(query, u, "naver_shopping_product");
     }
 
     private void upsert(String collection, Map<String, Object> data, String... keyFields) {

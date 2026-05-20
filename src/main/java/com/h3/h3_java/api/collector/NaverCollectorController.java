@@ -1,5 +1,6 @@
 package com.h3.h3_java.api.collector;
 
+import com.h3.h3_java.batch.master.NaverAdDetailJob;
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
 import com.h3.h3_java.batch.stat.NaverCampaignDayCollectionJob;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
@@ -22,6 +23,7 @@ import java.util.Set;
 public class NaverCollectorController {
 
     private final NaverMasterReportJob job;
+    private final NaverAdDetailJob adDetailJob;
     private final NaverCampaignDayCollectionJob campaignDayJob;
     private final NaverMasterReportMapper mapper;
     private final CollectorProducer producer;
@@ -89,6 +91,46 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " 강제 수집 MQ 발행 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] 강제 수집 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/ad-detail")
+    public ResponseEntity<Map<String, String>> collectAdDetail() {
+        log.info("[NaverCollector] 소재 상세 전체 수집 MQ 발행 시작");
+        try {
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverAdDetail(account.getUserId(), cid);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "소재 상세 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 소재 상세 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/ad-detail/{userId}")
+    public ResponseEntity<Map<String, String>> collectAdDetailByUser(@PathVariable String userId) {
+        log.info("[NaverCollector] 소재 상세 단일 수집 MQ 발행 userId={}", userId);
+        try {
+            NaverAccountDto account = mapper.selectNaverAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return ResponseEntity.badRequest()
+                    .body(Map.of("status", "error", "message", "userId 없음: " + userId));
+            producer.sendNaverAdDetail(account.getUserId(), account.getAccountNaverCustomer());
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " 소재 상세 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 소재 상세 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }

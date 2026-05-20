@@ -18,6 +18,9 @@ public class RabbitMQConfig {
     public static final String QUEUE_NAVER_CAMPAIGN_DAILY  = "h3.collector.naver.campaign.daily";
     public static final String ROUTING_NAVER_CAMPAIGN_DAILY = "naver.campaign.daily";
 
+    public static final String QUEUE_NAVER_AD_DETAIL    = "h3.collector.naver.ad.detail";
+    public static final String ROUTING_NAVER_AD_DETAIL  = "naver.ad.detail";
+
     @Bean
     public DirectExchange collectorExchange() {
         return new DirectExchange(EXCHANGE);
@@ -41,6 +44,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding naverCampaignDailyBinding(Queue naverCampaignDailyQueue, DirectExchange collectorExchange) {
         return BindingBuilder.bind(naverCampaignDailyQueue).to(collectorExchange).with(ROUTING_NAVER_CAMPAIGN_DAILY);
+    }
+
+    @Bean
+    public Queue naverAdDetailQueue() {
+        return QueueBuilder.durable(QUEUE_NAVER_AD_DETAIL).build();
+    }
+
+    @Bean
+    public Binding naverAdDetailBinding(Queue naverAdDetailQueue, DirectExchange collectorExchange) {
+        return BindingBuilder.bind(naverAdDetailQueue).to(collectorExchange).with(ROUTING_NAVER_AD_DETAIL);
     }
 
     @Bean

@@ -1,5 +1,6 @@
 package com.h3.h3_java.queue.consumer;
 
+import com.h3.h3_java.batch.master.NaverAdDetailJob;
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
 import com.h3.h3_java.batch.stat.NaverCampaignDayCollectionJob;
 import com.h3.h3_java.common.config.RabbitMQConfig;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class CollectorConsumer {
 
     private final NaverMasterReportJob naverMasterReportJob;
+    private final NaverAdDetailJob naverAdDetailJob;
     private final NaverCampaignDayCollectionJob naverCampaignDayCollectionJob;
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_MASTER, concurrency = "5")
@@ -24,6 +26,16 @@ public class CollectorConsumer {
             naverMasterReportJob.collectForUserId(msg.getUserId(), msg.isForce());
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER MASTER userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_AD_DETAIL, concurrency = "5")
+    public void consumeNaverAdDetail(CollectorMessage msg) {
+        log.info("[MQ][RECV] NAVER AD DETAIL userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
+        try {
+            naverAdDetailJob.collectForUserId(msg.getUserId());
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] NAVER AD DETAIL userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
     }
 

@@ -37,6 +37,23 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 네이버 마스터 메시지 발행 완료 총={}건", count);
     }
 
+    // 매일 새벽 2시 30분 - 소재 상세 수집 (마스터 완료 후)
+    @Scheduled(cron = "0 30 2 * * *", zone = "Asia/Seoul")
+    public void scheduleNaverAdDetail() {
+        log.info("[SCHEDULER] 네이버 소재 상세 수집 시작");
+        List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
+        for (NaverAccountDto account : accounts) {
+            if ("admin".equals(account.getUserId())) continue;
+            String cid = account.getAccountNaverCustomer();
+            if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+            producer.sendNaverAdDetail(account.getUserId(), cid);
+            count++;
+        }
+        log.info("[SCHEDULER] 네이버 소재 상세 메시지 발행 완료 총={}건", count);
+    }
+
     // 매일 새벽 3시 - 캠페인 일별 수집 (마스터 완료 후)
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Seoul")
     public void scheduleNaverCampaignDaily() {
