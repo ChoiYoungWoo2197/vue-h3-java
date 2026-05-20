@@ -12,7 +12,7 @@ spring:
   # MongoDB Atlas
   data:
     mongodb:
-      uri: mongodb+srv://dev:heeil%400801%21%40%23@cluster0.u0ykepl.mongodb.net/h3?appName=Cluster0
+      uri: mongodb+srv://dev:heeil%400801%21%40%23@cluster0.u0ykepl.mongodb.net/h3?appName=Cluster0&connectTimeoutMS=10000&socketTimeoutMS=30000&serverSelectionTimeoutMS=10000
 
   # RabbitMQ
   rabbitmq:
