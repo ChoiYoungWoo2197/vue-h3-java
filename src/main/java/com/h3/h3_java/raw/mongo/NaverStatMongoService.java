@@ -35,6 +35,23 @@ public class NaverStatMongoService {
         return mongoTemplate.exists(query, "naver_campaign_daily");
     }
 
+    public void upsertCampaignHour(Map<String, Object> row) {
+        Query query = Query.query(
+            Criteria.where("adv_id").is(row.get("adv_id"))
+                .and("hour_dt").is(row.get("hour_dt"))
+        );
+        Update update = new Update();
+        row.forEach(update::set);
+        mongoTemplate.upsert(query, update, "naver_campaign_hour");
+    }
+
+    public boolean hasCampaignHourData(String advId, String date) {
+        Query query = Query.query(
+            Criteria.where("adv_id").is(advId).and("hour_dt").is(date)
+        );
+        return mongoTemplate.exists(query, "naver_campaign_hour");
+    }
+
     public List<Document> selectCampaignsByCustomer(String customerId) {
         Query query = Query.query(Criteria.where("advkey").is(customerId));
         return mongoTemplate.find(query, Document.class, "naver_campaign");
