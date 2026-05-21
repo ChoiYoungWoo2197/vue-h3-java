@@ -61,4 +61,10 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_SHOPPING_DAILY, msg);
         log.info("[MQ][SEND] NAVER SHOPPING DAILY userId={} customerId={}", userId, customerId);
     }
+
+    public void sendNaverConvType(String userId, String customerId) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "CONV_TYPE", userId, customerId, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_CONV_TYPE, msg);
+        log.info("[MQ][SEND] NAVER CONV TYPE userId={} customerId={}", userId, customerId);
+    }
 }

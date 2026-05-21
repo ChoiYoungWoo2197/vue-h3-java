@@ -6,6 +6,7 @@ import com.h3.h3_java.batch.stat.NaverAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverAdGroupDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignHourCollectionJob;
+import com.h3.h3_java.batch.stat.NaverConvTypeJob;
 import com.h3.h3_java.batch.stat.NaverShoppingAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverStateReportJob;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
@@ -35,6 +36,7 @@ public class NaverCollectorController {
     private final NaverStateReportJob stateReportJob;
     private final NaverAdDayCollectionJob adDayJob;
     private final NaverShoppingAdDayCollectionJob shoppingDayJob;
+    private final NaverConvTypeJob convTypeJob;
     private final NaverMasterReportMapper mapper;
     private final CollectorProducer producer;
 
@@ -414,6 +416,59 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " 쇼핑소재 수집 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] 쇼핑소재 일별 기간 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/conv-type")
+    public ResponseEntity<Map<String, String>> collectConvType() {
+        log.info("[NaverCollector] 전환유형 전체 수집 MQ 발행 시작");
+        try {
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverConvType(account.getUserId(), cid);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "전환유형 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 전환유형 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/conv-type/{userId}")
+    public ResponseEntity<Map<String, String>> collectConvTypeByUser(@PathVariable String userId) {
+        log.info("[NaverCollector] 전환유형 단일 수집 userId={}", userId);
+        try {
+            boolean found = convTypeJob.collectForUserId(userId);
+            if (!found) return ResponseEntity.badRequest()
+                    .body(Map.of("status", "error", "message", "userId 없음: " + userId));
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " 전환유형 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 전환유형 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/conv-type/{userId}/range")
+    public ResponseEntity<Map<String, String>> collectConvTypeRange(
+            @PathVariable String userId,
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] 전환유형 기간 수집 userId={} from={} to={}", userId, from, to);
+        try {
+            convTypeJob.collectRange(userId, from, to);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " 전환유형 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 전환유형 기간 수집 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }

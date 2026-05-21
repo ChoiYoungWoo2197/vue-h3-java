@@ -6,6 +6,7 @@ import com.h3.h3_java.batch.stat.NaverAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverAdGroupDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignHourCollectionJob;
+import com.h3.h3_java.batch.stat.NaverConvTypeJob;
 import com.h3.h3_java.batch.stat.NaverShoppingAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverStateReportJob;
 import com.h3.h3_java.common.config.RabbitMQConfig;
@@ -28,6 +29,7 @@ public class CollectorConsumer {
     private final NaverStateReportJob naverStateReportJob;
     private final NaverAdDayCollectionJob naverAdDayCollectionJob;
     private final NaverShoppingAdDayCollectionJob naverShoppingAdDayCollectionJob;
+    private final NaverConvTypeJob naverConvTypeJob;
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_MASTER, concurrency = "5")
     public void consumeNaverMaster(CollectorMessage msg) {
@@ -106,6 +108,16 @@ public class CollectorConsumer {
             naverShoppingAdDayCollectionJob.collectForUserId(msg.getUserId());
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER SHOPPING DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_CONV_TYPE)
+    public void consumeNaverConvType(CollectorMessage msg) {
+        log.info("[MQ][RECV] NAVER CONV TYPE userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
+        try {
+            naverConvTypeJob.collectForUserId(msg.getUserId());
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] NAVER CONV TYPE userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
     }
 }

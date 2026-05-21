@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.h3.h3_java.media.naver.mapper.NaverConvTypeMapper">
+
+    <insert id="insertStatreportLog" parameterType="map">
+        INSERT INTO h3_naver_statreport_daily
+            (deltakey, daily_dt, report_type, success, jobid, userid)
+        VALUES
+            (#{deltakey}, #{daily_dt}, #{report_type}, #{success}, #{jobid}, #{userid})
+    </insert>
+
+    <select id="countSuccessReport" resultType="int">
+        SELECT COUNT(*)
+        FROM h3_naver_statreport_daily
+        WHERE deltakey    = #{customerId}
+          AND daily_dt    = #{date}
+          AND report_type = 'AD_CONVERSION_DETAIL'
+          AND success     = true
+    </select>
+
+    <!-- ===== 데이터 존재 여부 체크 ===== -->
+
+    <select id="countCampaignConvTypeData" resultType="int">
+        SELECT COUNT(*)
+        FROM h3_campaign_daily_naver_convtype
+        WHERE daily_advid = #{customerId}
+          AND daily_dt    = #{date}
+    </select>
+
+    <select id="countAdgroupConvTypeData" resultType="int">
+        SELECT COUNT(*)
+        FROM h3_adgroup_daily_naver_convtype
+        WHERE daily_advid = #{customerId}
+          AND daily_dt    = #{date}
+    </select>
+
+    <select id="countKeywordConvTypeData" resultType="int">
+        SELECT COUNT(*)
+        FROM h3_keyword_daily_naver_convtype
+        WHERE daily_advid = #{customerId}
+          AND daily_dt    = #{date}
+    </select>
+
+    <select id="countAdConvTypeData" resultType="int">
+        SELECT COUNT(*)
+        FROM h3_ad_daily_naver_convtype
+        WHERE daily_advid = #{customerId}
+          AND daily_dt    = #{date}
+    </select>
+
+    <!-- ===== 캠페인 전환유형 UPSERT ===== -->
+
+    <insert id="bulkUpsertCampaignConvType">
+        INSERT INTO h3_campaign_daily_naver_convtype (
+            daily_advid,
+            daily_dt,
+            campaign_id,
+            conv_type_code,
+            conv_type_name,
+            conv_cnt,
+            conv_value
+        ) VALUES
+        <foreach collection="rows" item="r" separator=",">
+            (
+                #{r.daily_advid},
+                #{r.daily_dt},
+                #{r.campaign_id},
+                #{r.conv_type_code},
+                #{r.conv_type_name},
+                #{r.conv_cnt},
+                #{r.conv_value}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            conv_type_name = VALUES(conv_type_name),
+            conv_cnt       = VALUES(conv_cnt),
+            conv_value     = VALUES(conv_value),
+            daily_update   = CURRENT_TIMESTAMP
+    </insert>
+
+    <!-- ===== 광고그룹 전환유형 UPSERT ===== -->
+
+    <insert id="bulkUpsertAdgroupConvType">
+        INSERT INTO h3_adgroup_daily_naver_convtype (
+            daily_advid,
+            daily_dt,
+            campaign_id,
+            adgroup_id,
+            conv_type_code,
+            conv_type_name,
+            conv_cnt,
+            conv_value
+        ) VALUES
+        <foreach collection="rows" item="r" separator=",">
+            (
+                #{r.daily_advid},
+                #{r.daily_dt},
+                #{r.campaign_id},
+                #{r.adgroup_id},
+                #{r.conv_type_code},
+                #{r.conv_type_name},
+                #{r.conv_cnt},
+                #{r.conv_value}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            conv_type_name = VALUES(conv_type_name),
+            conv_cnt       = VALUES(conv_cnt),
+            conv_value     = VALUES(conv_value),
+            daily_update   = CURRENT_TIMESTAMP
+    </insert>
+
+    <!-- ===== 키워드 전환유형 UPSERT ===== -->
+
+    <insert id="bulkUpsertKeywordConvType">
+        INSERT INTO h3_keyword_daily_naver_convtype (
+            daily_advid,
+            daily_dt,
+            campaign_id,
+            adgroup_id,
+            keyword_id,
+            conv_type_code,
+            conv_type_name,
+            conv_cnt,
+            conv_value
+        ) VALUES
+        <foreach collection="rows" item="r" separator=",">
+            (
+                #{r.daily_advid},
+                #{r.daily_dt},
+                #{r.campaign_id},
+                #{r.adgroup_id},
+                #{r.keyword_id},
+                #{r.conv_type_code},
+                #{r.conv_type_name},
+                #{r.conv_cnt},
+                #{r.conv_value}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            conv_type_name = VALUES(conv_type_name),
+            conv_cnt       = VALUES(conv_cnt),
+            conv_value     = VALUES(conv_value),
+            daily_update   = CURRENT_TIMESTAMP
+    </insert>
+
+    <!-- ===== 소재 전환유형 UPSERT ===== -->
+
+    <insert id="bulkUpsertAdConvType">
+        INSERT INTO h3_ad_daily_naver_convtype (
+            daily_advid,
+            daily_dt,
+            campaign_id,
+            adgroup_id,
+            ad_id,
+            conv_type_code,
+            conv_type_name,
+            conv_cnt,
+            conv_value
+        ) VALUES
+        <foreach collection="rows" item="r" separator=",">
+            (
+                #{r.daily_advid},
+                #{r.daily_dt},
+                #{r.campaign_id},
+                #{r.adgroup_id},
+                #{r.ad_id},
+                #{r.conv_type_code},
+                #{r.conv_type_name},
+                #{r.conv_cnt},
+                #{r.conv_value}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            conv_type_name = VALUES(conv_type_name),
+            conv_cnt       = VALUES(conv_cnt),
+            conv_value     = VALUES(conv_value),
+            daily_update   = CURRENT_TIMESTAMP
+    </insert>
+
+</mapper>

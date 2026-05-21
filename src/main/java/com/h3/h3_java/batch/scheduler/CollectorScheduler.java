@@ -54,6 +54,23 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 네이버 캠페인 일별 메시지 발행 완료 총={}건", count);
     }
 
+    // 매일 새벽 5시 30분 - 전환유형 수집
+    @Scheduled(cron = "0 30 5 * * *", zone = "Asia/Seoul")
+    public void scheduleNaverConvType() {
+        log.info("[SCHEDULER] 네이버 전환유형 수집 시작");
+        List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
+        for (NaverAccountDto account : accounts) {
+            if ("admin".equals(account.getUserId())) continue;
+            String cid = account.getAccountNaverCustomer();
+            if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+            producer.sendNaverConvType(account.getUserId(), cid);
+            count++;
+        }
+        log.info("[SCHEDULER] 네이버 전환유형 메시지 발행 완료 총={}건", count);
+    }
+
     // 매일 새벽 5시 - 키워드·타겟 일별 수집 (StateReport)
     @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Seoul")
     public void scheduleNaverStateReport() {
