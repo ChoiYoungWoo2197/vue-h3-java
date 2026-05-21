@@ -55,7 +55,11 @@ public class CollectorConsumer {
     public void consumeNaverCampaignDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER CAMPAIGN DAILY userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
-            naverCampaignDayCollectionJob.collectForUserId(msg.getUserId());
+            if (hasRange(msg)) {
+                naverCampaignDayCollectionJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                naverCampaignDayCollectionJob.collectForUserId(msg.getUserId());
+            }
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER CAMPAIGN DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
@@ -65,7 +69,11 @@ public class CollectorConsumer {
     public void consumeNaverCampaignHour(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER CAMPAIGN HOUR userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
-            naverCampaignHourCollectionJob.collectForUserId(msg.getUserId());
+            if (hasRange(msg)) {
+                naverCampaignHourCollectionJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                naverCampaignHourCollectionJob.collectForUserId(msg.getUserId());
+            }
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER CAMPAIGN HOUR userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
@@ -75,7 +83,11 @@ public class CollectorConsumer {
     public void consumeNaverAdGroupDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER ADGROUP DAILY userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
-            naverAdGroupDayCollectionJob.collectForUserId(msg.getUserId());
+            if (hasRange(msg)) {
+                naverAdGroupDayCollectionJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                naverAdGroupDayCollectionJob.collectForUserId(msg.getUserId());
+            }
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER ADGROUP DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
@@ -85,7 +97,11 @@ public class CollectorConsumer {
     public void consumeNaverStateReport(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER STATE REPORT userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
-            naverStateReportJob.collectForUserId(msg.getUserId());
+            if (hasRange(msg)) {
+                naverStateReportJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                naverStateReportJob.collectForUserId(msg.getUserId());
+            }
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER STATE REPORT userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
@@ -95,7 +111,11 @@ public class CollectorConsumer {
     public void consumeNaverAdDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER AD DAILY userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
-            naverAdDayCollectionJob.collectForUserId(msg.getUserId());
+            if (hasRange(msg)) {
+                naverAdDayCollectionJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                naverAdDayCollectionJob.collectForUserId(msg.getUserId());
+            }
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER AD DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
@@ -105,7 +125,11 @@ public class CollectorConsumer {
     public void consumeNaverShoppingDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER SHOPPING DAILY userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
-            naverShoppingAdDayCollectionJob.collectForUserId(msg.getUserId());
+            if (hasRange(msg)) {
+                naverShoppingAdDayCollectionJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                naverShoppingAdDayCollectionJob.collectForUserId(msg.getUserId());
+            }
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER SHOPPING DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
@@ -115,9 +139,17 @@ public class CollectorConsumer {
     public void consumeNaverConvType(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER CONV TYPE userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
-            naverConvTypeJob.collectForUserId(msg.getUserId());
+            if (hasRange(msg)) {
+                naverConvTypeJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                naverConvTypeJob.collectForUserId(msg.getUserId());
+            }
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER CONV TYPE userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
+    }
+
+    private boolean hasRange(CollectorMessage msg) {
+        return msg.getFromDate() != null && !msg.getFromDate().isEmpty();
     }
 }
