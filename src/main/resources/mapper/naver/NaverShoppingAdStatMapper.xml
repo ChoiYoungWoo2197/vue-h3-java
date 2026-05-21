@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.h3.h3_java.media.naver.mapper.NaverShoppingAdStatMapper">
+
+    <select id="selectShoppingAdsByCustomer" resultType="com.h3.h3_java.media.naver.dto.NaverShoppingAdDto">
+        SELECT
+            c.campaignid AS campaignId,
+            g.gid        AS adgroupId,
+            a.adid       AS adId,
+            a.pid        AS adPid
+        FROM h3_naver_shoppingproduct AS a
+        LEFT JOIN h3_naver_adgroup    AS g ON g.gid       = a.groupid
+        LEFT JOIN h3_naver_campaign   AS c ON c.campaignid = g.cid
+        WHERE a.advkey = #{customerId}
+    </select>
+
+    <insert id="upsertShoppingAdDaily" parameterType="map">
+        INSERT INTO h3_shopping_ad_daily_naver (
+            user_id, daily_advid, daily_dt,
+            campaign_id, adgroup_id, ad_id, ad_pid,
+            daily_im, daily_clk, daily_cst, daily_cv, daily_cr
+        ) VALUES (
+            NULL,
+            #{daily_advid}, #{daily_dt},
+            #{campaign_id}, #{adgroup_id}, #{ad_id}, #{ad_pid},
+            #{daily_im}, #{daily_clk}, #{daily_cst}, #{daily_cv}, #{daily_cr}
+        )
+        ON DUPLICATE KEY UPDATE
+            campaign_id   = VALUES(campaign_id),
+            adgroup_id    = VALUES(adgroup_id),
+            ad_pid        = VALUES(ad_pid),
+            daily_im      = VALUES(daily_im),
+            daily_clk     = VALUES(daily_clk),
+            daily_cst     = VALUES(daily_cst),
+            daily_cv      = VALUES(daily_cv),
+            daily_cr      = VALUES(daily_cr),
+            daily_regdate = CURRENT_TIMESTAMP
+    </insert>
+
+    <insert id="upsertAccountLogShopping">
+        INSERT INTO h3_account_log
+            (media, advkey, campaign, campaign_hour, adgroup, keyword, ad, shopping, targeting)
+        VALUES
+            ('naver', #{customerId}, NULL, NULL, NULL, NULL, NULL, #{nowdate}, NULL)
+        ON DUPLICATE KEY UPDATE shopping = #{nowdate}
+    </insert>
+
+</mapper>

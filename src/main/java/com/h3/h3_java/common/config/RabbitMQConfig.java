@@ -30,8 +30,11 @@ public class RabbitMQConfig {
     public static final String QUEUE_NAVER_STATE_REPORT    = "h3.collector.naver.state.report";
     public static final String ROUTING_NAVER_STATE_REPORT  = "naver.state.report";
 
-    public static final String QUEUE_NAVER_AD_DAILY        = "h3.collector.naver.ad.daily";
-    public static final String ROUTING_NAVER_AD_DAILY      = "naver.ad.daily";
+    public static final String QUEUE_NAVER_AD_DAILY         = "h3.collector.naver.ad.daily";
+    public static final String ROUTING_NAVER_AD_DAILY       = "naver.ad.daily";
+
+    public static final String QUEUE_NAVER_SHOPPING_DAILY  = "h3.collector.naver.shopping.daily";
+    public static final String ROUTING_NAVER_SHOPPING_DAILY = "naver.shopping.daily";
 
     @Bean
     public DirectExchange collectorExchange() {
@@ -106,6 +109,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding naverAdDailyBinding(Queue naverAdDailyQueue, DirectExchange collectorExchange) {
         return BindingBuilder.bind(naverAdDailyQueue).to(collectorExchange).with(ROUTING_NAVER_AD_DAILY);
+    }
+
+    @Bean
+    public Queue naverShoppingDailyQueue() {
+        return QueueBuilder.durable(QUEUE_NAVER_SHOPPING_DAILY).build();
+    }
+
+    @Bean
+    public Binding naverShoppingDailyBinding(Queue naverShoppingDailyQueue, DirectExchange collectorExchange) {
+        return BindingBuilder.bind(naverShoppingDailyQueue).to(collectorExchange).with(ROUTING_NAVER_SHOPPING_DAILY);
     }
 
     @Bean

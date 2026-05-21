@@ -55,4 +55,10 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_AD_DAILY, msg);
         log.info("[MQ][SEND] NAVER AD DAILY userId={} customerId={}", userId, customerId);
     }
+
+    public void sendNaverShoppingDaily(String userId, String customerId) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "SHOPPING_DAILY", userId, customerId, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_SHOPPING_DAILY, msg);
+        log.info("[MQ][SEND] NAVER SHOPPING DAILY userId={} customerId={}", userId, customerId);
+    }
 }
