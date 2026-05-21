@@ -73,11 +73,16 @@ public class NaverMasterMongoService {
             .stream().map(d -> d.getString("kwid")).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
-    public void updateKeywordDetail(String advkey, String kwid, Map<String, Object> update) {
-        Query query = Query.query(Criteria.where("advkey").is(advkey).and("kwid").is(kwid));
-        Update u = new Update();
-        update.forEach(u::set);
-        mongoTemplate.updateFirst(query, u, "naver_keyword");
+    public void bulkUpdateKeywordDetails(String advkey, Map<String, Map<String, Object>> kwUpdateMap) {
+        if (kwUpdateMap.isEmpty()) return;
+        BulkOperations bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, "naver_keyword");
+        for (Map.Entry<String, Map<String, Object>> entry : kwUpdateMap.entrySet()) {
+            Query query = Query.query(Criteria.where("advkey").is(advkey).and("kwid").is(entry.getKey()));
+            Update update = new Update();
+            entry.getValue().forEach(update::set);
+            bulk.updateOne(query, update);
+        }
+        bulk.execute();
     }
 
     public List<Document> selectAdDocs(String advkey) {

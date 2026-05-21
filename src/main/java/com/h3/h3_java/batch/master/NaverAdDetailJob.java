@@ -93,9 +93,11 @@ public class NaverAdDetailJob {
                 .toArray(CompletableFuture[]::new)
         ).join();
 
+        Map<String, Map<String, Object>> kwUpdateMap = new LinkedHashMap<>();
         for (String kwid : kwIds) {
-            mongoService.updateKeywordDetail(customerId, kwid, buildKwUpdate(kwCache.getOrDefault(kwid, new HashMap<>())));
+            kwUpdateMap.put(kwid, buildKwUpdate(kwCache.getOrDefault(kwid, new HashMap<>())));
         }
+        mongoService.bulkUpdateKeywordDetails(customerId, kwUpdateMap);
         log.info("[AD_DETAIL][KW] customerId={} updated={}", customerId, kwIds.size());
     }
 
