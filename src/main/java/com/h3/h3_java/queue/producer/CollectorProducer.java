@@ -43,4 +43,10 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_ADGROUP_DAILY, msg);
         log.info("[MQ][SEND] NAVER ADGROUP DAILY userId={} customerId={}", userId, customerId);
     }
+
+    public void sendNaverStateReport(String userId, String customerId) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "STATE_REPORT", userId, customerId, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_STATE_REPORT, msg);
+        log.info("[MQ][SEND] NAVER STATE REPORT userId={} customerId={}", userId, customerId);
+    }
 }

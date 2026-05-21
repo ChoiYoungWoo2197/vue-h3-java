@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.h3.h3_java.media.naver.mapper.NaverStateReportMapper">
+
+    <insert id="insertStatreportLog" parameterType="map">
+        INSERT INTO h3_naver_statreport_daily
+            (deltakey, daily_dt, report_type, success, jobid, userid)
+        VALUES
+            (#{deltakey}, #{daily_dt}, #{report_type}, #{success}, #{jobid}, #{userid})
+    </insert>
+
+    <select id="countSuccessReport" resultType="int">
+        SELECT COUNT(*)
+        FROM h3_naver_statreport_daily
+        WHERE deltakey     = #{customerId}
+          AND daily_dt     = #{date}
+          AND report_type  = #{reportType}
+          AND success      = true
+    </select>
+
+    <select id="selectJobIdsByDate" resultType="string">
+        SELECT jobid
+        FROM h3_naver_statreport_daily
+        WHERE deltakey = #{customerId}
+          AND daily_dt = #{date}
+          AND jobid   != ''
+    </select>
+
+    <select id="selectKeywordMapping" resultType="map">
+        SELECT
+            k.kwid       AS keywordId,
+            c.campaignid AS campaignId,
+            k.adgroupid  AS adgroupId
+        FROM h3_naver_keyword k
+        LEFT JOIN h3_naver_adgroup  g ON g.gid       = k.adgroupid AND g.advkey = k.advkey
+        LEFT JOIN h3_naver_campaign c ON c.campaignid = g.cid
+        WHERE k.advkey = #{customerId}
+    </select>
+
+    <select id="countKeywordDailyData" resultType="int">
+        SELECT COUNT(*)
+        FROM h3_keyword_daily_naver_new
+        WHERE daily_advid = #{customerId}
+          AND daily_dt    = #{date}
+    </select>
+
+    <insert id="upsertKeywordDaily" parameterType="map">
+        INSERT INTO h3_keyword_daily_naver_new (
+            daily_dt, user_id, daily_advid,
+            campaign_id, adgroup_id, keyword_id,
+            daily_im, daily_clk, daily_cst, daily_cv, daily_cr
+        ) VALUES (
+            #{daily_dt}, NULL, #{daily_advid},
+            #{campaign_id}, #{adgroup_id}, #{keyword_id},
+            #{daily_im}, #{daily_clk}, #{daily_cst}, #{daily_cv}, #{daily_cr}
+        )
+        ON DUPLICATE KEY UPDATE
+            campaign_id   = VALUES(campaign_id),
+            adgroup_id    = VALUES(adgroup_id),
+            daily_im      = VALUES(daily_im),
+            daily_clk     = VALUES(daily_clk),
+            daily_cst     = VALUES(daily_cst),
+            daily_cv      = VALUES(daily_cv),
+            daily_cr      = VALUES(daily_cr),
+            daily_regdate = CURRENT_TIMESTAMP
+    </insert>
+
+    <select id="countTargetDailyData" resultType="int">
+        SELECT COUNT(*)
+        FROM h3_target_daily_naver
+        WHERE daily_advid = #{customerId}
+          AND daily_dt    = #{date}
+    </select>
+
+    <insert id="bulkUpsertTargetRows">
+        INSERT INTO h3_target_daily_naver (
+            daily_dt, daily_advid, campaign_id, adgroup_id, keyword_id, ad_id,
+            bc_id, hours, rcode, mcode, pmtype,
+            daily_im, daily_clk, daily_cst, daily_cv, daily_cr,
+            sumofrank, cvmethod, cvtype
+        ) VALUES
+        <foreach collection="rows" item="r" separator=",">
+        (
+            #{r.daily_dt}, #{r.daily_advid}, #{r.campaign_id}, #{r.adgroup_id},
+            #{r.keyword_id}, #{r.ad_id}, #{r.bc_id}, #{r.hours},
+            #{r.rcode}, #{r.mcode}, #{r.pmtype},
+            #{r.daily_im}, #{r.daily_clk}, #{r.daily_cst},
+            #{r.daily_cv}, #{r.daily_cr}, #{r.sumofrank},
+            #{r.cvmethod}, #{r.cvtype}
+        )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            daily_im      = VALUES(daily_im),
+            daily_clk     = VALUES(daily_clk),
+            daily_cst     = VALUES(daily_cst),
+            daily_cv      = VALUES(daily_cv),
+            daily_cr      = VALUES(daily_cr),
+            sumofrank     = VALUES(sumofrank),
+            daily_regdate = CURRENT_TIMESTAMP
+    </insert>
+
+</mapper>

@@ -5,6 +5,7 @@ import com.h3.h3_java.batch.master.NaverMasterReportJob;
 import com.h3.h3_java.batch.stat.NaverAdGroupDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignHourCollectionJob;
+import com.h3.h3_java.batch.stat.NaverStateReportJob;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
 import com.h3.h3_java.queue.producer.CollectorProducer;
@@ -29,6 +30,7 @@ public class NaverCollectorController {
     private final NaverCampaignDayCollectionJob campaignDayJob;
     private final NaverCampaignHourCollectionJob campaignHourJob;
     private final NaverAdGroupDayCollectionJob adGroupDayJob;
+    private final NaverStateReportJob stateReportJob;
     private final NaverMasterReportMapper mapper;
     private final CollectorProducer producer;
 
@@ -267,6 +269,59 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " 수집 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] 광고그룹 일별 기간 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/state-report")
+    public ResponseEntity<Map<String, String>> collectStateReport() {
+        log.info("[NaverCollector] StateReport 전체 수집 MQ 발행 시작");
+        try {
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverStateReport(account.getUserId(), cid);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "StateReport MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] StateReport MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/state-report/{userId}")
+    public ResponseEntity<Map<String, String>> collectStateReportByUser(@PathVariable String userId) {
+        log.info("[NaverCollector] StateReport 단일 수집 userId={}", userId);
+        try {
+            boolean found = stateReportJob.collectForUserId(userId);
+            if (!found) return ResponseEntity.badRequest()
+                    .body(Map.of("status", "error", "message", "userId 없음: " + userId));
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " StateReport 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] StateReport 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/state-report/{userId}/range")
+    public ResponseEntity<Map<String, String>> collectStateReportRange(
+            @PathVariable String userId,
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] StateReport 기간 수집 userId={} from={} to={}", userId, from, to);
+        try {
+            stateReportJob.collectRange(userId, from, to);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " StateReport 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] StateReport 기간 수집 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }
