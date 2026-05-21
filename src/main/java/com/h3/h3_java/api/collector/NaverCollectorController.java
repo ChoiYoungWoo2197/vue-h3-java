@@ -2,6 +2,7 @@ package com.h3.h3_java.api.collector;
 
 import com.h3.h3_java.batch.master.NaverAdDetailJob;
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
+import com.h3.h3_java.batch.stat.NaverAdGroupDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignHourCollectionJob;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
@@ -27,6 +28,7 @@ public class NaverCollectorController {
     private final NaverAdDetailJob adDetailJob;
     private final NaverCampaignDayCollectionJob campaignDayJob;
     private final NaverCampaignHourCollectionJob campaignHourJob;
+    private final NaverAdGroupDayCollectionJob adGroupDayJob;
     private final NaverMasterReportMapper mapper;
     private final CollectorProducer producer;
 
@@ -221,6 +223,50 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " 수집 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] 캠페인 시간별 기간 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/adgroup-daily")
+    public ResponseEntity<Map<String, String>> collectAdGroupDaily() {
+        log.info("[NaverCollector] 광고그룹 일별 전체 수집 시작");
+        try {
+            adGroupDayJob.collect();
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "광고그룹 일별 전체 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 광고그룹 일별 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/adgroup-daily/{userId}")
+    public ResponseEntity<Map<String, String>> collectAdGroupDailyByUser(@PathVariable String userId) {
+        log.info("[NaverCollector] 광고그룹 일별 단일 수집 userId={}", userId);
+        try {
+            boolean found = adGroupDayJob.collectForUserId(userId);
+            if (!found) return ResponseEntity.badRequest()
+                    .body(Map.of("status", "error", "message", "userId 없음: " + userId));
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " 광고그룹 일별 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 광고그룹 일별 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/adgroup-daily/{userId}/range")
+    public ResponseEntity<Map<String, String>> collectAdGroupDailyRange(
+            @PathVariable String userId,
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] 광고그룹 일별 기간 수집 userId={} from={} to={}", userId, from, to);
+        try {
+            adGroupDayJob.collectRange(userId, from, to);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 광고그룹 일별 기간 수집 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }

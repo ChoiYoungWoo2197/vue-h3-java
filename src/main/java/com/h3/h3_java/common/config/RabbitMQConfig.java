@@ -24,6 +24,9 @@ public class RabbitMQConfig {
     public static final String QUEUE_NAVER_CAMPAIGN_HOUR   = "h3.collector.naver.campaign.hour";
     public static final String ROUTING_NAVER_CAMPAIGN_HOUR = "naver.campaign.hour";
 
+    public static final String QUEUE_NAVER_ADGROUP_DAILY   = "h3.collector.naver.adgroup.daily";
+    public static final String ROUTING_NAVER_ADGROUP_DAILY = "naver.adgroup.daily";
+
     @Bean
     public DirectExchange collectorExchange() {
         return new DirectExchange(EXCHANGE);
@@ -67,6 +70,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding naverCampaignHourBinding(Queue naverCampaignHourQueue, DirectExchange collectorExchange) {
         return BindingBuilder.bind(naverCampaignHourQueue).to(collectorExchange).with(ROUTING_NAVER_CAMPAIGN_HOUR);
+    }
+
+    @Bean
+    public Queue naverAdGroupDailyQueue() {
+        return QueueBuilder.durable(QUEUE_NAVER_ADGROUP_DAILY).build();
+    }
+
+    @Bean
+    public Binding naverAdGroupDailyBinding(Queue naverAdGroupDailyQueue, DirectExchange collectorExchange) {
+        return BindingBuilder.bind(naverAdGroupDailyQueue).to(collectorExchange).with(ROUTING_NAVER_ADGROUP_DAILY);
     }
 
     @Bean
