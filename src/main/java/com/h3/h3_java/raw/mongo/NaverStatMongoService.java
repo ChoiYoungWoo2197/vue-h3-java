@@ -19,9 +19,9 @@ public class NaverStatMongoService {
 
     public void upsertCampaignDaily(Map<String, Object> row) {
         Query query = Query.query(
-            Criteria.where("customerId").is(row.get("customerId"))
-                .and("date").is(row.get("date"))
-                .and("campaignId").is(row.get("campaignId"))
+            Criteria.where("daily_advid").is(row.get("daily_advid"))
+                .and("daily_dt").is(row.get("daily_dt"))
+                .and("campaign_id").is(row.get("campaign_id"))
         );
         Update update = new Update();
         row.forEach(update::set);
@@ -30,7 +30,7 @@ public class NaverStatMongoService {
 
     public boolean hasCampaignDailyData(String customerId, String date) {
         Query query = Query.query(
-            Criteria.where("customerId").is(customerId).and("date").is(date)
+            Criteria.where("daily_advid").is(customerId).and("daily_dt").is(date)
         );
         return mongoTemplate.exists(query, "naver_campaign_daily");
     }

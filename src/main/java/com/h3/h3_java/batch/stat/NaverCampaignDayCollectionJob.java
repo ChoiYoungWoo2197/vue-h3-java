@@ -104,15 +104,14 @@ public class NaverCampaignDayCollectionJob {
             if (impCnt == 0 && clkCnt == 0 && salesAmt == 0 && ccnt == 0 && convAmt == 0) continue;
 
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("customerId", customerId);
-            row.put("date", date);
-            row.put("campaignId", campaignId);
-            row.put("impCnt", impCnt);
-            row.put("clkCnt", clkCnt);
-            row.put("salesAmt", salesAmt);
-            row.put("ccnt", ccnt);
-            row.put("convAmt", convAmt);
-            row.put("updatedAt", new Date());
+            row.put("daily_advid", customerId);
+            row.put("daily_dt",    date);
+            row.put("campaign_id", campaignId);
+            row.put("daily_im",    impCnt);
+            row.put("daily_clk",   clkCnt);
+            row.put("daily_cst",   salesAmt);
+            row.put("daily_cv",    ccnt);
+            row.put("daily_cr",    convAmt);
 
             statMongoService.upsertCampaignDaily(row);
             saved++;
