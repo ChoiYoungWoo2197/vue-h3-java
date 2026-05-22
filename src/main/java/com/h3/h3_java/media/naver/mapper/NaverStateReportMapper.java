@@ -11,10 +11,6 @@ public interface NaverStateReportMapper {
 
     void insertStatreportLog(Map<String, Object> row);
 
-    int countSuccessReport(@Param("customerId") String customerId,
-                           @Param("date") String date,
-                           @Param("reportType") String reportType);
-
     List<String> selectJobIdsByDate(@Param("customerId") String customerId,
                                     @Param("date") String date);
 }

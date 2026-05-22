@@ -153,18 +153,14 @@ public class NaverStateReportJob {
             }
 
             if ("BUILT".equals(status)) {
-                if (mapper.countSuccessReport(customerId, date, spec) == 0) {
-                    insertLog(customerId, date, spec, true, jobId, userId);
-                    String downloadUrl = lastRes != null ? str(lastRes.get("downloadUrl")) : "";
-                    if (!downloadUrl.isEmpty()) {
-                        byte[] data = client.download(downloadUrl);
-                        if (data != null) {
-                            tsvData.put(spec, data);
-                            log.info("[NaverStateReport] TSV 다운로드 완료 customerId={} spec={} bytes={}", customerId, spec, data.length);
-                        }
+                insertLog(customerId, date, spec, true, jobId, userId);
+                String downloadUrl = lastRes != null ? str(lastRes.get("downloadUrl")) : "";
+                if (!downloadUrl.isEmpty()) {
+                    byte[] data = client.download(downloadUrl);
+                    if (data != null) {
+                        tsvData.put(spec, data);
+                        log.info("[NaverStateReport] TSV 다운로드 완료 customerId={} spec={} bytes={}", customerId, spec, data.length);
                     }
-                } else {
-                    log.info("[NaverStateReport] 이미 성공 처리됨 customerId={} spec={} date={}", customerId, spec, date);
                 }
             } else {
                 log.warn("[NaverStateReport] BUILT 아님 customerId={} spec={} status={}", customerId, spec, status);
