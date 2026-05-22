@@ -113,7 +113,6 @@ public class NaverStateReportJob {
                 int tgSaved = processTargets(customerId, date, tsvData);
                 log.info("[NaverStateReport][TARGET] customerId={} date={} saved={}", customerId, date, tgSaved);
 
-                deleteReports(client, customerId, date);
             } catch (Exception e) {
                 log.error("[NaverStateReport] 오류 customerId={} date={} error={}", customerId, date, e.getMessage(), e);
             }
@@ -319,19 +318,6 @@ public class NaverStateReportJob {
             saved += chunk.size();
         }
         return saved;
-    }
-
-    // =====================================================================
-    // 리포트 삭제
-    // =====================================================================
-
-    private void deleteReports(NaverApiClient client, String customerId, String date) {
-        List<String> jobIds = mapper.selectJobIdsByDate(customerId, date);
-        for (String jobId : jobIds) {
-            if (jobId != null && !jobId.isEmpty()) {
-                client.delete("/stat-reports/" + jobId);
-            }
-        }
     }
 
     // =====================================================================

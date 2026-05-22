@@ -1,16 +1,11 @@
 package com.h3.h3_java.media.naver.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 
-import java.util.List;
 import java.util.Map;
 
 @Mapper
 public interface NaverStateReportMapper {
 
     void insertStatreportLog(Map<String, Object> row);
-
-    List<String> selectJobIdsByDate(@Param("customerId") String customerId,
-                                    @Param("date") String date);
 }
