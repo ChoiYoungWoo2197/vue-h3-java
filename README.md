@@ -214,6 +214,20 @@ MongoDB `naver_campaign`에 advkey가 없는 계정을 신규로 판별하고 �
 
 ---
 
+## 서버 정보 (네이버 클라우드)
+
+| 항목 | 내용 |
+|---|---|
+| 서버명 | heeil-h3 |
+| 서비스 URL | 101.101.163.90:9919 |
+| 공인 IP | 49.50.167.235 |
+| 내부 IP | 192.168.100.31 |
+| 계정 | root / heeil-h3 |
+| ACG | ncloud-default-acg |
+| 스펙 | [High-Memory] 8vCPU, 64GB Mem [g1] |
+
+---
+
 ## 배포
 
 ```bash
