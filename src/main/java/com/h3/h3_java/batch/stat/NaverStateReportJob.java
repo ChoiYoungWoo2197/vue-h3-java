@@ -3,7 +3,6 @@ package com.h3.h3_java.batch.stat;
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
-import com.h3.h3_java.media.naver.mapper.NaverStateReportMapper;
 import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +22,6 @@ import java.util.*;
 public class NaverStateReportJob {
 
     private final NaverMasterReportMapper accountMapper;
-    private final NaverStateReportMapper mapper;
     private final NaverStatMongoService statMongoService;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -105,7 +103,7 @@ public class NaverStateReportJob {
             try {
                 log.info("[NaverStateReport] 시작 customerId={} date={}", customerId, date);
 
-                Map<String, byte[]> tsvData = createAndDownloadReports(client, customerId, userId, date);
+                Map<String, byte[]> tsvData = createAndDownloadReports(client, customerId, date);
 
                 int kwSaved = processKeywords(customerId, date, tsvData);
                 log.info("[NaverStateReport][KEYWORD] customerId={} date={} saved={}", customerId, date, kwSaved);
@@ -123,7 +121,7 @@ public class NaverStateReportJob {
     // 리포트 생성 → 폴링 → TSV 다운로드
     // =====================================================================
 
-    private Map<String, byte[]> createAndDownloadReports(NaverApiClient client, String customerId, String userId, String date) {
+    private Map<String, byte[]> createAndDownloadReports(NaverApiClient client, String customerId, String date) {
         Map<String, byte[]> tsvData = new LinkedHashMap<>();
         String statDt = date.replace("-", "");
 
@@ -138,7 +136,6 @@ public class NaverStateReportJob {
 
             if (jobId.isEmpty() || status.isEmpty()) {
                 log.warn("[NaverStateReport] 리포트 생성 실패 customerId={} spec={}", customerId, spec);
-                insertLog(customerId, date, spec, false, jobId, userId);
                 continue;
             }
 
@@ -152,7 +149,6 @@ public class NaverStateReportJob {
             }
 
             if ("BUILT".equals(status)) {
-                insertLog(customerId, date, spec, true, jobId, userId);
                 String downloadUrl = lastRes != null ? str(lastRes.get("downloadUrl")) : "";
                 if (!downloadUrl.isEmpty()) {
                     byte[] data = client.download(downloadUrl);
@@ -163,7 +159,6 @@ public class NaverStateReportJob {
                 }
             } else {
                 log.warn("[NaverStateReport] BUILT 아님 customerId={} spec={} status={}", customerId, spec, status);
-                insertLog(customerId, date, spec, false, jobId, userId);
             }
 
             client.delete("/stat-reports/" + jobId);
@@ -353,17 +348,6 @@ public class NaverStateReportJob {
     // =====================================================================
     // 유틸리티
     // =====================================================================
-
-    private void insertLog(String customerId, String date, String spec, boolean success, String jobId, String userId) {
-        Map<String, Object> row = new LinkedHashMap<>();
-        row.put("deltakey",    customerId);
-        row.put("daily_dt",    date);
-        row.put("report_type", spec);
-        row.put("success",     success);
-        row.put("jobid",       jobId);
-        row.put("userid",      userId);
-        mapper.insertStatreportLog(row);
-    }
 
     private boolean isRunning(String status) {
         return "REGIST".equals(status) || "RUNNING".equals(status) || "WAITING".equals(status);

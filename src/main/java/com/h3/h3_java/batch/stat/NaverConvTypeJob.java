@@ -2,7 +2,6 @@ package com.h3.h3_java.batch.stat;
 
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
-import com.h3.h3_java.media.naver.mapper.NaverConvTypeMapper;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
 import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,6 @@ import java.util.*;
 public class NaverConvTypeJob {
 
     private final NaverMasterReportMapper accountMapper;
-    private final NaverConvTypeMapper mapper;
     private final NaverStatMongoService statMongoService;
 
     private static final String REPORT_TYPE = "AD_CONVERSION_DETAIL";
@@ -126,7 +124,7 @@ public class NaverConvTypeJob {
         String userId     = acc.getUserId();
         String statDt     = date.replace("-", "");
 
-        byte[] tsvData = createAndDownloadReport(client, customerId, userId, date, statDt);
+        byte[] tsvData = createAndDownloadReport(client, customerId, date, statDt);
         if (tsvData == null) {
             log.warn("[CONVTYPE] 리포트 다운로드 실패 customerId={} date={}", customerId, date);
             return;
@@ -151,7 +149,7 @@ public class NaverConvTypeJob {
     // 리포트 생성 → 폴링 → TSV 다운로드
     // =====================================================================
 
-    private byte[] createAndDownloadReport(NaverApiClient client, String customerId, String userId, String date, String statDt) {
+    private byte[] createAndDownloadReport(NaverApiClient client, String customerId, String date, String statDt) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("reportTp", REPORT_TYPE);
         body.put("statDt",   statDt);
@@ -162,7 +160,6 @@ public class NaverConvTypeJob {
 
         if (jobId.isEmpty() || status.isEmpty()) {
             log.warn("[CONVTYPE] 리포트 생성 실패 customerId={} date={}", customerId, date);
-            insertLog(customerId, date, false, jobId, userId);
             return null;
         }
 
@@ -177,12 +174,9 @@ public class NaverConvTypeJob {
 
         if (!"BUILT".equals(status)) {
             log.warn("[CONVTYPE] BUILT 아님 customerId={} date={} status={}", customerId, date, status);
-            insertLog(customerId, date, false, jobId, userId);
             client.delete("/stat-reports/" + jobId);
             return null;
         }
-
-        insertLog(customerId, date, true, jobId, userId);
 
         String downloadUrl = lastRes != null ? str(lastRes.get("downloadUrl")) : "";
         byte[] data = null;
@@ -427,17 +421,6 @@ public class NaverConvTypeJob {
     // =====================================================================
     // 유틸리티
     // =====================================================================
-
-    private void insertLog(String customerId, String date, boolean success, String jobId, String userId) {
-        Map<String, Object> row = new LinkedHashMap<>();
-        row.put("deltakey",    customerId);
-        row.put("daily_dt",    date);
-        row.put("report_type", REPORT_TYPE);
-        row.put("success",     success);
-        row.put("jobid",       jobId);
-        row.put("userid",      userId);
-        mapper.insertStatreportLog(row);
-    }
 
     @FunctionalInterface
     private interface BulkUpsert {
