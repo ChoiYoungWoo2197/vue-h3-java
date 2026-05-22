@@ -3,10 +3,10 @@ package com.h3.h3_java.batch.master;
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.NaverTsvParser;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
-import com.h3.h3_java.media.naver.dto.NaverDeltaDto;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
 import com.h3.h3_java.queue.producer.CollectorProducer;
 import com.h3.h3_java.raw.mongo.NaverMasterMongoService;
+import org.bson.Document;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -119,8 +119,8 @@ public class NaverMasterReportJob {
         String customerId = account.getAccountNaverCustomer();
         String userId     = account.getUserId();
 
-        NaverDeltaDto delta = mapper.selectNaverDelta(customerId, spec, userId);
-        String deltaValue   = (delta != null) ? delta.getDelta() : null;
+        Document delta    = mongoService.findDelta(customerId, spec, userId);
+        String deltaValue = (delta != null) ? delta.getString("delta") : null;
 
         Map<String, Object> reqBody = new HashMap<>();
         reqBody.put("item", spec);
@@ -161,21 +161,14 @@ public class NaverMasterReportJob {
 
         String downloadUrl = (String) checkResult.get("downloadUrl");
         String updateTime  = (String) checkResult.get("updateTime");
-        String oldJobId    = (delta != null) ? delta.getJobid() : null;
+        String oldJobId    = (delta != null) ? delta.getString("jobid") : null;
         boolean shouldDownload = false;
 
-        int cnt = mapper.countNaverDelta(customerId, spec, userId);
-        if (cnt == 0) {
-            NaverDeltaDto d = new NaverDeltaDto();
-            d.setDeltakey(customerId); d.setDelta(updateTime);
-            d.setName(spec); d.setJobid(reportId); d.setUserid(userId);
-            mapper.insertNaverDelta(d);
+        if (delta == null) {
+            mongoService.saveDelta(customerId, spec, userId, updateTime, reportId);
             shouldDownload = true;
         } else if (!Objects.equals(updateTime, deltaValue)) {
-            NaverDeltaDto d = new NaverDeltaDto();
-            d.setDeltakey(customerId); d.setDelta(updateTime);
-            d.setName(spec); d.setJobid(reportId); d.setUserid(userId);
-            mapper.updateNaverDelta(d);
+            mongoService.saveDelta(customerId, spec, userId, updateTime, reportId);
             if (oldJobId != null) client.delete("/master-reports/" + oldJobId);
             shouldDownload = true;
         } else if (force) {
@@ -196,7 +189,7 @@ public class NaverMasterReportJob {
 
         byte[] tsvBytes = client.download(result.downloadUrl());
         if (tsvBytes == null || tsvBytes.length == 0) {
-            mapper.updateNaverDeltaFail(customerId, result.spec(), userId);
+            mongoService.updateDeltaFail(customerId, result.spec(), userId);
             log.warn("[NAVER][{}][{}] download failed", customerId, result.spec());
             client.delete("/master-reports/" + result.reportId());
             return;

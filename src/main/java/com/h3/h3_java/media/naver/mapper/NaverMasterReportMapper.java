@@ -1,9 +1,7 @@
 package com.h3.h3_java.media.naver.mapper;
 
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
-import com.h3.h3_java.media.naver.dto.NaverDeltaDto;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -11,20 +9,4 @@ import java.util.List;
 public interface NaverMasterReportMapper {
 
     List<NaverAccountDto> selectNaverAccounts();
-
-    NaverDeltaDto selectNaverDelta(@Param("deltakey") String deltakey,
-                                   @Param("name") String name,
-                                   @Param("userid") String userid);
-
-    int countNaverDelta(@Param("deltakey") String deltakey,
-                        @Param("name") String name,
-                        @Param("userid") String userid);
-
-    void insertNaverDelta(NaverDeltaDto dto);
-
-    void updateNaverDelta(NaverDeltaDto dto);
-
-    void updateNaverDeltaFail(@Param("deltakey") String deltakey,
-                               @Param("name") String name,
-                               @Param("userid") String userid);
 }

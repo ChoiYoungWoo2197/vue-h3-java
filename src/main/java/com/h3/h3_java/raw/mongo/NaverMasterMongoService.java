@@ -117,6 +117,30 @@ public class NaverMasterMongoService {
         return mongoTemplate.exists(q, "naver_campaign");
     }
 
+    public org.bson.Document findDelta(String customerId, String spec, String userId) {
+        Query q = Query.query(Criteria.where("deltakey").is(customerId)
+                                      .and("name").is(spec)
+                                      .and("userid").is(userId));
+        return mongoTemplate.findOne(q, org.bson.Document.class, "naver_master_delta");
+    }
+
+    public void saveDelta(String customerId, String spec, String userId, String updateTime, String jobId) {
+        Query q = Query.query(Criteria.where("deltakey").is(customerId)
+                                      .and("name").is(spec)
+                                      .and("userid").is(userId));
+        Update u = new Update()
+            .set("deltakey", customerId).set("name", spec).set("userid", userId)
+            .set("delta", updateTime).set("jobid", jobId).set("success", true);
+        mongoTemplate.upsert(q, u, "naver_master_delta");
+    }
+
+    public void updateDeltaFail(String customerId, String spec, String userId) {
+        Query q = Query.query(Criteria.where("deltakey").is(customerId)
+                                      .and("name").is(spec)
+                                      .and("userid").is(userId));
+        mongoTemplate.updateFirst(q, new Update().set("success", false), "naver_master_delta");
+    }
+
     private void upsert(String collection, Map<String, Object> data, String... keyFields) {
         Criteria criteria = Criteria.where(keyFields[0]).is(data.get(keyFields[0]));
         for (int i = 1; i < keyFields.length; i++) {
