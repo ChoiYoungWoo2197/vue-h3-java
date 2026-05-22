@@ -182,11 +182,7 @@ public class NaverConvTypeJob {
             return null;
         }
 
-        if (mapper.countSuccessReport(customerId, date) == 0) {
-            insertLog(customerId, date, true, jobId, userId);
-        } else {
-            log.info("[CONVTYPE] 이미 성공 기록 있음 customerId={} date={}", customerId, date);
-        }
+        insertLog(customerId, date, true, jobId, userId);
 
         String downloadUrl = lastRes != null ? str(lastRes.get("downloadUrl")) : "";
         byte[] data = null;
