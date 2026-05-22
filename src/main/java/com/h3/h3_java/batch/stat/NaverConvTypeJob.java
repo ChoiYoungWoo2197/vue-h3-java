@@ -4,6 +4,7 @@ import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.mapper.NaverConvTypeMapper;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,13 +24,13 @@ public class NaverConvTypeJob {
 
     private final NaverMasterReportMapper accountMapper;
     private final NaverConvTypeMapper mapper;
+    private final NaverStatMongoService statMongoService;
 
     private static final String REPORT_TYPE = "AD_CONVERSION_DETAIL";
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final int CHUNK_SIZE = 500;
     private static final int MAX_POLLS  = 60;
 
-    // AD_CONVERSION_DETAIL 컬럼 인덱스
     private static final int CV_CUSTOMERID   = 1;
     private static final int CV_CAMPAIGNID   = 2;
     private static final int CV_ADGROUPID    = 3;
@@ -147,7 +148,7 @@ public class NaverConvTypeJob {
     }
 
     // =====================================================================
-    // 리포트 생성 → 폴링 → TSV 다운로드 (메모리 보관)
+    // 리포트 생성 → 폴링 → TSV 다운로드
     // =====================================================================
 
     private byte[] createAndDownloadReport(NaverApiClient client, String customerId, String userId, String date, String statDt) {
@@ -201,7 +202,7 @@ public class NaverConvTypeJob {
     }
 
     // =====================================================================
-    // 캠페인 단위 집계 → h3_campaign_daily_naver_convtype
+    // 캠페인 단위 → naver_campaign_convtype (MongoDB)
     // =====================================================================
 
     private int processCampaign(String customerId, String date, List<String[]> rows) {
@@ -222,9 +223,7 @@ public class NaverConvTypeJob {
             double convValue = toDouble(cols[CV_SALESBYCONV]);
 
             String key = dailyAdvid + "|" + date + "|" + campaignId + "|" + convType;
-            final String fAdvid = dailyAdvid;
-            final String fCampaign = campaignId;
-            final String fConvType = convType;
+            final String fAdvid = dailyAdvid, fCampaign = campaignId, fConvType = convType;
             bucket.computeIfAbsent(key, k -> {
                 Map<String, Object> r = new LinkedHashMap<>();
                 r.put("daily_advid",    fAdvid);
@@ -243,12 +242,12 @@ public class NaverConvTypeJob {
 
         if (bucket.isEmpty()) return 0;
         List<Map<String, Object>> list = new ArrayList<>(bucket.values());
-        bulkUpsertChunked(list, mapper::bulkUpsertCampaignConvType);
+        bulkUpsertChunked(list, statMongoService::bulkUpsertCampaignConvType);
         return list.size();
     }
 
     // =====================================================================
-    // 광고그룹 단위 집계 → h3_adgroup_daily_naver_convtype
+    // 광고그룹 단위 → naver_adgroup_convtype (MongoDB)
     // =====================================================================
 
     private int processAdgroup(String customerId, String date, List<String[]> rows) {
@@ -271,10 +270,7 @@ public class NaverConvTypeJob {
             double convValue = toDouble(cols[CV_SALESBYCONV]);
 
             String key = dailyAdvid + "|" + date + "|" + campaignId + "|" + adgroupId + "|" + convType;
-            final String fAdvid = dailyAdvid;
-            final String fCampaign = campaignId;
-            final String fAdgroup = adgroupId;
-            final String fConvType = convType;
+            final String fAdvid = dailyAdvid, fCampaign = campaignId, fAdgroup = adgroupId, fConvType = convType;
             bucket.computeIfAbsent(key, k -> {
                 Map<String, Object> r = new LinkedHashMap<>();
                 r.put("daily_advid",    fAdvid);
@@ -294,12 +290,12 @@ public class NaverConvTypeJob {
 
         if (bucket.isEmpty()) return 0;
         List<Map<String, Object>> list = new ArrayList<>(bucket.values());
-        bulkUpsertChunked(list, mapper::bulkUpsertAdgroupConvType);
+        bulkUpsertChunked(list, statMongoService::bulkUpsertAdGroupConvType);
         return list.size();
     }
 
     // =====================================================================
-    // 키워드 단위 집계 → h3_keyword_daily_naver_convtype
+    // 키워드 단위 → naver_keyword_convtype (MongoDB)
     // =====================================================================
 
     private int processKeyword(String customerId, String date, List<String[]> rows) {
@@ -324,11 +320,7 @@ public class NaverConvTypeJob {
             double convValue = toDouble(cols[CV_SALESBYCONV]);
 
             String key = dailyAdvid + "|" + date + "|" + campaignId + "|" + adgroupId + "|" + keywordId + "|" + convType;
-            final String fAdvid = dailyAdvid;
-            final String fCampaign = campaignId;
-            final String fAdgroup = adgroupId;
-            final String fKeyword = keywordId;
-            final String fConvType = convType;
+            final String fAdvid = dailyAdvid, fCampaign = campaignId, fAdgroup = adgroupId, fKeyword = keywordId, fConvType = convType;
             bucket.computeIfAbsent(key, k -> {
                 Map<String, Object> r = new LinkedHashMap<>();
                 r.put("daily_advid",    fAdvid);
@@ -349,12 +341,12 @@ public class NaverConvTypeJob {
 
         if (bucket.isEmpty()) return 0;
         List<Map<String, Object>> list = new ArrayList<>(bucket.values());
-        bulkUpsertChunked(list, mapper::bulkUpsertKeywordConvType);
+        bulkUpsertChunked(list, statMongoService::bulkUpsertKeywordConvType);
         return list.size();
     }
 
     // =====================================================================
-    // 소재 단위 집계 → h3_ad_daily_naver_convtype
+    // 소재 단위 → naver_ad_convtype (MongoDB)
     // =====================================================================
 
     private int processAd(String customerId, String date, List<String[]> rows) {
@@ -379,11 +371,7 @@ public class NaverConvTypeJob {
             double convValue = toDouble(cols[CV_SALESBYCONV]);
 
             String key = dailyAdvid + "|" + date + "|" + campaignId + "|" + adgroupId + "|" + adId + "|" + convType;
-            final String fAdvid = dailyAdvid;
-            final String fCampaign = campaignId;
-            final String fAdgroup = adgroupId;
-            final String fAdId = adId;
-            final String fConvType = convType;
+            final String fAdvid = dailyAdvid, fCampaign = campaignId, fAdgroup = adgroupId, fAdId = adId, fConvType = convType;
             bucket.computeIfAbsent(key, k -> {
                 Map<String, Object> r = new LinkedHashMap<>();
                 r.put("daily_advid",    fAdvid);
@@ -404,7 +392,7 @@ public class NaverConvTypeJob {
 
         if (bucket.isEmpty()) return 0;
         List<Map<String, Object>> list = new ArrayList<>(bucket.values());
-        bulkUpsertChunked(list, mapper::bulkUpsertAdConvType);
+        bulkUpsertChunked(list, statMongoService::bulkUpsertAdConvType);
         return list.size();
     }
 
@@ -419,11 +407,11 @@ public class NaverConvTypeJob {
         dates.add(today.minusDays(3).format(DATE_FMT));
         dates.add(today.minusDays(5).format(DATE_FMT));
         for (int i = 1; i <= 7; i++) {
-            String d    = today.minusDays(i).format(DATE_FMT);
-            boolean cpMiss = mapper.countCampaignConvTypeData(customerId, d) == 0;
-            boolean agMiss = mapper.countAdgroupConvTypeData(customerId, d)  == 0;
-            boolean kwMiss = mapper.countKeywordConvTypeData(customerId, d)  == 0;
-            boolean adMiss = mapper.countAdConvTypeData(customerId, d)       == 0;
+            String d = today.minusDays(i).format(DATE_FMT);
+            boolean cpMiss = !statMongoService.hasCampaignConvTypeData(customerId, d);
+            boolean agMiss = !statMongoService.hasAdGroupConvTypeData(customerId, d);
+            boolean kwMiss = !statMongoService.hasKeywordConvTypeData(customerId, d);
+            boolean adMiss = !statMongoService.hasAdConvTypeData(customerId, d);
             if (cpMiss || agMiss || kwMiss || adMiss) dates.add(d);
         }
         return new ArrayList<>(dates);

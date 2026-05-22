@@ -3,14 +3,13 @@ package com.h3.h3_java.batch.stat;
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.dto.NaverAdDto;
-import com.h3.h3_java.media.naver.mapper.NaverAdStatMapper;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -20,10 +19,9 @@ import java.util.*;
 public class NaverAdDayCollectionJob {
 
     private final NaverMasterReportMapper mapper;
-    private final NaverAdStatMapper adStatMapper;
+    private final NaverStatMongoService statMongoService;
 
-    private static final DateTimeFormatter DATE_FMT     = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final int BATCH_SIZE   = 200;
     private static final int MAX_ROWS_DAY = 5000;
 
@@ -63,7 +61,7 @@ public class NaverAdDayCollectionJob {
             customerId
         );
 
-        List<NaverAdDto> ads = adStatMapper.selectAdsByCustomer(customerId);
+        List<NaverAdDto> ads = statMongoService.selectAdsByCustomer(customerId);
         if (ads.isEmpty()) {
             log.warn("[NaverAdDay] 소재 없음 customerId={}", customerId);
             return;
@@ -82,14 +80,12 @@ public class NaverAdDayCollectionJob {
     private int collectDay(NaverApiClient client, String customerId, List<NaverAdDto> ads, String date) {
         if (!LocalDate.parse(date, DATE_FMT).isBefore(LocalDate.now())) return 0;
 
-        // ad_id -> 지표 배열 [im, clk, cst, cv, cr]
         Map<String, long[]> resultMap = new LinkedHashMap<>();
         for (NaverAdDto ad : ads) {
             if (ad.getAdId() == null || ad.getAdId().isEmpty()) continue;
             resultMap.put(ad.getAdId(), new long[]{0L, 0L, 0L, 0L, 0L});
         }
 
-        // 200개씩 배치 API 호출
         List<String> batch = new ArrayList<>();
         for (NaverAdDto ad : ads) {
             if (ad.getAdId() == null || ad.getAdId().isEmpty()) continue;
@@ -99,16 +95,13 @@ public class NaverAdDayCollectionJob {
                 batch.clear();
             }
         }
-        if (!batch.isEmpty()) {
-            fetchStats(client, batch, resultMap, date);
-        }
+        if (!batch.isEmpty()) fetchStats(client, batch, resultMap, date);
 
-        // DB 저장
         int saved = 0;
         for (NaverAdDto ad : ads) {
             if (saved >= MAX_ROWS_DAY) break;
 
-            String adId      = ad.getAdId();
+            String adId       = ad.getAdId();
             String campaignId = ad.getCampaignId();
             String adgroupId  = ad.getAdgroupId();
 
@@ -131,15 +124,9 @@ public class NaverAdDayCollectionJob {
             row.put("daily_cv",    vals[3]);
             row.put("daily_cr",    vals[4]);
 
-            adStatMapper.upsertAdDaily(row);
+            statMongoService.upsertAdDaily(row);
             saved++;
         }
-
-        if (saved > 0) {
-            String nowdate = LocalDateTime.now().format(DATETIME_FMT);
-            adStatMapper.upsertAccountLogAd(customerId, nowdate);
-        }
-
         return saved;
     }
 
@@ -189,7 +176,7 @@ public class NaverAdDayCollectionJob {
         dates.add(today.minusDays(5).format(DATE_FMT));
         for (int i = 1; i <= 7; i++) {
             String d = today.minusDays(i).format(DATE_FMT);
-            if (adStatMapper.countAdDailyData(customerId, d) == 0) dates.add(d);
+            if (!statMongoService.hasAdDailyData(customerId, d)) dates.add(d);
         }
         return new ArrayList<>(dates);
     }

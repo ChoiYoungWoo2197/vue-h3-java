@@ -3,8 +3,8 @@ package com.h3.h3_java.batch.stat;
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.dto.NaverAdGroupDto;
-import com.h3.h3_java.media.naver.mapper.NaverAdGroupStatMapper;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -19,7 +19,7 @@ import java.util.*;
 public class NaverAdGroupDayCollectionJob {
 
     private final NaverMasterReportMapper mapper;
-    private final NaverAdGroupStatMapper adGroupStatMapper;
+    private final NaverStatMongoService statMongoService;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final int BATCH_SIZE = 200;
@@ -60,7 +60,7 @@ public class NaverAdGroupDayCollectionJob {
             customerId
         );
 
-        List<NaverAdGroupDto> adGroups = adGroupStatMapper.selectAdGroupsByCustomer(customerId);
+        List<NaverAdGroupDto> adGroups = statMongoService.selectAdGroupsByCustomer(customerId);
         if (adGroups.isEmpty()) {
             log.warn("[NaverAdGroupDay] 광고그룹 없음 customerId={}", customerId);
             return;
@@ -79,13 +79,11 @@ public class NaverAdGroupDayCollectionJob {
     private int collectDay(NaverApiClient client, String customerId, List<NaverAdGroupDto> adGroups, String date) {
         if (!LocalDate.parse(date, DATE_FMT).isBefore(LocalDate.now())) return 0;
 
-        // adgroup_id -> 지표 배열 [im, clk, cst, cv, cr]
         Map<String, long[]> resultMap = new LinkedHashMap<>();
         for (NaverAdGroupDto ag : adGroups) {
             resultMap.put(ag.getAdgroupId(), new long[]{0L, 0L, 0L, 0L, 0L});
         }
 
-        // 200개씩 배치 API 호출
         List<String> batch = new ArrayList<>();
         for (NaverAdGroupDto ag : adGroups) {
             batch.add(ag.getAdgroupId());
@@ -94,11 +92,8 @@ public class NaverAdGroupDayCollectionJob {
                 batch.clear();
             }
         }
-        if (!batch.isEmpty()) {
-            fetchStats(client, batch, resultMap, date);
-        }
+        if (!batch.isEmpty()) fetchStats(client, batch, resultMap, date);
 
-        // DB 저장
         int saved = 0;
         for (NaverAdGroupDto ag : adGroups) {
             long[] vals = resultMap.get(ag.getAdgroupId());
@@ -115,7 +110,7 @@ public class NaverAdGroupDayCollectionJob {
             row.put("daily_cv",    vals[3]);
             row.put("daily_cr",    vals[4]);
 
-            adGroupStatMapper.upsertAdgroupDaily(row);
+            statMongoService.upsertAdGroupDaily(row);
             saved++;
         }
         return saved;
@@ -167,7 +162,7 @@ public class NaverAdGroupDayCollectionJob {
         dates.add(today.minusDays(5).format(DATE_FMT));
         for (int i = 1; i <= 7; i++) {
             String d = today.minusDays(i).format(DATE_FMT);
-            if (adGroupStatMapper.countAdgroupDailyData(customerId, d) == 0) dates.add(d);
+            if (!statMongoService.hasAdGroupDailyData(customerId, d)) dates.add(d);
         }
         return new ArrayList<>(dates);
     }

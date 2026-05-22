@@ -17,14 +17,4 @@ public interface NaverStateReportMapper {
 
     List<String> selectJobIdsByDate(@Param("customerId") String customerId,
                                     @Param("date") String date);
-
-    List<Map<String, Object>> selectKeywordMapping(@Param("customerId") String customerId);
-
-    int countKeywordDailyData(@Param("customerId") String customerId, @Param("date") String date);
-
-    void upsertKeywordDaily(Map<String, Object> row);
-
-    int countTargetDailyData(@Param("customerId") String customerId, @Param("date") String date);
-
-    void bulkUpsertTargetRows(@Param("rows") List<Map<String, Object>> rows);
 }

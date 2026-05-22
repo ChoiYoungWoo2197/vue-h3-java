@@ -4,6 +4,7 @@ import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
 import com.h3.h3_java.media.naver.mapper.NaverStateReportMapper;
+import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,10 +24,10 @@ public class NaverStateReportJob {
 
     private final NaverMasterReportMapper accountMapper;
     private final NaverStateReportMapper mapper;
+    private final NaverStatMongoService statMongoService;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    // AD_DETAIL 컬럼 인덱스
     private static final int AD_CUSTOMERID  = 1;
     private static final int AD_CAMPAIGNID  = 2;
     private static final int AD_ADGROUPID   = 3;
@@ -43,7 +44,6 @@ public class NaverStateReportJob {
     private static final int AD_SUMOFRANK   = 14;
     private static final int AD_COLS        = 15;
 
-    // AD_CONVERSION_DETAIL 컬럼 인덱스
     private static final int CV_CUSTOMERID  = 1;
     private static final int CV_CAMPAIGNID  = 2;
     private static final int CV_ADGROUPID   = 3;
@@ -121,12 +121,12 @@ public class NaverStateReportJob {
     }
 
     // =====================================================================
-    // 리포트 생성 → 폴링 → TSV 다운로드 (메모리 보관)
+    // 리포트 생성 → 폴링 → TSV 다운로드
     // =====================================================================
 
     private Map<String, byte[]> createAndDownloadReports(NaverApiClient client, String customerId, String userId, String date) {
         Map<String, byte[]> tsvData = new LinkedHashMap<>();
-        String statDt = date.replace("-", ""); // "20250520"
+        String statDt = date.replace("-", "");
 
         for (String spec : new String[]{"AD_DETAIL", "AD_CONVERSION_DETAIL"}) {
             Map<String, Object> body = new LinkedHashMap<>();
@@ -134,7 +134,7 @@ public class NaverStateReportJob {
             body.put("statDt",   statDt);
 
             Map<String, Object> res = client.post("/stat-reports", body);
-            String jobId = str(res != null ? res.get("reportJobId") : null);
+            String jobId  = str(res != null ? res.get("reportJobId") : null);
             String status = str(res != null ? res.get("status") : null);
 
             if (jobId.isEmpty() || status.isEmpty()) {
@@ -143,10 +143,8 @@ public class NaverStateReportJob {
                 continue;
             }
 
-            // BUILT 될 때까지 폴링 (최대 5분)
             Map<String, Object> lastRes = res;
-            int maxPolls = 60;
-            int polls    = 0;
+            int maxPolls = 60, polls = 0;
             while (isRunning(status) && polls < maxPolls) {
                 sleep(5000);
                 lastRes = client.get("/stat-reports/" + jobId);
@@ -179,19 +177,16 @@ public class NaverStateReportJob {
     }
 
     // =====================================================================
-    // 키워드 일별 집계 → h3_keyword_daily_naver_new UPSERT
-    // cost: VAT 10% 포함
+    // 키워드 일별 → naver_keyword_daily (MongoDB)
     // =====================================================================
 
     private int processKeywords(String customerId, String date, Map<String, byte[]> tsvData) {
         if (tsvData.isEmpty()) return 0;
 
-        List<Map<String, Object>> kwList = mapper.selectKeywordMapping(customerId);
+        List<Map<String, Object>> kwList = statMongoService.selectKeywordMapping(customerId);
         if (kwList.isEmpty()) return 0;
 
-        // keywordId -> [campaignId, adgroupId]
         Map<String, String[]> kwMeta  = new LinkedHashMap<>();
-        // keywordId -> [im, clk, cst, cv, cr]
         Map<String, long[]>   kwStats = new LinkedHashMap<>();
 
         for (Map<String, Object> kw : kwList) {
@@ -201,7 +196,6 @@ public class NaverStateReportJob {
             kwStats.put(kid, new long[]{0L, 0L, 0L, 0L, 0L});
         }
 
-        // AD_DETAIL: im, clk, cst (VAT +10%)
         byte[] adBytes = tsvData.get("AD_DETAIL");
         if (adBytes != null) {
             for (String[] cols : parseTsv(adBytes)) {
@@ -215,7 +209,6 @@ public class NaverStateReportJob {
             }
         }
 
-        // AD_CONVERSION_DETAIL: cv, cr
         byte[] cvBytes = tsvData.get("AD_CONVERSION_DETAIL");
         if (cvBytes != null) {
             for (String[] cols : parseTsv(cvBytes)) {
@@ -233,7 +226,7 @@ public class NaverStateReportJob {
             long[] s = entry.getValue();
             if (s[0] == 0 && s[1] == 0 && s[2] == 0 && s[3] == 0 && s[4] == 0) continue;
 
-            String[]           meta = kwMeta.get(entry.getKey());
+            String[] meta = kwMeta.get(entry.getKey());
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("daily_dt",    date);
             row.put("daily_advid", customerId);
@@ -246,22 +239,21 @@ public class NaverStateReportJob {
             row.put("daily_cv",    s[3]);
             row.put("daily_cr",    s[4]);
 
-            mapper.upsertKeywordDaily(row);
+            statMongoService.upsertKeywordDaily(row);
             saved++;
         }
         return saved;
     }
 
     // =====================================================================
-    // 타겟팅 상세 → h3_target_daily_naver UPSERT (bulk)
-    // cost: VAT 미적용 (원본 PHP 동일)
+    // 타겟 상세 → naver_target_daily (MongoDB)
     // =====================================================================
 
     private int processTargets(String customerId, String date, Map<String, byte[]> tsvData) {
         if (tsvData.isEmpty()) return 0;
 
-        List<Map<String, Object>> data1 = new ArrayList<>(); // AD_DETAIL 행
-        List<Map<String, Object>> data2 = new ArrayList<>(); // AD_CONVERSION_DETAIL 행
+        List<Map<String, Object>> data1 = new ArrayList<>();
+        List<Map<String, Object>> data2 = new ArrayList<>();
 
         byte[] adBytes = tsvData.get("AD_DETAIL");
         if (adBytes != null) {
@@ -324,18 +316,17 @@ public class NaverStateReportJob {
 
     private int bulkUpsertChunked(List<Map<String, Object>> rows) {
         if (rows.isEmpty()) return 0;
-        int saved     = 0;
-        int chunkSize = 500;
+        int saved = 0, chunkSize = 500;
         for (int i = 0; i < rows.size(); i += chunkSize) {
             List<Map<String, Object>> chunk = rows.subList(i, Math.min(i + chunkSize, rows.size()));
-            mapper.bulkUpsertTargetRows(chunk);
+            statMongoService.bulkUpsertTargetRows(chunk);
             saved += chunk.size();
         }
         return saved;
     }
 
     // =====================================================================
-    // 리포트 API 삭제 정리
+    // 리포트 삭제
     // =====================================================================
 
     private void deleteReports(NaverApiClient client, String customerId, String date) {
@@ -358,9 +349,9 @@ public class NaverStateReportJob {
         dates.add(today.minusDays(3).format(DATE_FMT));
         dates.add(today.minusDays(5).format(DATE_FMT));
         for (int i = 1; i <= 7; i++) {
-            String d       = today.minusDays(i).format(DATE_FMT);
-            boolean kwMiss = mapper.countKeywordDailyData(customerId, d) == 0;
-            boolean tgMiss = mapper.countTargetDailyData(customerId, d)  == 0;
+            String d = today.minusDays(i).format(DATE_FMT);
+            boolean kwMiss = !statMongoService.hasKeywordDailyData(customerId, d);
+            boolean tgMiss = !statMongoService.hasTargetDailyData(customerId, d);
             if (kwMiss || tgMiss) dates.add(d);
         }
         return new ArrayList<>(dates);
@@ -396,7 +387,6 @@ public class NaverStateReportJob {
         return "REGIST".equals(status) || "RUNNING".equals(status) || "WAITING".equals(status);
     }
 
-    // TSV 헤더 행 식별 (첫 컬럼이 8자리 날짜인지)
     private boolean isDateCol(String col) {
         return col != null && col.length() == 8 && col.chars().allMatch(Character::isDigit);
     }

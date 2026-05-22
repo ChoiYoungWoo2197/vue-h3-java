@@ -4,13 +4,12 @@ import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.dto.NaverShoppingAdDto;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
-import com.h3.h3_java.media.naver.mapper.NaverShoppingAdStatMapper;
+import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -20,10 +19,9 @@ import java.util.*;
 public class NaverShoppingAdDayCollectionJob {
 
     private final NaverMasterReportMapper mapper;
-    private final NaverShoppingAdStatMapper shoppingStatMapper;
+    private final NaverStatMongoService statMongoService;
 
-    private static final DateTimeFormatter DATE_FMT     = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final int BATCH_SIZE   = 200;
     private static final int MAX_ROWS_DAY = 10000;
     private static final int MAX_RETRY    = 2;
@@ -64,11 +62,9 @@ public class NaverShoppingAdDayCollectionJob {
             customerId
         );
 
-        List<NaverShoppingAdDto> ads = shoppingStatMapper.selectShoppingAdsByCustomer(customerId);
+        List<NaverShoppingAdDto> ads = statMongoService.selectShoppingAdsByCustomer(customerId);
         if (ads.isEmpty()) {
             log.warn("[NaverShoppingAdDay] 쇼핑소재 없음 customerId={}", customerId);
-            // account_log는 무조건 업데이트
-            shoppingStatMapper.upsertAccountLogShopping(customerId, LocalDateTime.now().format(DATETIME_FMT));
             return;
         }
 
@@ -78,7 +74,6 @@ public class NaverShoppingAdDayCollectionJob {
 
         List<String> failedDates = new ArrayList<>();
 
-        // 1차 수집
         for (String date : dates) {
             try {
                 int saved = collectDay(client, customerId, ads, date);
@@ -89,7 +84,6 @@ public class NaverShoppingAdDayCollectionJob {
             }
         }
 
-        // 실패 날짜 최대 2회 재시도
         for (int retry = 1; retry <= MAX_RETRY && !failedDates.isEmpty(); retry++) {
             log.info("[NaverShoppingAdDay] RETRY {} customerId={} dates={}", retry, customerId, failedDates);
             List<String> stillFailed = new ArrayList<>();
@@ -104,22 +98,17 @@ public class NaverShoppingAdDayCollectionJob {
             }
             failedDates = stillFailed;
         }
-
-        // account_log 업데이트 (저장 여부 무관 — PHP 동일)
-        shoppingStatMapper.upsertAccountLogShopping(customerId, LocalDateTime.now().format(DATETIME_FMT));
     }
 
     private int collectDay(NaverApiClient client, String customerId, List<NaverShoppingAdDto> ads, String date) {
         if (!LocalDate.parse(date, DATE_FMT).isBefore(LocalDate.now())) return 0;
 
-        // ad_id -> 지표 배열 [im, clk, cst, cv, cr]
         Map<String, long[]> resultMap = new LinkedHashMap<>();
         for (NaverShoppingAdDto ad : ads) {
             if (ad.getAdId() == null || ad.getAdId().isEmpty()) continue;
             resultMap.put(ad.getAdId(), new long[]{0L, 0L, 0L, 0L, 0L});
         }
 
-        // 200개씩 배치 API 호출
         List<String> batch = new ArrayList<>();
         for (NaverShoppingAdDto ad : ads) {
             if (ad.getAdId() == null || ad.getAdId().isEmpty()) continue;
@@ -129,11 +118,8 @@ public class NaverShoppingAdDayCollectionJob {
                 batch.clear();
             }
         }
-        if (!batch.isEmpty()) {
-            fetchStats(client, batch, resultMap, date);
-        }
+        if (!batch.isEmpty()) fetchStats(client, batch, resultMap, date);
 
-        // DB 저장
         int saved = 0;
         for (NaverShoppingAdDto ad : ads) {
             if (saved >= MAX_ROWS_DAY) break;
@@ -157,7 +143,7 @@ public class NaverShoppingAdDayCollectionJob {
             row.put("daily_cv",    vals[3]);
             row.put("daily_cr",    vals[4]);
 
-            shoppingStatMapper.upsertShoppingAdDaily(row);
+            statMongoService.upsertShoppingAdDaily(row);
             saved++;
         }
         return saved;
@@ -195,7 +181,6 @@ public class NaverShoppingAdDayCollectionJob {
         }
     }
 
-    // 자동 모드: D-1, D-3, D-5 (PHP buildCollectDates 기본값과 동일)
     private List<String> buildAutoDates() {
         Set<String> dates = new LinkedHashSet<>();
         LocalDate today = LocalDate.now();
