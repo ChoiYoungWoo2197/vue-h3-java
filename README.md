@@ -51,10 +51,20 @@ Consumer에서 `hasRange()` 분기 후 `collectRange` 또는 `collectForUserId`�
 
 ```
 com.h3.h3_java
-├── api/collector/      수집 트리거 REST 엔드포인트
+├── api/
+│   ├── collector/      수집 트리거 REST 엔드포인트
+│   ├── analysis/       분석 데이터 REST 엔드포인트 (준비 중)
+│   ├── dashboard/      대시보드 REST 엔드포인트 (준비 중)
+│   └── report/         리포트 REST 엔드포인트 (준비 중)
+├── analytics/
+│   ├── dto/            분석 결과 DTO (준비 중)
+│   ├── mapper/         분석 쿼리 mapper (준비 중)
+│   └── service/        분석 비즈니스 로직 (준비 중)
+├── auth/               인증·인가 (준비 중)
 ├── batch/
 │   ├── master/         마스터 수집 Job (캠페인·광고그룹·소재·키워드 구조)
 │   ├── stat/           일별·시간별·TSV 통계 수집 Job
+│   ├── aggregation/    집계 처리 (준비 중)
 │   └── scheduler/      정기 스케줄 발행 + 신규 계정 자동 감지
 ├── queue/
 │   ├── message/        MQ 메시지 DTO
@@ -65,7 +75,12 @@ com.h3.h3_java
 │   ├── dto/            네이버 API 응답 DTO
 │   └── mapper/         MyBatis mapper 인터페이스
 ├── raw/mongo/          MongoDB raw 저장 서비스 (마스터·통계·delta)
-└── common/config/      RabbitMQ 등 공통 설정
+├── common/
+│   ├── config/         RabbitMQ 등 공통 설정
+│   ├── constants/      공통 상수 (준비 중)
+│   ├── exception/      공통 예외 처리 (준비 중)
+│   └── util/           공통 유틸리티 (준비 중)
+└── config/             스프링 전역 설정 (준비 중)
 ```
 
 ---
