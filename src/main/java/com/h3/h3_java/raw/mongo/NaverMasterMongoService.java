@@ -112,6 +112,11 @@ public class NaverMasterMongoService {
         mongoTemplate.updateFirst(query, u, "naver_shopping_product");
     }
 
+    public boolean hasCampaignData(String customerId) {
+        Query q = Query.query(Criteria.where("advkey").is(customerId));
+        return mongoTemplate.exists(q, "naver_campaign");
+    }
+
     private void upsert(String collection, Map<String, Object> data, String... keyFields) {
         Criteria criteria = Criteria.where(keyFields[0]).is(data.get(keyFields[0]));
         for (int i = 1; i < keyFields.length; i++) {
