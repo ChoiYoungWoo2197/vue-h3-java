@@ -51,32 +51,21 @@ Consumer에서 `hasRange()` 분기 후 `collectRange` 또는 `collectForUserId`�
 
 ```
 com.h3.h3_java
-├── api/collector/          NaverCollectorController       (수집 트리거 REST)
+├── api/collector/      수집 트리거 REST 엔드포인트
 ├── batch/
-│   ├── master/             NaverMasterReportJob           (캠페인·광고그룹·소재 구조 수집)
-│   │                       NaverAdDetailJob               (소재 상세)
-│   ├── stat/               NaverCampaignDayCollectionJob  (캠페인 일별)
-│   │                       NaverCampaignHourCollectionJob (캠페인 시간별)
-│   │                       NaverAdGroupDayCollectionJob   (광고그룹 일별)
-│   │                       NaverAdDayCollectionJob        (소재 일별)
-│   │                       NaverShoppingAdDayCollectionJob(쇼핑소재 일별)
-│   │                       NaverStateReportJob            (키워드·타겟 TSV)
-│   │                       NaverConvTypeJob               (전환유형 TSV)
-│   └── scheduler/          CollectorScheduler             (정기 스케줄 → MQ)
-│                           NaverNewAccountScheduler       (신규 계정 자동 초기화)
+│   ├── master/         마스터 수집 Job (캠페인·광고그룹·소재·키워드 구조)
+│   ├── stat/           일별·시간별·TSV 통계 수집 Job
+│   └── scheduler/      정기 스케줄 발행 + 신규 계정 자동 감지
 ├── queue/
-│   ├── message/            CollectorMessage
-│   ├── producer/           CollectorProducer
-│   └── consumer/           CollectorConsumer
+│   ├── message/        MQ 메시지 DTO
+│   ├── producer/       MQ 발행
+│   └── consumer/       MQ 소비 → Job 라우팅
 ├── media/naver/
-│   ├── NaverApiClient      (HMAC-SHA256 서명, Semaphore(3), retry 5회)
-│   ├── NaverTsvParser      (TSV byte[] 파싱)
-│   ├── dto/
-│   └── mapper/             NaverMasterReportMapper (MyBatis)
-├── raw/mongo/
-│   ├── NaverMasterMongoService   (마스터·delta MongoDB 저장)
-│   └── NaverStatMongoService     (일별·시간별 MongoDB 저장)
-└── common/config/          RabbitMQConfig
+│   ├── (root)          API 클라이언트, TSV 파서
+│   ├── dto/            네이버 API 응답 DTO
+│   └── mapper/         MyBatis mapper 인터페이스
+├── raw/mongo/          MongoDB raw 저장 서비스 (마스터·통계·delta)
+└── common/config/      RabbitMQ 등 공통 설정
 ```
 
 ---
