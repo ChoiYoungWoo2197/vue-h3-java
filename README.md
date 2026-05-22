@@ -9,12 +9,14 @@ PHP 크론 스크립트(`h3-백엔드`)를 Spring Boot로 이식한 광고 데�
 
 | 분류 | 기술 |
 |---|---|
-| Language | Java 17 |
-| Framework | Spring Boot 3 |
-| ORM | MyBatis (XML mapper) |
-| Message Queue | RabbitMQ |
+| Language | Java 21 (Virtual Thread 사용) |
+| Framework | Spring Boot 3.3.5 |
+| ORM | MyBatis 3.0.3 (XML mapper) |
+| Batch | Spring Batch |
+| Message Queue | RabbitMQ (Spring AMQP) |
 | DB | MySQL (통계·마스터), MongoDB Atlas (raw 마스터·시간별·delta) |
 | Build | Gradle |
+| Etc | Lombok |
 
 ---
 
