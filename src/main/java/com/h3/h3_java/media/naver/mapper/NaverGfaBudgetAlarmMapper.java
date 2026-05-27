@@ -16,11 +16,5 @@ public interface NaverGfaBudgetAlarmMapper {
                          @Param("targetId") String targetId,
                          @Param("type") String type);
 
-    double sumGfaCampaignDaily(@Param("advid") String advid,
-                               @Param("fromDate") String fromDate,
-                               @Param("toDate") String toDate,
-                               @Param("kpiColumn") String kpiColumn,
-                               @Param("campaignId") String campaignId);
-
     void insertBudgetAlarm(Map<String, Object> row);
 }

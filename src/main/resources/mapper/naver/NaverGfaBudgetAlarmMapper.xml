@@ -24,16 +24,6 @@
         </if>
     </select>
 
-    <select id="sumGfaCampaignDaily" resultType="double">
-        SELECT COALESCE(SUM(${kpiColumn}), 0)
-        FROM h3_campaign_daily_navergfa
-        WHERE daily_advid = #{advid}
-          AND daily_dt BETWEEN #{fromDate} AND #{toDate}
-        <if test="campaignId != null">
-          AND campaign_id = #{campaignId}
-        </if>
-    </select>
-
     <insert id="insertBudgetAlarm" parameterType="map">
         INSERT INTO h3_budget_alarm (
             user_id, daily_advid, daily_dt,

@@ -102,8 +102,8 @@ public class NaverGfaBudgetAlarmJob {
             LocalDate cFromDate = cToDate.minusDays(day);
 
             String col = KPI_COLUMNS.get(kpi);
-            double a = alarmMapper.sumGfaCampaignDaily(advkey, fromDate.toString(), toDate.toString(), col, null);
-            double b = alarmMapper.sumGfaCampaignDaily(advkey, cFromDate.toString(), cToDate.toString(), col, null);
+            double a = mongoService.sumGfaCampaignDaily(advkey, fromDate.toString(), toDate.toString(), col, null);
+            double b = mongoService.sumGfaCampaignDaily(advkey, cFromDate.toString(), cToDate.toString(), col, null);
 
             double per = calculateIncreaseRate(b, a);
             if (per == 0) continue;
@@ -162,8 +162,8 @@ public class NaverGfaBudgetAlarmJob {
                 LocalDate cFromDate = cToDate.minusDays(day);
 
                 String col = KPI_COLUMNS.get(kpi);
-                double a = alarmMapper.sumGfaCampaignDaily(advkey, fromDate.toString(), toDate.toString(), col, campaignId);
-                double b = alarmMapper.sumGfaCampaignDaily(advkey, cFromDate.toString(), cToDate.toString(), col, campaignId);
+                double a = mongoService.sumGfaCampaignDaily(advkey, fromDate.toString(), toDate.toString(), col, campaignId);
+                double b = mongoService.sumGfaCampaignDaily(advkey, cFromDate.toString(), cToDate.toString(), col, campaignId);
 
                 double per = calculateIncreaseRate(b, a);
                 if (per == 0) continue;

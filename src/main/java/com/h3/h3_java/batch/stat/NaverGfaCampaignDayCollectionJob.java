@@ -2,7 +2,6 @@ package com.h3.h3_java.batch.stat;
 
 import com.h3.h3_java.batch.scheduler.NaverGfaTokenManager;
 import com.h3.h3_java.media.naver.dto.NaverGfaAccountDto;
-import com.h3.h3_java.media.naver.mapper.NaverGfaDailyMapper;
 import com.h3.h3_java.media.naver.mapper.NaverGfaMapper;
 import com.h3.h3_java.raw.mongo.NaverGfaMasterMongoService;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +23,6 @@ import java.util.*;
 public class NaverGfaCampaignDayCollectionJob {
 
     private final NaverGfaMapper gfaMapper;
-    private final NaverGfaDailyMapper dailyMapper;
     private final NaverGfaMasterMongoService mongoService;
     private final NaverGfaTokenManager tokenManager;
 
@@ -139,7 +137,7 @@ public class NaverGfaCampaignDayCollectionJob {
                     row.put("daily_cv",    cv);
                     row.put("daily_cr",    cr);
 
-                    dailyMapper.upsertGfaCampaignDaily(row);
+                    mongoService.upsertGfaCampaignDaily(row);
                     saved++;
                 }
             }
@@ -163,7 +161,7 @@ public class NaverGfaCampaignDayCollectionJob {
 
         for (int i = 1; i <= 7; i++) {
             String d = today.minusDays(i).format(DATE_FMT);
-            if (!dailyMapper.hasGfaCampaignDailyData(advkey, d)) {
+            if (!mongoService.hasGfaCampaignDailyData(advkey, d)) {
                 dates.add(d);
             }
         }
