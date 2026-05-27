@@ -145,4 +145,14 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_CONV_TYPE, msg);
         log.info("[MQ][SEND] NAVER CONV TYPE RANGE userId={} from={} to={}", userId, from, to);
     }
+
+    // =====================================================================
+    // GFA MASTER
+    // =====================================================================
+
+    public void sendNaverGfaMaster(String userId) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "GFA_MASTER", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_MASTER, msg);
+        log.info("[MQ][SEND] NAVER GFA MASTER userId={}", userId);
+    }
 }

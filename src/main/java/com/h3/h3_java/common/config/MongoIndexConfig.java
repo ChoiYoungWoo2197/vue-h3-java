@@ -57,6 +57,11 @@ public class MongoIndexConfig {
         // ── GFA 토큰 ───────────────────────────────────────────────────────────
         unique("naver_gfa_token", "key");
 
+        // ── GFA 마스터 ─────────────────────────────────────────────────────────
+        unique("naver_gfa_campaign", "advkey", "cid");
+        unique("naver_gfa_adgroup",  "advkey", "gid");
+        unique("naver_gfa_ad",       "advkey", "aid");
+
         log.info("[MONGO INDEX] 인덱스 생성 완료");
     }
 

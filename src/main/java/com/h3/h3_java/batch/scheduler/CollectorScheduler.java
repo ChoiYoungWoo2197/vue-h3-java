@@ -1,6 +1,8 @@
 package com.h3.h3_java.batch.scheduler;
 
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
+import com.h3.h3_java.media.naver.dto.NaverGfaAccountDto;
+import com.h3.h3_java.media.naver.mapper.NaverGfaMapper;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
 import com.h3.h3_java.queue.producer.CollectorProducer;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +20,21 @@ import java.util.Set;
 public class CollectorScheduler {
 
     private final NaverMasterReportMapper mapper;
+    private final NaverGfaMapper gfaMapper;
     private final CollectorProducer producer;
+
+    // 매일 새벽 1시 - GFA 마스터 수집 (SA 마스터보다 먼저)
+    @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
+    public void scheduleNaverGfaMaster() {
+        log.info("[SCHEDULER] 네이버 GFA 마스터 수집 시작");
+        List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+        int count = 0;
+        for (NaverGfaAccountDto account : accounts) {
+            producer.sendNaverGfaMaster(account.getUserId());
+            count++;
+        }
+        log.info("[SCHEDULER] 네이버 GFA 마스터 메시지 발행 완료 총={}건", count);
+    }
 
     // 매일 새벽 2시 - 마스터 수집
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Seoul")

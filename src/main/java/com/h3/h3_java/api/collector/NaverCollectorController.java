@@ -1,5 +1,6 @@
 package com.h3.h3_java.api.collector;
 
+import com.h3.h3_java.batch.master.NaverGfaMasterJob;
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
 import com.h3.h3_java.batch.stat.NaverAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverAdGroupDayCollectionJob;
@@ -7,6 +8,8 @@ import com.h3.h3_java.batch.stat.NaverCampaignDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignHourCollectionJob;
 import com.h3.h3_java.batch.stat.NaverShoppingAdDayCollectionJob;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
+import com.h3.h3_java.media.naver.dto.NaverGfaAccountDto;
+import com.h3.h3_java.media.naver.mapper.NaverGfaMapper;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
 import com.h3.h3_java.queue.producer.CollectorProducer;
 import lombok.RequiredArgsConstructor;
@@ -26,12 +29,14 @@ import java.util.Set;
 public class NaverCollectorController {
 
     private final NaverMasterReportJob job;
+    private final NaverGfaMasterJob gfaMasterJob;
     private final NaverCampaignDayCollectionJob campaignDayJob;
     private final NaverCampaignHourCollectionJob campaignHourJob;
     private final NaverAdGroupDayCollectionJob adGroupDayJob;
     private final NaverAdDayCollectionJob adDayJob;
     private final NaverShoppingAdDayCollectionJob shoppingDayJob;
     private final NaverMasterReportMapper mapper;
+    private final NaverGfaMapper gfaMapper;
     private final CollectorProducer producer;
 
     // =====================================================================
@@ -522,6 +527,40 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " 전환유형 MQ 발행 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] 전환유형 기간 수집 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    // =====================================================================
+    // GFA 마스터
+    // =====================================================================
+
+    @PostMapping("/gfa-master")
+    public ResponseEntity<Map<String, String>> collectGfaMaster() {
+        log.info("[NaverCollector] GFA 마스터 전체 수집 시작");
+        try {
+            gfaMasterJob.collect();
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "GFA 마스터 전체 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 마스터 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-master/{userId}")
+    public ResponseEntity<Map<String, String>> collectGfaMasterByUser(@PathVariable String userId) {
+        log.info("[NaverCollector] GFA 마스터 단일 수집 MQ 발행 userId={}", userId);
+        try {
+            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverGfaMaster(userId);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " GFA 마스터 수집 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 마스터 수집 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }

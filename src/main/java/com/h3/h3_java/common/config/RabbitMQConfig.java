@@ -39,6 +39,9 @@ public class RabbitMQConfig {
     public static final String QUEUE_NAVER_CONV_TYPE       = "h3.collector.naver.conv.type";
     public static final String ROUTING_NAVER_CONV_TYPE     = "naver.conv.type";
 
+    public static final String QUEUE_NAVER_GFA_MASTER      = "h3.collector.naver.gfa.master";
+    public static final String ROUTING_NAVER_GFA_MASTER    = "naver.gfa.master";
+
     @Bean
     public DirectExchange collectorExchange() {
         return new DirectExchange(EXCHANGE);
@@ -132,6 +135,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding naverConvTypeBinding(Queue naverConvTypeQueue, DirectExchange collectorExchange) {
         return BindingBuilder.bind(naverConvTypeQueue).to(collectorExchange).with(ROUTING_NAVER_CONV_TYPE);
+    }
+
+    @Bean
+    public Queue naverGfaMasterQueue() {
+        return QueueBuilder.durable(QUEUE_NAVER_GFA_MASTER).build();
+    }
+
+    @Bean
+    public Binding naverGfaMasterBinding(Queue naverGfaMasterQueue, DirectExchange collectorExchange) {
+        return BindingBuilder.bind(naverGfaMasterQueue).to(collectorExchange).with(ROUTING_NAVER_GFA_MASTER);
     }
 
     @Bean

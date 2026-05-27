@@ -23,4 +23,13 @@
         LIMIT 1
     </select>
 
+    <!-- GFA 수집 대상 계정 (account_gfa = adAccount 번호) -->
+    <select id="selectGfaAccounts" resultType="com.h3.h3_java.media.naver.dto.NaverGfaAccountDto">
+        SELECT user_id AS userId, account_gfa AS accountGfa
+        FROM h3_account
+        WHERE account_gfa IS NOT NULL
+          AND account_gfa != ''
+          AND user_id NOT IN ('admin', 'dydrp123')
+    </select>
+
 </mapper>
