@@ -49,6 +49,19 @@ public class NaverGfaMasterMongoService {
             .collect(Collectors.toList());
     }
 
+    public Map<String, String> selectGfaAds(String advkey) {
+        Query query = Query.query(Criteria.where("advkey").is(advkey));
+        query.fields().include("aid").include("gid").exclude("_id");
+        return mongoTemplate.find(query, Document.class, "naver_gfa_ad")
+            .stream()
+            .filter(d -> d.getString("aid") != null)
+            .collect(Collectors.toMap(
+                d -> d.getString("aid"),
+                d -> d.getString("gid") != null ? d.getString("gid") : "",
+                (a, b) -> a
+            ));
+    }
+
     public Map<String, String> selectGfaAdgroups(String advkey) {
         Query query = Query.query(Criteria.where("advkey").is(advkey));
         query.fields().include("gid").include("cid").exclude("_id");

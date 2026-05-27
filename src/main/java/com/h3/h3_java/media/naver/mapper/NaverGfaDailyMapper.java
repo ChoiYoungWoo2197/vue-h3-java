@@ -15,4 +15,8 @@ public interface NaverGfaDailyMapper {
     boolean hasGfaAdgroupDailyData(@Param("advid") String advid, @Param("date") String date);
 
     void upsertGfaAdgroupDaily(Map<String, Object> row);
+
+    boolean hasGfaAdDailyData(@Param("advid") String advid, @Param("date") String date);
+
+    void upsertGfaAdDaily(Map<String, Object> row);
 }
