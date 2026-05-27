@@ -1,6 +1,7 @@
 package com.h3.h3_java.api.collector;
 
 import com.h3.h3_java.batch.master.NaverGfaMasterJob;
+import com.h3.h3_java.batch.stat.NaverGfaCampaignDayCollectionJob;
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
 import com.h3.h3_java.batch.stat.NaverAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverAdGroupDayCollectionJob;
@@ -30,6 +31,7 @@ public class NaverCollectorController {
 
     private final NaverMasterReportJob job;
     private final NaverGfaMasterJob gfaMasterJob;
+    private final NaverGfaCampaignDayCollectionJob gfaCampaignDayJob;
     private final NaverCampaignDayCollectionJob campaignDayJob;
     private final NaverCampaignHourCollectionJob campaignHourJob;
     private final NaverAdGroupDayCollectionJob adGroupDayJob;
@@ -544,6 +546,60 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", "GFA 마스터 전체 수집 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] GFA 마스터 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    // =====================================================================
+    // GFA 캠페인 일별
+    // =====================================================================
+
+    @PostMapping("/gfa-campaign-daily")
+    public ResponseEntity<Map<String, String>> collectGfaCampaignDaily() {
+        log.info("[NaverCollector] GFA 캠페인 일별 전체 수집 시작");
+        try {
+            gfaCampaignDayJob.collect();
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "GFA 캠페인 일별 전체 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 캠페인 일별 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-campaign-daily/{userId}")
+    public ResponseEntity<Map<String, String>> collectGfaCampaignDailyByUser(@PathVariable String userId) {
+        log.info("[NaverCollector] GFA 캠페인 일별 단일 수집 MQ 발행 userId={}", userId);
+        try {
+            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverGfaCampaignDaily(userId);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " GFA 캠페인 일별 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 캠페인 일별 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-campaign-daily/{userId}/range")
+    public ResponseEntity<Map<String, String>> collectGfaCampaignDailyRange(
+            @PathVariable String userId,
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] GFA 캠페인 일별 기간 수집 MQ 발행 userId={} from={} to={}", userId, from, to);
+        try {
+            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverGfaCampaignDailyRange(userId, from, to);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " GFA 캠페인 일별 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 캠페인 일별 기간 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }

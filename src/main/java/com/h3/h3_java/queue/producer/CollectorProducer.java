@@ -155,4 +155,20 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_MASTER, msg);
         log.info("[MQ][SEND] NAVER GFA MASTER userId={}", userId);
     }
+
+    // =====================================================================
+    // GFA CAMPAIGN DAILY
+    // =====================================================================
+
+    public void sendNaverGfaCampaignDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "GFA_CAMPAIGN_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_CAMPAIGN_DAILY, msg);
+        log.info("[MQ][SEND] NAVER GFA CAMPAIGN DAILY userId={}", userId);
+    }
+
+    public void sendNaverGfaCampaignDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "GFA_CAMPAIGN_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_CAMPAIGN_DAILY, msg);
+        log.info("[MQ][SEND] NAVER GFA CAMPAIGN DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
 }
