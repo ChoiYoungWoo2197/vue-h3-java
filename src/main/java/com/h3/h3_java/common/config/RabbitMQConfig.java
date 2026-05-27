@@ -45,6 +45,9 @@ public class RabbitMQConfig {
     public static final String QUEUE_NAVER_GFA_CAMPAIGN_DAILY   = "h3.collector.naver.gfa.campaign.daily";
     public static final String ROUTING_NAVER_GFA_CAMPAIGN_DAILY = "naver.gfa.campaign.daily";
 
+    public static final String QUEUE_NAVER_GFA_ADGROUP_DAILY    = "h3.collector.naver.gfa.adgroup.daily";
+    public static final String ROUTING_NAVER_GFA_ADGROUP_DAILY  = "naver.gfa.adgroup.daily";
+
     public static final String QUEUE_NAVER_GFA_BUDGET_ALARM    = "h3.collector.naver.gfa.budget.alarm";
     public static final String ROUTING_NAVER_GFA_BUDGET_ALARM  = "naver.gfa.budget.alarm";
 
@@ -161,6 +164,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding naverGfaCampaignDailyBinding(Queue naverGfaCampaignDailyQueue, DirectExchange collectorExchange) {
         return BindingBuilder.bind(naverGfaCampaignDailyQueue).to(collectorExchange).with(ROUTING_NAVER_GFA_CAMPAIGN_DAILY);
+    }
+
+    @Bean
+    public Queue naverGfaAdgroupDailyQueue() {
+        return QueueBuilder.durable(QUEUE_NAVER_GFA_ADGROUP_DAILY).build();
+    }
+
+    @Bean
+    public Binding naverGfaAdgroupDailyBinding(Queue naverGfaAdgroupDailyQueue, DirectExchange collectorExchange) {
+        return BindingBuilder.bind(naverGfaAdgroupDailyQueue).to(collectorExchange).with(ROUTING_NAVER_GFA_ADGROUP_DAILY);
     }
 
     @Bean

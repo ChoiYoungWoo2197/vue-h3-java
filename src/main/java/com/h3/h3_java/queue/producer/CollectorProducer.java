@@ -173,6 +173,22 @@ public class CollectorProducer {
     }
 
     // =====================================================================
+    // GFA ADGROUP DAILY
+    // =====================================================================
+
+    public void sendNaverGfaAdgroupDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "GFA_ADGROUP_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_ADGROUP_DAILY, msg);
+        log.info("[MQ][SEND] NAVER GFA ADGROUP DAILY userId={}", userId);
+    }
+
+    public void sendNaverGfaAdgroupDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "GFA_ADGROUP_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_ADGROUP_DAILY, msg);
+        log.info("[MQ][SEND] NAVER GFA ADGROUP DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
     // GFA BUDGET ALARM
     // =====================================================================
 

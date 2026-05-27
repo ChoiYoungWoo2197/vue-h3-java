@@ -41,4 +41,46 @@
             daily_regdate = CURRENT_TIMESTAMP
     </insert>
 
+
+    <select id="hasGfaAdgroupDailyData" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM h3_adgroup_daily_navergfa
+        WHERE daily_advid = #{advid}
+          AND daily_dt = #{date}
+    </select>
+
+    <insert id="upsertGfaAdgroupDaily" parameterType="map">
+        INSERT INTO h3_adgroup_daily_navergfa (
+            daily_dt,
+            user_id,
+            daily_advid,
+            campaign_id,
+            adgroup_id,
+            daily_im,
+            daily_clk,
+            daily_cst,
+            daily_cv,
+            daily_cr
+        ) VALUES (
+            #{daily_dt},
+            NULL,
+            #{daily_advid},
+            #{campaign_id},
+            #{adgroup_id},
+            #{daily_im},
+            #{daily_clk},
+            #{daily_cst},
+            #{daily_cv},
+            #{daily_cr}
+        )
+        ON DUPLICATE KEY UPDATE
+            campaign_id   = VALUES(campaign_id),
+            daily_im      = VALUES(daily_im),
+            daily_clk     = VALUES(daily_clk),
+            daily_cst     = VALUES(daily_cst),
+            daily_cv      = VALUES(daily_cv),
+            daily_cr      = VALUES(daily_cr),
+            daily_regdate = CURRENT_TIMESTAMP
+    </insert>
+
 </mapper>

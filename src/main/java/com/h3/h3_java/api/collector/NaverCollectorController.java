@@ -1,6 +1,7 @@
 package com.h3.h3_java.api.collector;
 
 import com.h3.h3_java.batch.master.NaverGfaMasterJob;
+import com.h3.h3_java.batch.stat.NaverGfaAdgroupDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverGfaBudgetAlarmJob;
 import com.h3.h3_java.batch.stat.NaverGfaCampaignDayCollectionJob;
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
@@ -32,6 +33,7 @@ public class NaverCollectorController {
 
     private final NaverMasterReportJob job;
     private final NaverGfaMasterJob gfaMasterJob;
+    private final NaverGfaAdgroupDayCollectionJob gfaAdgroupDayJob;
     private final NaverGfaBudgetAlarmJob gfaBudgetAlarmJob;
     private final NaverGfaCampaignDayCollectionJob gfaCampaignDayJob;
     private final NaverCampaignDayCollectionJob campaignDayJob;
@@ -602,6 +604,60 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " GFA 캠페인 일별 MQ 발행 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] GFA 캠페인 일별 기간 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    // =====================================================================
+    // GFA 광고그룹 일별
+    // =====================================================================
+
+    @PostMapping("/gfa-adgroup-daily")
+    public ResponseEntity<Map<String, String>> collectGfaAdgroupDaily() {
+        log.info("[NaverCollector] GFA 광고그룹 일별 전체 수집 시작");
+        try {
+            gfaAdgroupDayJob.collect();
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "GFA 광고그룹 일별 전체 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 광고그룹 일별 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-adgroup-daily/{userId}")
+    public ResponseEntity<Map<String, String>> collectGfaAdgroupDailyByUser(@PathVariable String userId) {
+        log.info("[NaverCollector] GFA 광고그룹 일별 단일 수집 MQ 발행 userId={}", userId);
+        try {
+            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverGfaAdgroupDaily(userId);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " GFA 광고그룹 일별 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 광고그룹 일별 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-adgroup-daily/{userId}/range")
+    public ResponseEntity<Map<String, String>> collectGfaAdgroupDailyRange(
+            @PathVariable String userId,
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] GFA 광고그룹 일별 기간 수집 MQ 발행 userId={} from={} to={}", userId, from, to);
+        try {
+            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverGfaAdgroupDailyRange(userId, from, to);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " GFA 광고그룹 일별 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 광고그룹 일별 기간 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }

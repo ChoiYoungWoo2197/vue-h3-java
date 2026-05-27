@@ -9,6 +9,7 @@ import com.h3.h3_java.batch.stat.NaverAdGroupDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverCampaignHourCollectionJob;
 import com.h3.h3_java.batch.stat.NaverConvTypeJob;
+import com.h3.h3_java.batch.stat.NaverGfaAdgroupDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverGfaBudgetAlarmJob;
 import com.h3.h3_java.batch.stat.NaverShoppingAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverStateReportJob;
@@ -35,6 +36,7 @@ public class CollectorConsumer {
     private final NaverAdDayCollectionJob naverAdDayCollectionJob;
     private final NaverShoppingAdDayCollectionJob naverShoppingAdDayCollectionJob;
     private final NaverConvTypeJob naverConvTypeJob;
+    private final NaverGfaAdgroupDayCollectionJob naverGfaAdgroupDayCollectionJob;
     private final NaverGfaBudgetAlarmJob naverGfaBudgetAlarmJob;
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_MASTER, concurrency = "5")
@@ -176,6 +178,20 @@ public class CollectorConsumer {
             naverGfaMasterJob.collectForUserId(msg.getUserId());
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER GFA MASTER userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_ADGROUP_DAILY)
+    public void consumeNaverGfaAdgroupDaily(CollectorMessage msg) {
+        log.info("[MQ][RECV] NAVER GFA ADGROUP DAILY userId={}", msg.getUserId());
+        try {
+            if (hasRange(msg)) {
+                naverGfaAdgroupDayCollectionJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                naverGfaAdgroupDayCollectionJob.collectForUserId(msg.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] NAVER GFA ADGROUP DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
     }
 
