@@ -54,6 +54,9 @@ public class MongoIndexConfig {
         unique("naver_keyword_convtype",  "daily_advid", "daily_dt", "keyword_id",  "conv_type_code");
         unique("naver_ad_convtype",       "daily_advid", "daily_dt", "ad_id",       "conv_type_code");
 
+        // ── GFA 토큰 ───────────────────────────────────────────────────────────
+        unique("naver_gfa_token", "key");
+
         log.info("[MONGO INDEX] 인덱스 생성 완료");
     }
 

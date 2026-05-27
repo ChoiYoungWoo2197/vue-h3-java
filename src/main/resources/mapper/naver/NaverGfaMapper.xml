@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.h3.h3_java.media.naver.mapper.NaverGfaMapper">
+
+    <!-- GFA OAuth 정보 (admin 계정) -->
+    <select id="selectGfaAdminAccount" resultType="com.h3.h3_java.media.naver.dto.NaverGfaAdminDto">
+        SELECT
+            account_gfa             AS accountGfa,
+            account_naver_secret    AS accountNaverSecret,
+            account_naver_customer  AS accountNaverCustomer
+        FROM h3_account
+        WHERE user_id = 'admin'
+        LIMIT 1
+    </select>
+
+    <!-- MySQL h3_naver_token 최신 토큰 (초기 마이그레이션용) -->
+    <select id="selectLatestNaverToken" resultType="map">
+        SELECT access_token, refresh_token
+        FROM h3_naver_token
+        ORDER BY daily_regdate DESC
+        LIMIT 1
+    </select>
+
+</mapper>
