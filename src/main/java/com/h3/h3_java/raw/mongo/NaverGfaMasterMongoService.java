@@ -8,6 +8,9 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -29,6 +32,21 @@ public class NaverGfaMasterMongoService {
 
     public void upsertGfaAd(Map<String, Object> row) {
         upsert("naver_gfa_ad", row, "advkey", "aid");
+    }
+
+    public List<Map<String, Object>> selectGfaCampaigns(String advkey) {
+        Query query = Query.query(Criteria.where("advkey").is(advkey));
+        query.fields().include("cid").include("cname").include("onoff").exclude("_id");
+        return mongoTemplate.find(query, Document.class, "naver_gfa_campaign")
+            .stream()
+            .map(d -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("cid",   d.getString("cid"));
+                m.put("cname", d.getString("cname"));
+                m.put("onoff", d.getInteger("onoff", 0));
+                return (Map<String, Object>) m;
+            })
+            .collect(Collectors.toList());
     }
 
     public Set<String> selectGfaCampaignIds(String advkey) {

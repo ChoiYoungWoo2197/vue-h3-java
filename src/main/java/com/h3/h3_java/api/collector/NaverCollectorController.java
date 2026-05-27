@@ -1,6 +1,7 @@
 package com.h3.h3_java.api.collector;
 
 import com.h3.h3_java.batch.master.NaverGfaMasterJob;
+import com.h3.h3_java.batch.stat.NaverGfaBudgetAlarmJob;
 import com.h3.h3_java.batch.stat.NaverGfaCampaignDayCollectionJob;
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
 import com.h3.h3_java.batch.stat.NaverAdDayCollectionJob;
@@ -31,6 +32,7 @@ public class NaverCollectorController {
 
     private final NaverMasterReportJob job;
     private final NaverGfaMasterJob gfaMasterJob;
+    private final NaverGfaBudgetAlarmJob gfaBudgetAlarmJob;
     private final NaverGfaCampaignDayCollectionJob gfaCampaignDayJob;
     private final NaverCampaignDayCollectionJob campaignDayJob;
     private final NaverCampaignHourCollectionJob campaignHourJob;
@@ -600,6 +602,40 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " GFA 캠페인 일별 MQ 발행 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] GFA 캠페인 일별 기간 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    // =====================================================================
+    // GFA 예산 알람
+    // =====================================================================
+
+    @PostMapping("/gfa-budget-alarm")
+    public ResponseEntity<Map<String, String>> collectGfaBudgetAlarm() {
+        log.info("[NaverCollector] GFA 예산 알람 전체 수집 시작");
+        try {
+            gfaBudgetAlarmJob.collect();
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "GFA 예산 알람 전체 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 예산 알람 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-budget-alarm/{userId}")
+    public ResponseEntity<Map<String, String>> collectGfaBudgetAlarmByUser(@PathVariable String userId) {
+        log.info("[NaverCollector] GFA 예산 알람 단일 수집 MQ 발행 userId={}", userId);
+        try {
+            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverGfaBudgetAlarm(userId);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " GFA 예산 알람 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 예산 알람 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }

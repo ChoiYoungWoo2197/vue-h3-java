@@ -171,4 +171,14 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_CAMPAIGN_DAILY, msg);
         log.info("[MQ][SEND] NAVER GFA CAMPAIGN DAILY RANGE userId={} from={} to={}", userId, from, to);
     }
+
+    // =====================================================================
+    // GFA BUDGET ALARM
+    // =====================================================================
+
+    public void sendNaverGfaBudgetAlarm(String userId) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "GFA_BUDGET_ALARM", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_BUDGET_ALARM, msg);
+        log.info("[MQ][SEND] NAVER GFA BUDGET ALARM userId={}", userId);
+    }
 }

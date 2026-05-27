@@ -23,6 +23,19 @@ public class CollectorScheduler {
     private final NaverGfaMapper gfaMapper;
     private final CollectorProducer producer;
 
+    // 매일 오전 7시 - GFA 예산 알람 (GFA 캠페인 일별 수집 완료 후)
+    @Scheduled(cron = "0 0 7 * * *", zone = "Asia/Seoul")
+    public void scheduleNaverGfaBudgetAlarm() {
+        log.info("[SCHEDULER] 네이버 GFA 예산 알람 시작");
+        List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+        int count = 0;
+        for (NaverGfaAccountDto account : accounts) {
+            producer.sendNaverGfaBudgetAlarm(account.getUserId());
+            count++;
+        }
+        log.info("[SCHEDULER] 네이버 GFA 예산 알람 메시지 발행 완료 총={}건", count);
+    }
+
     // 매일 오전 6시 - GFA 캠페인 일별 수집
     @Scheduled(cron = "0 0 6 * * *", zone = "Asia/Seoul")
     public void scheduleNaverGfaCampaignDaily() {
