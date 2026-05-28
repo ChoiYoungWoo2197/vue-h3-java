@@ -213,4 +213,20 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_BUDGET_ALARM, msg);
         log.info("[MQ][SEND] NAVER GFA BUDGET ALARM userId={}", userId);
     }
+
+    // =====================================================================
+    // GFA CONV TYPE
+    // =====================================================================
+
+    public void sendNaverGfaConvType(String userId) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "GFA_CONV_TYPE", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_CONV_TYPE, msg);
+        log.info("[MQ][SEND] NAVER GFA CONV TYPE userId={}", userId);
+    }
+
+    public void sendNaverGfaConvTypeRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "GFA_CONV_TYPE", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_CONV_TYPE, msg);
+        log.info("[MQ][SEND] NAVER GFA CONV TYPE RANGE userId={} from={} to={}", userId, from, to);
+    }
 }

@@ -2,6 +2,7 @@ package com.h3.h3_java.raw.mongo;
 
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
+import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
@@ -151,8 +152,68 @@ public class NaverGfaMasterMongoService {
     }
 
     // =====================================================================
+    // GFA Campaign ConvType (MongoDB)
+    // =====================================================================
+
+    public void bulkUpsertGfaCampaignConvType(List<Map<String, Object>> rows) {
+        bulkUpsert("naver_gfa_campaign_convtype", rows,
+            "daily_advid", "daily_dt", "campaign_id", "conv_type_code");
+    }
+
+    public boolean hasGfaCampaignConvTypeData(String advkey, String date) {
+        return mongoTemplate.exists(Query.query(
+            Criteria.where("daily_advid").is(advkey).and("daily_dt").is(date)
+        ), "naver_gfa_campaign_convtype");
+    }
+
+    // =====================================================================
+    // GFA Adgroup ConvType (MongoDB)
+    // =====================================================================
+
+    public void bulkUpsertGfaAdgroupConvType(List<Map<String, Object>> rows) {
+        bulkUpsert("naver_gfa_adgroup_convtype", rows,
+            "daily_advid", "daily_dt", "campaign_id", "adgroup_id", "conv_type_code");
+    }
+
+    public boolean hasGfaAdgroupConvTypeData(String advkey, String date) {
+        return mongoTemplate.exists(Query.query(
+            Criteria.where("daily_advid").is(advkey).and("daily_dt").is(date)
+        ), "naver_gfa_adgroup_convtype");
+    }
+
+    // =====================================================================
+    // GFA Ad ConvType (MongoDB)
+    // =====================================================================
+
+    public void bulkUpsertGfaAdConvType(List<Map<String, Object>> rows) {
+        bulkUpsert("naver_gfa_ad_convtype", rows,
+            "daily_advid", "daily_dt", "campaign_id", "adgroup_id", "ad_id", "conv_type_code");
+    }
+
+    public boolean hasGfaAdConvTypeData(String advkey, String date) {
+        return mongoTemplate.exists(Query.query(
+            Criteria.where("daily_advid").is(advkey).and("daily_dt").is(date)
+        ), "naver_gfa_ad_convtype");
+    }
+
+    // =====================================================================
     // Private Helpers
     // =====================================================================
+
+    private void bulkUpsert(String collection, List<Map<String, Object>> rows, String... keyFields) {
+        if (rows.isEmpty()) return;
+        BulkOperations bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, collection);
+        for (Map<String, Object> row : rows) {
+            Criteria criteria = Criteria.where(keyFields[0]).is(row.get(keyFields[0]));
+            for (int i = 1; i < keyFields.length; i++) {
+                criteria = criteria.and(keyFields[i]).is(row.get(keyFields[i]));
+            }
+            Update update = new Update();
+            row.forEach(update::set);
+            bulk.upsert(Query.query(criteria), update);
+        }
+        bulk.execute();
+    }
 
     private void upsert(String collection, Map<String, Object> data, String... keys) {
         Criteria criteria = Criteria.where(keys[0]).is(data.get(keys[0]));

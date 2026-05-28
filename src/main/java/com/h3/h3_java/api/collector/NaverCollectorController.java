@@ -5,6 +5,7 @@ import com.h3.h3_java.batch.stat.NaverGfaAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverGfaAdgroupDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverGfaBudgetAlarmJob;
 import com.h3.h3_java.batch.stat.NaverGfaCampaignDayCollectionJob;
+import com.h3.h3_java.batch.stat.NaverGfaConvTypeJob;
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
 import com.h3.h3_java.batch.stat.NaverAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverAdGroupDayCollectionJob;
@@ -38,6 +39,7 @@ public class NaverCollectorController {
     private final NaverGfaAdgroupDayCollectionJob gfaAdgroupDayJob;
     private final NaverGfaBudgetAlarmJob gfaBudgetAlarmJob;
     private final NaverGfaCampaignDayCollectionJob gfaCampaignDayJob;
+    private final NaverGfaConvTypeJob gfaConvTypeJob;
     private final NaverCampaignDayCollectionJob campaignDayJob;
     private final NaverCampaignHourCollectionJob campaignHourJob;
     private final NaverAdGroupDayCollectionJob adGroupDayJob;
@@ -748,6 +750,60 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " GFA 예산 알람 MQ 발행 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] GFA 예산 알람 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    // =====================================================================
+    // GFA 전환유형
+    // =====================================================================
+
+    @PostMapping("/gfa-conv-type")
+    public ResponseEntity<Map<String, String>> collectGfaConvType() {
+        log.info("[NaverCollector] GFA 전환유형 전체 수집 시작");
+        try {
+            gfaConvTypeJob.collect();
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "GFA 전환유형 전체 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 전환유형 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-conv-type/{userId}")
+    public ResponseEntity<Map<String, String>> collectGfaConvTypeByUser(@PathVariable String userId) {
+        log.info("[NaverCollector] GFA 전환유형 단일 수집 MQ 발행 userId={}", userId);
+        try {
+            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverGfaConvType(userId);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " GFA 전환유형 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 전환유형 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-conv-type/{userId}/range")
+    public ResponseEntity<Map<String, String>> collectGfaConvTypeRange(
+            @PathVariable String userId,
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] GFA 전환유형 기간 수집 MQ 발행 userId={} from={} to={}", userId, from, to);
+        try {
+            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverGfaConvTypeRange(userId, from, to);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " GFA 전환유형 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 전환유형 기간 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }

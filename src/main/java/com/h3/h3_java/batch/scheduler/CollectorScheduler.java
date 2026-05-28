@@ -23,6 +23,19 @@ public class CollectorScheduler {
     private final NaverGfaMapper gfaMapper;
     private final CollectorProducer producer;
 
+    // 매일 오전 8시 00분 - GFA 전환유형 수집
+    @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Seoul")
+    public void scheduleNaverGfaConvType() {
+        log.info("[SCHEDULER] 네이버 GFA 전환유형 수집 시작");
+        List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+        int count = 0;
+        for (NaverGfaAccountDto account : accounts) {
+            producer.sendNaverGfaConvType(account.getUserId());
+            count++;
+        }
+        log.info("[SCHEDULER] 네이버 GFA 전환유형 메시지 발행 완료 총={}건", count);
+    }
+
     // 매일 오전 7시 30분 - GFA 소재 일별 수집
     @Scheduled(cron = "0 30 7 * * *", zone = "Asia/Seoul")
     public void scheduleNaverGfaAdDaily() {
