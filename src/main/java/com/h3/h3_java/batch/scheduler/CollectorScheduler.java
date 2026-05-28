@@ -1,6 +1,8 @@
 package com.h3.h3_java.batch.scheduler;
 
+import com.h3.h3_java.media.kakao.dto.KakaoMoAccountDto;
 import com.h3.h3_java.media.kakao.dto.KakaoSaAccountDto;
+import com.h3.h3_java.media.kakao.mapper.KakaoMoMapper;
 import com.h3.h3_java.media.kakao.mapper.KakaoSaMapper;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.dto.NaverGfaAccountDto;
@@ -24,6 +26,7 @@ public class CollectorScheduler {
     private final NaverMasterReportMapper mapper;
     private final NaverGfaMapper          gfaMapper;
     private final KakaoSaMapper           kakaoSaMapper;
+    private final KakaoMoMapper           kakaoMoMapper;
     private final CollectorProducer       producer;
 
     // 매일 오전 8시 00분 - GFA 전환유형 수집
@@ -317,5 +320,73 @@ public class CollectorScheduler {
             producer.sendKakaoSaBudgetAlarm(account.getUserId());
         }
         log.info("[SCHEDULER] 카카오SA 예산 알람 메시지 발행 완료 총={}건", accounts.size());
+    }
+
+    // ── Kakao MO 스케줄 ────────────────────────────────────────────────────────
+
+    // 매일 오후 1시 - Kakao MO 마스터 수집
+    @Scheduled(cron = "0 0 13 * * *", zone = "Asia/Seoul")
+    public void scheduleKakaoMoMaster() {
+        log.info("[SCHEDULER] 카카오MO 마스터 수집 시작");
+        List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        for (KakaoMoAccountDto account : accounts) {
+            producer.sendKakaoMoMaster(account.getUserId());
+        }
+        log.info("[SCHEDULER] 카카오MO 마스터 메시지 발행 완료 총={}건", accounts.size());
+    }
+
+    // 매일 오후 2시 - Kakao MO 캠페인 일별 수집
+    @Scheduled(cron = "0 0 14 * * *", zone = "Asia/Seoul")
+    public void scheduleKakaoMoCampaignDaily() {
+        log.info("[SCHEDULER] 카카오MO 캠페인 일별 수집 시작");
+        List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        for (KakaoMoAccountDto account : accounts) {
+            producer.sendKakaoMoCampaignDaily(account.getUserId());
+        }
+        log.info("[SCHEDULER] 카카오MO 캠페인 일별 메시지 발행 완료 총={}건", accounts.size());
+    }
+
+    // 매일 오후 2시 30분 - Kakao MO 캠페인 시간별 수집
+    @Scheduled(cron = "0 30 14 * * *", zone = "Asia/Seoul")
+    public void scheduleKakaoMoCampaignHour() {
+        log.info("[SCHEDULER] 카카오MO 캠페인 시간별 수집 시작");
+        List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        for (KakaoMoAccountDto account : accounts) {
+            producer.sendKakaoMoCampaignHour(account.getUserId());
+        }
+        log.info("[SCHEDULER] 카카오MO 캠페인 시간별 메시지 발행 완료 총={}건", accounts.size());
+    }
+
+    // 매일 오후 3시 - Kakao MO 광고그룹 일별 수집
+    @Scheduled(cron = "0 0 15 * * *", zone = "Asia/Seoul")
+    public void scheduleKakaoMoAdGroupDaily() {
+        log.info("[SCHEDULER] 카카오MO 광고그룹 일별 수집 시작");
+        List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        for (KakaoMoAccountDto account : accounts) {
+            producer.sendKakaoMoAdGroupDaily(account.getUserId());
+        }
+        log.info("[SCHEDULER] 카카오MO 광고그룹 일별 메시지 발행 완료 총={}건", accounts.size());
+    }
+
+    // 매일 오후 3시 30분 - Kakao MO 소재 일별 수집
+    @Scheduled(cron = "0 30 15 * * *", zone = "Asia/Seoul")
+    public void scheduleKakaoMoAdDaily() {
+        log.info("[SCHEDULER] 카카오MO 소재 일별 수집 시작");
+        List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        for (KakaoMoAccountDto account : accounts) {
+            producer.sendKakaoMoAdDaily(account.getUserId());
+        }
+        log.info("[SCHEDULER] 카카오MO 소재 일별 메시지 발행 완료 총={}건", accounts.size());
+    }
+
+    // 매일 오후 4시 - Kakao MO 예산 알람
+    @Scheduled(cron = "0 0 16 * * *", zone = "Asia/Seoul")
+    public void scheduleKakaoMoBudgetAlarm() {
+        log.info("[SCHEDULER] 카카오MO 예산 알람 시작");
+        List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        for (KakaoMoAccountDto account : accounts) {
+            producer.sendKakaoMoBudgetAlarm(account.getUserId());
+        }
+        log.info("[SCHEDULER] 카카오MO 예산 알람 메시지 발행 완료 총={}건", accounts.size());
     }
 }

@@ -80,6 +80,26 @@ public class RabbitMQConfig {
     public static final String QUEUE_KAKAO_SA_BUDGET_ALARM       = "h3.collector.kakao.sa.budget.alarm";
     public static final String ROUTING_KAKAO_SA_BUDGET_ALARM     = "kakao.sa.budget.alarm";
 
+    // ── Kakao MO ──────────────────────────────────────────────────────────────
+
+    public static final String QUEUE_KAKAO_MO_MASTER             = "h3.collector.kakao.mo.master";
+    public static final String ROUTING_KAKAO_MO_MASTER           = "kakao.mo.master";
+
+    public static final String QUEUE_KAKAO_MO_CAMPAIGN_DAILY     = "h3.collector.kakao.mo.campaign.daily";
+    public static final String ROUTING_KAKAO_MO_CAMPAIGN_DAILY   = "kakao.mo.campaign.daily";
+
+    public static final String QUEUE_KAKAO_MO_CAMPAIGN_HOUR      = "h3.collector.kakao.mo.campaign.hour";
+    public static final String ROUTING_KAKAO_MO_CAMPAIGN_HOUR    = "kakao.mo.campaign.hour";
+
+    public static final String QUEUE_KAKAO_MO_ADGROUP_DAILY      = "h3.collector.kakao.mo.adgroup.daily";
+    public static final String ROUTING_KAKAO_MO_ADGROUP_DAILY    = "kakao.mo.adgroup.daily";
+
+    public static final String QUEUE_KAKAO_MO_AD_DAILY           = "h3.collector.kakao.mo.ad.daily";
+    public static final String ROUTING_KAKAO_MO_AD_DAILY         = "kakao.mo.ad.daily";
+
+    public static final String QUEUE_KAKAO_MO_BUDGET_ALARM       = "h3.collector.kakao.mo.budget.alarm";
+    public static final String ROUTING_KAKAO_MO_BUDGET_ALARM     = "kakao.mo.budget.alarm";
+
     @Bean
     public DirectExchange collectorExchange() {
         return new DirectExchange(EXCHANGE);
@@ -257,6 +277,26 @@ public class RabbitMQConfig {
 
     @Bean public Queue kakaoSaBudgetAlarmQueue() { return QueueBuilder.durable(QUEUE_KAKAO_SA_BUDGET_ALARM).build(); }
     @Bean public Binding kakaoSaBudgetAlarmBinding(Queue kakaoSaBudgetAlarmQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoSaBudgetAlarmQueue).to(collectorExchange).with(ROUTING_KAKAO_SA_BUDGET_ALARM); }
+
+    // ── Kakao MO Beans ────────────────────────────────────────────────────────
+
+    @Bean public Queue kakaoMoMasterQueue() { return QueueBuilder.durable(QUEUE_KAKAO_MO_MASTER).build(); }
+    @Bean public Binding kakaoMoMasterBinding(Queue kakaoMoMasterQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoMoMasterQueue).to(collectorExchange).with(ROUTING_KAKAO_MO_MASTER); }
+
+    @Bean public Queue kakaoMoCampaignDailyQueue() { return QueueBuilder.durable(QUEUE_KAKAO_MO_CAMPAIGN_DAILY).build(); }
+    @Bean public Binding kakaoMoCampaignDailyBinding(Queue kakaoMoCampaignDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoMoCampaignDailyQueue).to(collectorExchange).with(ROUTING_KAKAO_MO_CAMPAIGN_DAILY); }
+
+    @Bean public Queue kakaoMoCampaignHourQueue() { return QueueBuilder.durable(QUEUE_KAKAO_MO_CAMPAIGN_HOUR).build(); }
+    @Bean public Binding kakaoMoCampaignHourBinding(Queue kakaoMoCampaignHourQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoMoCampaignHourQueue).to(collectorExchange).with(ROUTING_KAKAO_MO_CAMPAIGN_HOUR); }
+
+    @Bean public Queue kakaoMoAdGroupDailyQueue() { return QueueBuilder.durable(QUEUE_KAKAO_MO_ADGROUP_DAILY).build(); }
+    @Bean public Binding kakaoMoAdGroupDailyBinding(Queue kakaoMoAdGroupDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoMoAdGroupDailyQueue).to(collectorExchange).with(ROUTING_KAKAO_MO_ADGROUP_DAILY); }
+
+    @Bean public Queue kakaoMoAdDailyQueue() { return QueueBuilder.durable(QUEUE_KAKAO_MO_AD_DAILY).build(); }
+    @Bean public Binding kakaoMoAdDailyBinding(Queue kakaoMoAdDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoMoAdDailyQueue).to(collectorExchange).with(ROUTING_KAKAO_MO_AD_DAILY); }
+
+    @Bean public Queue kakaoMoBudgetAlarmQueue() { return QueueBuilder.durable(QUEUE_KAKAO_MO_BUDGET_ALARM).build(); }
+    @Bean public Binding kakaoMoBudgetAlarmBinding(Queue kakaoMoBudgetAlarmQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoMoBudgetAlarmQueue).to(collectorExchange).with(ROUTING_KAKAO_MO_BUDGET_ALARM); }
 
     @Bean
     public Jackson2JsonMessageConverter messageConverter() {

@@ -1,6 +1,12 @@
 package com.h3.h3_java.queue.consumer;
 
+import com.h3.h3_java.batch.master.KakaoMoMasterJob;
 import com.h3.h3_java.batch.master.KakaoSaMasterJob;
+import com.h3.h3_java.batch.stat.KakaoMoCampaignDayJob;
+import com.h3.h3_java.batch.stat.KakaoMoCampaignHourJob;
+import com.h3.h3_java.batch.stat.KakaoMoAdGroupDayJob;
+import com.h3.h3_java.batch.stat.KakaoMoAdDayJob;
+import com.h3.h3_java.batch.stat.KakaoMoBudgetAlarmJob;
 import com.h3.h3_java.batch.stat.KakaoSaCampaignDayJob;
 import com.h3.h3_java.batch.stat.KakaoSaCampaignHourJob;
 import com.h3.h3_java.batch.stat.KakaoSaAdGroupDayJob;
@@ -49,7 +55,13 @@ public class CollectorConsumer {
     private final NaverGfaAdgroupDayCollectionJob naverGfaAdgroupDayCollectionJob;
     private final NaverGfaBudgetAlarmJob naverGfaBudgetAlarmJob;
     private final NaverGfaConvTypeJob naverGfaConvTypeJob;
-    private final KakaoSaMasterJob      kakaoSaMasterJob;
+    private final KakaoMoMasterJob       kakaoMoMasterJob;
+    private final KakaoMoCampaignDayJob  kakaoMoCampaignDayJob;
+    private final KakaoMoCampaignHourJob kakaoMoCampaignHourJob;
+    private final KakaoMoAdGroupDayJob   kakaoMoAdGroupDayJob;
+    private final KakaoMoAdDayJob        kakaoMoAdDayJob;
+    private final KakaoMoBudgetAlarmJob  kakaoMoBudgetAlarmJob;
+    private final KakaoSaMasterJob       kakaoSaMasterJob;
     private final KakaoSaCampaignDayJob kakaoSaCampaignDayJob;
     private final KakaoSaCampaignHourJob kakaoSaCampaignHourJob;
     private final KakaoSaAdGroupDayJob  kakaoSaAdGroupDayJob;
@@ -340,6 +352,84 @@ public class CollectorConsumer {
             kakaoSaBudgetAlarmJob.collectForUserId(msg.getUserId());
         } catch (Exception e) {
             log.error("[MQ][ERROR] KAKAO SA BUDGET ALARM userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    // ── Kakao MO ──────────────────────────────────────────────────────────────
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_MASTER, concurrency = "3")
+    public void consumeKakaoMoMaster(CollectorMessage msg) {
+        log.info("[MQ][RECV] KAKAO MO MASTER userId={}", msg.getUserId());
+        try {
+            kakaoMoMasterJob.collectForUserId(msg.getUserId());
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] KAKAO MO MASTER userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_CAMPAIGN_DAILY)
+    public void consumeKakaoMoCampaignDaily(CollectorMessage msg) {
+        log.info("[MQ][RECV] KAKAO MO CAMPAIGN DAILY userId={}", msg.getUserId());
+        try {
+            if (hasRange(msg)) {
+                kakaoMoCampaignDayJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                kakaoMoCampaignDayJob.collectForUserId(msg.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] KAKAO MO CAMPAIGN DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_CAMPAIGN_HOUR)
+    public void consumeKakaoMoCampaignHour(CollectorMessage msg) {
+        log.info("[MQ][RECV] KAKAO MO CAMPAIGN HOUR userId={}", msg.getUserId());
+        try {
+            if (hasRange(msg)) {
+                kakaoMoCampaignHourJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                kakaoMoCampaignHourJob.collectForUserId(msg.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] KAKAO MO CAMPAIGN HOUR userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_ADGROUP_DAILY)
+    public void consumeKakaoMoAdGroupDaily(CollectorMessage msg) {
+        log.info("[MQ][RECV] KAKAO MO ADGROUP DAILY userId={}", msg.getUserId());
+        try {
+            if (hasRange(msg)) {
+                kakaoMoAdGroupDayJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                kakaoMoAdGroupDayJob.collectForUserId(msg.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] KAKAO MO ADGROUP DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_AD_DAILY)
+    public void consumeKakaoMoAdDaily(CollectorMessage msg) {
+        log.info("[MQ][RECV] KAKAO MO AD DAILY userId={}", msg.getUserId());
+        try {
+            if (hasRange(msg)) {
+                kakaoMoAdDayJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                kakaoMoAdDayJob.collectForUserId(msg.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] KAKAO MO AD DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_BUDGET_ALARM)
+    public void consumeKakaoMoBudgetAlarm(CollectorMessage msg) {
+        log.info("[MQ][RECV] KAKAO MO BUDGET ALARM userId={}", msg.getUserId());
+        try {
+            kakaoMoBudgetAlarmJob.collectForUserId(msg.getUserId());
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] KAKAO MO BUDGET ALARM userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
     }
 

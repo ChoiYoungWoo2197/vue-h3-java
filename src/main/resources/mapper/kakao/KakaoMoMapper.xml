@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.h3.h3_java.media.kakao.mapper.KakaoMoMapper">
+
+    <select id="selectKakaoMoAccounts" resultType="com.h3.h3_java.media.kakao.dto.KakaoMoAccountDto">
+        SELECT user_id AS userId, account_kakaomoment AS accountKakaomoment
+        FROM h3_account
+        WHERE account_kakaomoment IS NOT NULL
+          AND account_kakaomoment != ''
+          AND user_id NOT IN ('admin', 'dydrp123')
+    </select>
+
+    <select id="selectLatestKakaoMoToken" resultType="map">
+        SELECT accesstoken AS access_token, refreshtoken AS refresh_token
+        FROM h3_kakao_auth
+        WHERE type = 'kakaomo'
+        ORDER BY daily_regdate DESC
+        LIMIT 1
+    </select>
+
+</mapper>

@@ -329,4 +329,88 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_BUDGET_ALARM, msg);
         log.info("[MQ][SEND] KAKAO SA BUDGET ALARM userId={}", userId);
     }
+
+    // =====================================================================
+    // KAKAO MO MASTER
+    // =====================================================================
+
+    public void sendKakaoMoMaster(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "MASTER", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_MASTER, msg);
+        log.info("[MQ][SEND] KAKAO MO MASTER userId={}", userId);
+    }
+
+    // =====================================================================
+    // KAKAO MO CAMPAIGN DAILY
+    // =====================================================================
+
+    public void sendKakaoMoCampaignDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "CAMPAIGN_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_CAMPAIGN_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO MO CAMPAIGN DAILY userId={}", userId);
+    }
+
+    public void sendKakaoMoCampaignDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "CAMPAIGN_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_CAMPAIGN_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO MO CAMPAIGN DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // KAKAO MO CAMPAIGN HOUR
+    // =====================================================================
+
+    public void sendKakaoMoCampaignHour(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "CAMPAIGN_HOUR", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_CAMPAIGN_HOUR, msg);
+        log.info("[MQ][SEND] KAKAO MO CAMPAIGN HOUR userId={}", userId);
+    }
+
+    public void sendKakaoMoCampaignHourRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "CAMPAIGN_HOUR", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_CAMPAIGN_HOUR, msg);
+        log.info("[MQ][SEND] KAKAO MO CAMPAIGN HOUR RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // KAKAO MO ADGROUP DAILY
+    // =====================================================================
+
+    public void sendKakaoMoAdGroupDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "ADGROUP_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_ADGROUP_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO MO ADGROUP DAILY userId={}", userId);
+    }
+
+    public void sendKakaoMoAdGroupDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "ADGROUP_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_ADGROUP_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO MO ADGROUP DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // KAKAO MO AD DAILY
+    // =====================================================================
+
+    public void sendKakaoMoAdDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "AD_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_AD_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO MO AD DAILY userId={}", userId);
+    }
+
+    public void sendKakaoMoAdDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "AD_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_AD_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO MO AD DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // KAKAO MO BUDGET ALARM
+    // =====================================================================
+
+    public void sendKakaoMoBudgetAlarm(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "BUDGET_ALARM", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_BUDGET_ALARM, msg);
+        log.info("[MQ][SEND] KAKAO MO BUDGET ALARM userId={}", userId);
+    }
 }
