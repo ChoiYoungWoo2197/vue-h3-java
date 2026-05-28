@@ -229,4 +229,104 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_CONV_TYPE, msg);
         log.info("[MQ][SEND] NAVER GFA CONV TYPE RANGE userId={} from={} to={}", userId, from, to);
     }
+
+    // =====================================================================
+    // KAKAO SA MASTER
+    // =====================================================================
+
+    public void sendKakaoSaMaster(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "MASTER", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_MASTER, msg);
+        log.info("[MQ][SEND] KAKAO SA MASTER userId={}", userId);
+    }
+
+    // =====================================================================
+    // KAKAO SA CAMPAIGN DAILY
+    // =====================================================================
+
+    public void sendKakaoSaCampaignDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "CAMPAIGN_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_CAMPAIGN_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO SA CAMPAIGN DAILY userId={}", userId);
+    }
+
+    public void sendKakaoSaCampaignDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "CAMPAIGN_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_CAMPAIGN_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO SA CAMPAIGN DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // KAKAO SA CAMPAIGN HOUR
+    // =====================================================================
+
+    public void sendKakaoSaCampaignHour(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "CAMPAIGN_HOUR", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_CAMPAIGN_HOUR, msg);
+        log.info("[MQ][SEND] KAKAO SA CAMPAIGN HOUR userId={}", userId);
+    }
+
+    public void sendKakaoSaCampaignHourRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "CAMPAIGN_HOUR", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_CAMPAIGN_HOUR, msg);
+        log.info("[MQ][SEND] KAKAO SA CAMPAIGN HOUR RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // KAKAO SA ADGROUP DAILY
+    // =====================================================================
+
+    public void sendKakaoSaAdGroupDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "ADGROUP_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_ADGROUP_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO SA ADGROUP DAILY userId={}", userId);
+    }
+
+    public void sendKakaoSaAdGroupDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "ADGROUP_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_ADGROUP_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO SA ADGROUP DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // KAKAO SA KEYWORD DAILY
+    // =====================================================================
+
+    public void sendKakaoSaKeywordDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "KEYWORD_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_KEYWORD_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO SA KEYWORD DAILY userId={}", userId);
+    }
+
+    public void sendKakaoSaKeywordDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "KEYWORD_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_KEYWORD_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO SA KEYWORD DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // KAKAO SA AD DAILY
+    // =====================================================================
+
+    public void sendKakaoSaAdDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "AD_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_AD_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO SA AD DAILY userId={}", userId);
+    }
+
+    public void sendKakaoSaAdDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "AD_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_AD_DAILY, msg);
+        log.info("[MQ][SEND] KAKAO SA AD DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // KAKAO SA BUDGET ALARM
+    // =====================================================================
+
+    public void sendKakaoSaBudgetAlarm(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "BUDGET_ALARM", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_BUDGET_ALARM, msg);
+        log.info("[MQ][SEND] KAKAO SA BUDGET ALARM userId={}", userId);
+    }
 }

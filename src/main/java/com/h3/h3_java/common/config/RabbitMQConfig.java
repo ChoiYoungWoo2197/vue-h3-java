@@ -57,6 +57,29 @@ public class RabbitMQConfig {
     public static final String QUEUE_NAVER_GFA_CONV_TYPE   = "h3.collector.naver.gfa.conv.type";
     public static final String ROUTING_NAVER_GFA_CONV_TYPE = "naver.gfa.conv.type";
 
+    // ── Kakao SA ──────────────────────────────────────────────────────────────
+
+    public static final String QUEUE_KAKAO_SA_MASTER             = "h3.collector.kakao.sa.master";
+    public static final String ROUTING_KAKAO_SA_MASTER           = "kakao.sa.master";
+
+    public static final String QUEUE_KAKAO_SA_CAMPAIGN_DAILY     = "h3.collector.kakao.sa.campaign.daily";
+    public static final String ROUTING_KAKAO_SA_CAMPAIGN_DAILY   = "kakao.sa.campaign.daily";
+
+    public static final String QUEUE_KAKAO_SA_CAMPAIGN_HOUR      = "h3.collector.kakao.sa.campaign.hour";
+    public static final String ROUTING_KAKAO_SA_CAMPAIGN_HOUR    = "kakao.sa.campaign.hour";
+
+    public static final String QUEUE_KAKAO_SA_ADGROUP_DAILY      = "h3.collector.kakao.sa.adgroup.daily";
+    public static final String ROUTING_KAKAO_SA_ADGROUP_DAILY    = "kakao.sa.adgroup.daily";
+
+    public static final String QUEUE_KAKAO_SA_KEYWORD_DAILY      = "h3.collector.kakao.sa.keyword.daily";
+    public static final String ROUTING_KAKAO_SA_KEYWORD_DAILY    = "kakao.sa.keyword.daily";
+
+    public static final String QUEUE_KAKAO_SA_AD_DAILY           = "h3.collector.kakao.sa.ad.daily";
+    public static final String ROUTING_KAKAO_SA_AD_DAILY         = "kakao.sa.ad.daily";
+
+    public static final String QUEUE_KAKAO_SA_BUDGET_ALARM       = "h3.collector.kakao.sa.budget.alarm";
+    public static final String ROUTING_KAKAO_SA_BUDGET_ALARM     = "kakao.sa.budget.alarm";
+
     @Bean
     public DirectExchange collectorExchange() {
         return new DirectExchange(EXCHANGE);
@@ -211,6 +234,29 @@ public class RabbitMQConfig {
     public Binding naverGfaConvTypeBinding(Queue naverGfaConvTypeQueue, DirectExchange collectorExchange) {
         return BindingBuilder.bind(naverGfaConvTypeQueue).to(collectorExchange).with(ROUTING_NAVER_GFA_CONV_TYPE);
     }
+
+    // ── Kakao SA Beans ────────────────────────────────────────────────────────
+
+    @Bean public Queue kakaoSaMasterQueue() { return QueueBuilder.durable(QUEUE_KAKAO_SA_MASTER).build(); }
+    @Bean public Binding kakaoSaMasterBinding(Queue kakaoSaMasterQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoSaMasterQueue).to(collectorExchange).with(ROUTING_KAKAO_SA_MASTER); }
+
+    @Bean public Queue kakaoSaCampaignDailyQueue() { return QueueBuilder.durable(QUEUE_KAKAO_SA_CAMPAIGN_DAILY).build(); }
+    @Bean public Binding kakaoSaCampaignDailyBinding(Queue kakaoSaCampaignDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoSaCampaignDailyQueue).to(collectorExchange).with(ROUTING_KAKAO_SA_CAMPAIGN_DAILY); }
+
+    @Bean public Queue kakaoSaCampaignHourQueue() { return QueueBuilder.durable(QUEUE_KAKAO_SA_CAMPAIGN_HOUR).build(); }
+    @Bean public Binding kakaoSaCampaignHourBinding(Queue kakaoSaCampaignHourQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoSaCampaignHourQueue).to(collectorExchange).with(ROUTING_KAKAO_SA_CAMPAIGN_HOUR); }
+
+    @Bean public Queue kakaoSaAdGroupDailyQueue() { return QueueBuilder.durable(QUEUE_KAKAO_SA_ADGROUP_DAILY).build(); }
+    @Bean public Binding kakaoSaAdGroupDailyBinding(Queue kakaoSaAdGroupDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoSaAdGroupDailyQueue).to(collectorExchange).with(ROUTING_KAKAO_SA_ADGROUP_DAILY); }
+
+    @Bean public Queue kakaoSaKeywordDailyQueue() { return QueueBuilder.durable(QUEUE_KAKAO_SA_KEYWORD_DAILY).build(); }
+    @Bean public Binding kakaoSaKeywordDailyBinding(Queue kakaoSaKeywordDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoSaKeywordDailyQueue).to(collectorExchange).with(ROUTING_KAKAO_SA_KEYWORD_DAILY); }
+
+    @Bean public Queue kakaoSaAdDailyQueue() { return QueueBuilder.durable(QUEUE_KAKAO_SA_AD_DAILY).build(); }
+    @Bean public Binding kakaoSaAdDailyBinding(Queue kakaoSaAdDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoSaAdDailyQueue).to(collectorExchange).with(ROUTING_KAKAO_SA_AD_DAILY); }
+
+    @Bean public Queue kakaoSaBudgetAlarmQueue() { return QueueBuilder.durable(QUEUE_KAKAO_SA_BUDGET_ALARM).build(); }
+    @Bean public Binding kakaoSaBudgetAlarmBinding(Queue kakaoSaBudgetAlarmQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoSaBudgetAlarmQueue).to(collectorExchange).with(ROUTING_KAKAO_SA_BUDGET_ALARM); }
 
     @Bean
     public Jackson2JsonMessageConverter messageConverter() {

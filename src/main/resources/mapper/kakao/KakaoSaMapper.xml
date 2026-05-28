@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.h3.h3_java.media.kakao.mapper.KakaoSaMapper">
+
+    <select id="selectKakaoSaAccounts" resultType="com.h3.h3_java.media.kakao.dto.KakaoSaAccountDto">
+        SELECT user_id AS userId, account_kakaosa AS accountKakaosa
+        FROM h3_account
+        WHERE account_kakaosa IS NOT NULL
+          AND account_kakaosa != ''
+          AND user_id NOT IN ('admin', 'dydrp123')
+    </select>
+
+    <!-- h3_kakao_auth MySQL → MongoDB 초기 마이그레이션용 -->
+    <select id="selectLatestKakaoSaToken" resultType="map">
+        SELECT accesstoken AS access_token, refreshtoken AS refresh_token
+        FROM h3_kakao_auth
+        WHERE type = 'kakaosa'
+        ORDER BY daily_regdate DESC
+        LIMIT 1
+    </select>
+
+</mapper>

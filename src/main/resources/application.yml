@@ -27,6 +27,11 @@ spring:
     jdbc:
       initialize-schema: never
 
+kakao:
+  sa:
+    client-id: 1bc34ca0c3ea23dbb3e1259e08912e9d
+    client-secret: CgtEYS9tWvpaQxCY3ZY1H7JKQYV4EJky
+
 # MyBatis
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
