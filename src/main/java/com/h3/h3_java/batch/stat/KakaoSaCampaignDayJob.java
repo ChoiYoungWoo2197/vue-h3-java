@@ -90,7 +90,7 @@ public class KakaoSaCampaignDayJob {
     private void collectDate(KakaoSaApiClient api, String advkey, String date,
                               List<Map<String, Object>> campaigns) {
         // 오늘 이후는 skip
-        if (!date.compareTo(LocalDate.now().format(FMT)) < 0) return;
+        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return;
 
         String apiDate = LocalDate.parse(date, FMT).format(APIFMT);
 

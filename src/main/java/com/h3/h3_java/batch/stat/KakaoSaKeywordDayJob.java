@@ -74,7 +74,7 @@ public class KakaoSaKeywordDayJob {
     @SuppressWarnings("unchecked")
     private void collectDate(KakaoSaApiClient api, String advkey, String date,
                               List<Map<String, Object>> adgroups) {
-        if (!date.compareTo(LocalDate.now().format(FMT)) < 0) return;
+        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return;
 
         String apiDate = LocalDate.parse(date, FMT).format(APIFMT);
 

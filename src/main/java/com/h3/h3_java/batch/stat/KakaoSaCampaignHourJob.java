@@ -75,7 +75,7 @@ public class KakaoSaCampaignHourJob {
 
     @SuppressWarnings("unchecked")
     private void collectDate(KakaoSaApiClient api, String advkey, String date) {
-        if (!date.compareTo(LocalDate.now().format(FMT)) < 0) return;
+        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return;
         if (statMongo.existsCampaignHour(advkey, date)) return;
 
         String apiDate = LocalDate.parse(date, FMT).format(APIFMT);
