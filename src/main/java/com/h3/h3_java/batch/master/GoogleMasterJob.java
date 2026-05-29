@@ -174,9 +174,9 @@ public class GoogleMasterJob {
             String headline = "", description = "";
             if (rda != null) {
                 List<?> hl = (List<?>) rda.get("headlines");
-                if (hl != null && !hl.isEmpty()) { Map<?,?> h0 = (Map<?,?>) hl.get(0); if (h0 != null) headline = String.valueOf(h0.getOrDefault("text", "")); }
+                if (hl != null && !hl.isEmpty()) { Map<?,?> h0 = (Map<?,?>) hl.get(0); if (h0 != null) { Object v = h0.get("text"); headline = v != null ? String.valueOf(v) : ""; } }
                 List<?> dl = (List<?>) rda.get("descriptions");
-                if (dl != null && !dl.isEmpty()) { Map<?,?> d0 = (Map<?,?>) dl.get(0); if (d0 != null) description = String.valueOf(d0.getOrDefault("text", "")); }
+                if (dl != null && !dl.isEmpty()) { Map<?,?> d0 = (Map<?,?>) dl.get(0); if (d0 != null) { Object v = d0.get("text"); description = v != null ? String.valueOf(v) : ""; } }
             }
             List<?> urls = (List<?>) ad.get("finalUrls");
             String purl = (urls != null && !urls.isEmpty()) ? String.valueOf(urls.get(0)) : "";
