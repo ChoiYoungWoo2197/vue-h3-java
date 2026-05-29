@@ -4,7 +4,7 @@ spring:
 
   # MySQL
   datasource:
-    url: jdbc:mysql://db-k3dlu.pub-cdb.ntruss.com:3306/heeil?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+    url: jdbc:mysql://db-k3dlu.cdb.ntruss.com:3306/heeil?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
     username: heeil
     password: heeil@0801
     driver-class-name: com.mysql.cj.jdbc.Driver
