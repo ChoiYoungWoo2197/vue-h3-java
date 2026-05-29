@@ -34,8 +34,11 @@ public class CollectorScheduler {
     public void scheduleNaverGfaConvType() {
         log.info("[SCHEDULER] 네이버 GFA 전환유형 수집 시작");
         List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+        Set<String> seen = new HashSet<>();
         int count = 0;
         for (NaverGfaAccountDto account : accounts) {
+            String advkey = account.getAccountGfa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendNaverGfaConvType(account.getUserId());
             count++;
         }
@@ -47,8 +50,11 @@ public class CollectorScheduler {
     public void scheduleNaverGfaAdDaily() {
         log.info("[SCHEDULER] 네이버 GFA 소재 일별 수집 시작");
         List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+        Set<String> seen = new HashSet<>();
         int count = 0;
         for (NaverGfaAccountDto account : accounts) {
+            String advkey = account.getAccountGfa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendNaverGfaAdDaily(account.getUserId());
             count++;
         }
@@ -60,8 +66,11 @@ public class CollectorScheduler {
     public void scheduleNaverGfaAdgroupDaily() {
         log.info("[SCHEDULER] 네이버 GFA 광고그룹 일별 수집 시작");
         List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+        Set<String> seen = new HashSet<>();
         int count = 0;
         for (NaverGfaAccountDto account : accounts) {
+            String advkey = account.getAccountGfa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendNaverGfaAdgroupDaily(account.getUserId());
             count++;
         }
@@ -73,8 +82,11 @@ public class CollectorScheduler {
     public void scheduleNaverGfaBudgetAlarm() {
         log.info("[SCHEDULER] 네이버 GFA 예산 알람 시작");
         List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+        Set<String> seen = new HashSet<>();
         int count = 0;
         for (NaverGfaAccountDto account : accounts) {
+            String advkey = account.getAccountGfa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendNaverGfaBudgetAlarm(account.getUserId());
             count++;
         }
@@ -86,8 +98,11 @@ public class CollectorScheduler {
     public void scheduleNaverGfaCampaignDaily() {
         log.info("[SCHEDULER] 네이버 GFA 캠페인 일별 수집 시작");
         List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+        Set<String> seen = new HashSet<>();
         int count = 0;
         for (NaverGfaAccountDto account : accounts) {
+            String advkey = account.getAccountGfa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendNaverGfaCampaignDaily(account.getUserId());
             count++;
         }
@@ -99,8 +114,11 @@ public class CollectorScheduler {
     public void scheduleNaverGfaMaster() {
         log.info("[SCHEDULER] 네이버 GFA 마스터 수집 시작");
         List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+        Set<String> seen = new HashSet<>();
         int count = 0;
         for (NaverGfaAccountDto account : accounts) {
+            String advkey = account.getAccountGfa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendNaverGfaMaster(account.getUserId());
             count++;
         }
@@ -250,10 +268,15 @@ public class CollectorScheduler {
     public void scheduleKakaoSaMaster() {
         log.info("[SCHEDULER] 카카오SA 마스터 수집 시작");
         List<KakaoSaAccountDto> accounts = kakaoSaMapper.selectKakaoSaAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoSaAccountDto account : accounts) {
+            String advkey = account.getAccountKakaosa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoSaMaster(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오SA 마스터 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오SA 마스터 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 오전 10시 - Kakao SA 캠페인 일별 수집
@@ -261,10 +284,15 @@ public class CollectorScheduler {
     public void scheduleKakaoSaCampaignDaily() {
         log.info("[SCHEDULER] 카카오SA 캠페인 일별 수집 시작");
         List<KakaoSaAccountDto> accounts = kakaoSaMapper.selectKakaoSaAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoSaAccountDto account : accounts) {
+            String advkey = account.getAccountKakaosa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoSaCampaignDaily(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오SA 캠페인 일별 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오SA 캠페인 일별 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 오전 10시 30분 - Kakao SA 캠페인 시간별 수집
@@ -272,10 +300,15 @@ public class CollectorScheduler {
     public void scheduleKakaoSaCampaignHour() {
         log.info("[SCHEDULER] 카카오SA 캠페인 시간별 수집 시작");
         List<KakaoSaAccountDto> accounts = kakaoSaMapper.selectKakaoSaAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoSaAccountDto account : accounts) {
+            String advkey = account.getAccountKakaosa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoSaCampaignHour(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오SA 캠페인 시간별 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오SA 캠페인 시간별 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 오전 11시 - Kakao SA 광고그룹 일별 수집
@@ -283,10 +316,15 @@ public class CollectorScheduler {
     public void scheduleKakaoSaAdGroupDaily() {
         log.info("[SCHEDULER] 카카오SA 광고그룹 일별 수집 시작");
         List<KakaoSaAccountDto> accounts = kakaoSaMapper.selectKakaoSaAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoSaAccountDto account : accounts) {
+            String advkey = account.getAccountKakaosa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoSaAdGroupDaily(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오SA 광고그룹 일별 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오SA 광고그룹 일별 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 오전 11시 30분 - Kakao SA 키워드 일별 수집
@@ -294,10 +332,15 @@ public class CollectorScheduler {
     public void scheduleKakaoSaKeywordDaily() {
         log.info("[SCHEDULER] 카카오SA 키워드 일별 수집 시작");
         List<KakaoSaAccountDto> accounts = kakaoSaMapper.selectKakaoSaAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoSaAccountDto account : accounts) {
+            String advkey = account.getAccountKakaosa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoSaKeywordDaily(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오SA 키워드 일별 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오SA 키워드 일별 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 정오 12시 - Kakao SA 소재 일별 수집
@@ -305,10 +348,15 @@ public class CollectorScheduler {
     public void scheduleKakaoSaAdDaily() {
         log.info("[SCHEDULER] 카카오SA 소재 일별 수집 시작");
         List<KakaoSaAccountDto> accounts = kakaoSaMapper.selectKakaoSaAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoSaAccountDto account : accounts) {
+            String advkey = account.getAccountKakaosa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoSaAdDaily(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오SA 소재 일별 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오SA 소재 일별 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 오후 12시 30분 - Kakao SA 예산 알람
@@ -316,10 +364,15 @@ public class CollectorScheduler {
     public void scheduleKakaoSaBudgetAlarm() {
         log.info("[SCHEDULER] 카카오SA 예산 알람 시작");
         List<KakaoSaAccountDto> accounts = kakaoSaMapper.selectKakaoSaAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoSaAccountDto account : accounts) {
+            String advkey = account.getAccountKakaosa();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoSaBudgetAlarm(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오SA 예산 알람 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오SA 예산 알람 메시지 발행 완료 총={}건", count);
     }
 
     // ── Kakao MO 스케줄 ────────────────────────────────────────────────────────
@@ -329,10 +382,15 @@ public class CollectorScheduler {
     public void scheduleKakaoMoMaster() {
         log.info("[SCHEDULER] 카카오MO 마스터 수집 시작");
         List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoMoAccountDto account : accounts) {
+            String advkey = account.getAccountKakaomoment();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoMoMaster(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오MO 마스터 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오MO 마스터 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 오후 2시 - Kakao MO 캠페인 일별 수집
@@ -340,10 +398,15 @@ public class CollectorScheduler {
     public void scheduleKakaoMoCampaignDaily() {
         log.info("[SCHEDULER] 카카오MO 캠페인 일별 수집 시작");
         List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoMoAccountDto account : accounts) {
+            String advkey = account.getAccountKakaomoment();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoMoCampaignDaily(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오MO 캠페인 일별 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오MO 캠페인 일별 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 오후 2시 30분 - Kakao MO 캠페인 시간별 수집
@@ -351,10 +414,15 @@ public class CollectorScheduler {
     public void scheduleKakaoMoCampaignHour() {
         log.info("[SCHEDULER] 카카오MO 캠페인 시간별 수집 시작");
         List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoMoAccountDto account : accounts) {
+            String advkey = account.getAccountKakaomoment();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoMoCampaignHour(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오MO 캠페인 시간별 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오MO 캠페인 시간별 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 오후 3시 - Kakao MO 광고그룹 일별 수집
@@ -362,10 +430,15 @@ public class CollectorScheduler {
     public void scheduleKakaoMoAdGroupDaily() {
         log.info("[SCHEDULER] 카카오MO 광고그룹 일별 수집 시작");
         List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoMoAccountDto account : accounts) {
+            String advkey = account.getAccountKakaomoment();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoMoAdGroupDaily(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오MO 광고그룹 일별 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오MO 광고그룹 일별 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 오후 3시 30분 - Kakao MO 소재 일별 수집
@@ -373,10 +446,15 @@ public class CollectorScheduler {
     public void scheduleKakaoMoAdDaily() {
         log.info("[SCHEDULER] 카카오MO 소재 일별 수집 시작");
         List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoMoAccountDto account : accounts) {
+            String advkey = account.getAccountKakaomoment();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoMoAdDaily(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오MO 소재 일별 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오MO 소재 일별 메시지 발행 완료 총={}건", count);
     }
 
     // 매일 오후 4시 - Kakao MO 예산 알람
@@ -384,9 +462,14 @@ public class CollectorScheduler {
     public void scheduleKakaoMoBudgetAlarm() {
         log.info("[SCHEDULER] 카카오MO 예산 알람 시작");
         List<KakaoMoAccountDto> accounts = kakaoMoMapper.selectKakaoMoAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
         for (KakaoMoAccountDto account : accounts) {
+            String advkey = account.getAccountKakaomoment();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
             producer.sendKakaoMoBudgetAlarm(account.getUserId());
+            count++;
         }
-        log.info("[SCHEDULER] 카카오MO 예산 알람 메시지 발행 완료 총={}건", accounts.size());
+        log.info("[SCHEDULER] 카카오MO 예산 알람 메시지 발행 완료 총={}건", count);
     }
 }
