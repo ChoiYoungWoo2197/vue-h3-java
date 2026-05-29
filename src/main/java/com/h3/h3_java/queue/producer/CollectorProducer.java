@@ -413,4 +413,94 @@ public class CollectorProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_BUDGET_ALARM, msg);
         log.info("[MQ][SEND] KAKAO MO BUDGET ALARM userId={}", userId);
     }
+
+    // =====================================================================
+    // GOOGLE MASTER
+    // =====================================================================
+
+    public void sendGoogleMaster(String userId) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "MASTER", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_MASTER, msg);
+        log.info("[MQ][SEND] GOOGLE MASTER userId={}", userId);
+    }
+
+    // =====================================================================
+    // GOOGLE CAMPAIGN DAILY
+    // =====================================================================
+
+    public void sendGoogleCampaignDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "CAMPAIGN_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_CAMPAIGN_DAILY, msg);
+        log.info("[MQ][SEND] GOOGLE CAMPAIGN DAILY userId={}", userId);
+    }
+
+    public void sendGoogleCampaignDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "CAMPAIGN_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_CAMPAIGN_DAILY, msg);
+        log.info("[MQ][SEND] GOOGLE CAMPAIGN DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // GOOGLE CAMPAIGN HOUR
+    // =====================================================================
+
+    public void sendGoogleCampaignHour(String userId) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "CAMPAIGN_HOUR", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_CAMPAIGN_HOUR, msg);
+        log.info("[MQ][SEND] GOOGLE CAMPAIGN HOUR userId={}", userId);
+    }
+
+    public void sendGoogleCampaignHourRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "CAMPAIGN_HOUR", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_CAMPAIGN_HOUR, msg);
+        log.info("[MQ][SEND] GOOGLE CAMPAIGN HOUR RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // GOOGLE ADGROUP DAILY
+    // =====================================================================
+
+    public void sendGoogleAdGroupDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "ADGROUP_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_ADGROUP_DAILY, msg);
+        log.info("[MQ][SEND] GOOGLE ADGROUP DAILY userId={}", userId);
+    }
+
+    public void sendGoogleAdGroupDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "ADGROUP_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_ADGROUP_DAILY, msg);
+        log.info("[MQ][SEND] GOOGLE ADGROUP DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // GOOGLE AD DAILY
+    // =====================================================================
+
+    public void sendGoogleAdDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "AD_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_AD_DAILY, msg);
+        log.info("[MQ][SEND] GOOGLE AD DAILY userId={}", userId);
+    }
+
+    public void sendGoogleAdDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "AD_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_AD_DAILY, msg);
+        log.info("[MQ][SEND] GOOGLE AD DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
+    // GOOGLE KEYWORD DAILY
+    // =====================================================================
+
+    public void sendGoogleKeywordDaily(String userId) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "KEYWORD_DAILY", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_KEYWORD_DAILY, msg);
+        log.info("[MQ][SEND] GOOGLE KEYWORD DAILY userId={}", userId);
+    }
+
+    public void sendGoogleKeywordDailyRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("GOOGLE", "KEYWORD_DAILY", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_GOOGLE_KEYWORD_DAILY, msg);
+        log.info("[MQ][SEND] GOOGLE KEYWORD DAILY RANGE userId={} from={} to={}", userId, from, to);
+    }
 }

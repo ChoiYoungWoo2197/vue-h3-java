@@ -1,5 +1,11 @@
 package com.h3.h3_java.queue.consumer;
 
+import com.h3.h3_java.batch.master.GoogleMasterJob;
+import com.h3.h3_java.batch.stat.GoogleCampaignDayJob;
+import com.h3.h3_java.batch.stat.GoogleCampaignHourJob;
+import com.h3.h3_java.batch.stat.GoogleAdGroupDayJob;
+import com.h3.h3_java.batch.stat.GoogleAdDayJob;
+import com.h3.h3_java.batch.stat.GoogleKeywordDayJob;
 import com.h3.h3_java.batch.master.KakaoMoMasterJob;
 import com.h3.h3_java.batch.master.KakaoSaMasterJob;
 import com.h3.h3_java.batch.stat.KakaoMoCampaignDayJob;
@@ -61,6 +67,12 @@ public class CollectorConsumer {
     private final KakaoMoAdGroupDayJob   kakaoMoAdGroupDayJob;
     private final KakaoMoAdDayJob        kakaoMoAdDayJob;
     private final KakaoMoBudgetAlarmJob  kakaoMoBudgetAlarmJob;
+    private final GoogleMasterJob        googleMasterJob;
+    private final GoogleCampaignDayJob   googleCampaignDayJob;
+    private final GoogleCampaignHourJob  googleCampaignHourJob;
+    private final GoogleAdGroupDayJob    googleAdGroupDayJob;
+    private final GoogleAdDayJob         googleAdDayJob;
+    private final GoogleKeywordDayJob    googleKeywordDayJob;
     private final KakaoSaMasterJob       kakaoSaMasterJob;
     private final KakaoSaCampaignDayJob kakaoSaCampaignDayJob;
     private final KakaoSaCampaignHourJob kakaoSaCampaignHourJob;
@@ -430,6 +442,88 @@ public class CollectorConsumer {
             kakaoMoBudgetAlarmJob.collectForUserId(msg.getUserId());
         } catch (Exception e) {
             log.error("[MQ][ERROR] KAKAO MO BUDGET ALARM userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    // ── Google ──────────────────────────────────────────────────────────────────
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_MASTER, concurrency = "3")
+    public void consumeGoogleMaster(CollectorMessage msg) {
+        log.info("[MQ][RECV] GOOGLE MASTER userId={}", msg.getUserId());
+        try {
+            googleMasterJob.collectForUserId(msg.getUserId());
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] GOOGLE MASTER userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_CAMPAIGN_DAILY)
+    public void consumeGoogleCampaignDaily(CollectorMessage msg) {
+        log.info("[MQ][RECV] GOOGLE CAMPAIGN DAILY userId={}", msg.getUserId());
+        try {
+            if (hasRange(msg)) {
+                googleCampaignDayJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                googleCampaignDayJob.collectForUserId(msg.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] GOOGLE CAMPAIGN DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_CAMPAIGN_HOUR)
+    public void consumeGoogleCampaignHour(CollectorMessage msg) {
+        log.info("[MQ][RECV] GOOGLE CAMPAIGN HOUR userId={}", msg.getUserId());
+        try {
+            if (hasRange(msg)) {
+                googleCampaignHourJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                googleCampaignHourJob.collectForUserId(msg.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] GOOGLE CAMPAIGN HOUR userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_ADGROUP_DAILY)
+    public void consumeGoogleAdGroupDaily(CollectorMessage msg) {
+        log.info("[MQ][RECV] GOOGLE ADGROUP DAILY userId={}", msg.getUserId());
+        try {
+            if (hasRange(msg)) {
+                googleAdGroupDayJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                googleAdGroupDayJob.collectForUserId(msg.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] GOOGLE ADGROUP DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_AD_DAILY)
+    public void consumeGoogleAdDaily(CollectorMessage msg) {
+        log.info("[MQ][RECV] GOOGLE AD DAILY userId={}", msg.getUserId());
+        try {
+            if (hasRange(msg)) {
+                googleAdDayJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                googleAdDayJob.collectForUserId(msg.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] GOOGLE AD DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_KEYWORD_DAILY)
+    public void consumeGoogleKeywordDaily(CollectorMessage msg) {
+        log.info("[MQ][RECV] GOOGLE KEYWORD DAILY userId={}", msg.getUserId());
+        try {
+            if (hasRange(msg)) {
+                googleKeywordDayJob.collectRange(msg.getUserId(), msg.getFromDate(), msg.getToDate());
+            } else {
+                googleKeywordDayJob.collectForUserId(msg.getUserId());
+            }
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] GOOGLE KEYWORD DAILY userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
     }
 

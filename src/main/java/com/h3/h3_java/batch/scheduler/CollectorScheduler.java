@@ -1,5 +1,7 @@
 package com.h3.h3_java.batch.scheduler;
 
+import com.h3.h3_java.media.google.dto.GoogleAccountDto;
+import com.h3.h3_java.media.google.mapper.GoogleMapper;
 import com.h3.h3_java.media.kakao.dto.KakaoMoAccountDto;
 import com.h3.h3_java.media.kakao.dto.KakaoSaAccountDto;
 import com.h3.h3_java.media.kakao.mapper.KakaoMoMapper;
@@ -27,6 +29,7 @@ public class CollectorScheduler {
     private final NaverGfaMapper          gfaMapper;
     private final KakaoSaMapper           kakaoSaMapper;
     private final KakaoMoMapper           kakaoMoMapper;
+    private final GoogleMapper            googleMapper;
     private final CollectorProducer       producer;
 
     // 매일 오전 8시 00분 - GFA 전환유형 수집
@@ -471,5 +474,103 @@ public class CollectorScheduler {
             count++;
         }
         log.info("[SCHEDULER] 카카오MO 예산 알람 메시지 발행 완료 총={}건", count);
+    }
+
+    // ── Google 스케줄 ──────────────────────────────────────────────────────────
+
+    // 매일 오후 5시 - Google 마스터 수집
+    @Scheduled(cron = "0 0 17 * * *", zone = "Asia/Seoul")
+    public void scheduleGoogleMaster() {
+        log.info("[SCHEDULER] 구글 마스터 수집 시작");
+        List<GoogleAccountDto> accounts = googleMapper.selectGoogleAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
+        for (GoogleAccountDto account : accounts) {
+            String advkey = account.getAccountGoogle();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
+            producer.sendGoogleMaster(account.getUserId());
+            count++;
+        }
+        log.info("[SCHEDULER] 구글 마스터 메시지 발행 완료 총={}건", count);
+    }
+
+    // 매일 오후 6시 - Google 캠페인 일별 수집
+    @Scheduled(cron = "0 0 18 * * *", zone = "Asia/Seoul")
+    public void scheduleGoogleCampaignDaily() {
+        log.info("[SCHEDULER] 구글 캠페인 일별 수집 시작");
+        List<GoogleAccountDto> accounts = googleMapper.selectGoogleAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
+        for (GoogleAccountDto account : accounts) {
+            String advkey = account.getAccountGoogle();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
+            producer.sendGoogleCampaignDaily(account.getUserId());
+            count++;
+        }
+        log.info("[SCHEDULER] 구글 캠페인 일별 메시지 발행 완료 총={}건", count);
+    }
+
+    // 매일 오후 6시 30분 - Google 캠페인 시간별 수집
+    @Scheduled(cron = "0 30 18 * * *", zone = "Asia/Seoul")
+    public void scheduleGoogleCampaignHour() {
+        log.info("[SCHEDULER] 구글 캠페인 시간별 수집 시작");
+        List<GoogleAccountDto> accounts = googleMapper.selectGoogleAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
+        for (GoogleAccountDto account : accounts) {
+            String advkey = account.getAccountGoogle();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
+            producer.sendGoogleCampaignHour(account.getUserId());
+            count++;
+        }
+        log.info("[SCHEDULER] 구글 캠페인 시간별 메시지 발행 완료 총={}건", count);
+    }
+
+    // 매일 오후 7시 - Google 광고그룹 일별 수집
+    @Scheduled(cron = "0 0 19 * * *", zone = "Asia/Seoul")
+    public void scheduleGoogleAdGroupDaily() {
+        log.info("[SCHEDULER] 구글 광고그룹 일별 수집 시작");
+        List<GoogleAccountDto> accounts = googleMapper.selectGoogleAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
+        for (GoogleAccountDto account : accounts) {
+            String advkey = account.getAccountGoogle();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
+            producer.sendGoogleAdGroupDaily(account.getUserId());
+            count++;
+        }
+        log.info("[SCHEDULER] 구글 광고그룹 일별 메시지 발행 완료 총={}건", count);
+    }
+
+    // 매일 오후 7시 30분 - Google 소재 일별 수집
+    @Scheduled(cron = "0 30 19 * * *", zone = "Asia/Seoul")
+    public void scheduleGoogleAdDaily() {
+        log.info("[SCHEDULER] 구글 소재 일별 수집 시작");
+        List<GoogleAccountDto> accounts = googleMapper.selectGoogleAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
+        for (GoogleAccountDto account : accounts) {
+            String advkey = account.getAccountGoogle();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
+            producer.sendGoogleAdDaily(account.getUserId());
+            count++;
+        }
+        log.info("[SCHEDULER] 구글 소재 일별 메시지 발행 완료 총={}건", count);
+    }
+
+    // 매일 오후 8시 - Google 키워드 일별 수집
+    @Scheduled(cron = "0 0 20 * * *", zone = "Asia/Seoul")
+    public void scheduleGoogleKeywordDaily() {
+        log.info("[SCHEDULER] 구글 키워드 일별 수집 시작");
+        List<GoogleAccountDto> accounts = googleMapper.selectGoogleAccounts();
+        Set<String> seen = new HashSet<>();
+        int count = 0;
+        for (GoogleAccountDto account : accounts) {
+            String advkey = account.getAccountGoogle();
+            if (advkey == null || advkey.isBlank() || !seen.add(advkey)) continue;
+            producer.sendGoogleKeywordDaily(account.getUserId());
+            count++;
+        }
+        log.info("[SCHEDULER] 구글 키워드 일별 메시지 발행 완료 총={}건", count);
     }
 }

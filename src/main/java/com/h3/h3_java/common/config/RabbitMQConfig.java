@@ -80,6 +80,26 @@ public class RabbitMQConfig {
     public static final String QUEUE_KAKAO_SA_BUDGET_ALARM       = "h3.collector.kakao.sa.budget.alarm";
     public static final String ROUTING_KAKAO_SA_BUDGET_ALARM     = "kakao.sa.budget.alarm";
 
+    // ── Google ────────────────────────────────────────────────────────────────
+
+    public static final String QUEUE_GOOGLE_MASTER               = "h3.collector.google.master";
+    public static final String ROUTING_GOOGLE_MASTER             = "google.master";
+
+    public static final String QUEUE_GOOGLE_CAMPAIGN_DAILY       = "h3.collector.google.campaign.daily";
+    public static final String ROUTING_GOOGLE_CAMPAIGN_DAILY     = "google.campaign.daily";
+
+    public static final String QUEUE_GOOGLE_CAMPAIGN_HOUR        = "h3.collector.google.campaign.hour";
+    public static final String ROUTING_GOOGLE_CAMPAIGN_HOUR      = "google.campaign.hour";
+
+    public static final String QUEUE_GOOGLE_ADGROUP_DAILY        = "h3.collector.google.adgroup.daily";
+    public static final String ROUTING_GOOGLE_ADGROUP_DAILY      = "google.adgroup.daily";
+
+    public static final String QUEUE_GOOGLE_AD_DAILY             = "h3.collector.google.ad.daily";
+    public static final String ROUTING_GOOGLE_AD_DAILY           = "google.ad.daily";
+
+    public static final String QUEUE_GOOGLE_KEYWORD_DAILY        = "h3.collector.google.keyword.daily";
+    public static final String ROUTING_GOOGLE_KEYWORD_DAILY      = "google.keyword.daily";
+
     // ── Kakao MO ──────────────────────────────────────────────────────────────
 
     public static final String QUEUE_KAKAO_MO_MASTER             = "h3.collector.kakao.mo.master";
@@ -297,6 +317,26 @@ public class RabbitMQConfig {
 
     @Bean public Queue kakaoMoBudgetAlarmQueue() { return QueueBuilder.durable(QUEUE_KAKAO_MO_BUDGET_ALARM).build(); }
     @Bean public Binding kakaoMoBudgetAlarmBinding(Queue kakaoMoBudgetAlarmQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoMoBudgetAlarmQueue).to(collectorExchange).with(ROUTING_KAKAO_MO_BUDGET_ALARM); }
+
+    // ── Google Beans ──────────────────────────────────────────────────────────
+
+    @Bean public Queue googleMasterQueue() { return QueueBuilder.durable(QUEUE_GOOGLE_MASTER).build(); }
+    @Bean public Binding googleMasterBinding(Queue googleMasterQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(googleMasterQueue).to(collectorExchange).with(ROUTING_GOOGLE_MASTER); }
+
+    @Bean public Queue googleCampaignDailyQueue() { return QueueBuilder.durable(QUEUE_GOOGLE_CAMPAIGN_DAILY).build(); }
+    @Bean public Binding googleCampaignDailyBinding(Queue googleCampaignDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(googleCampaignDailyQueue).to(collectorExchange).with(ROUTING_GOOGLE_CAMPAIGN_DAILY); }
+
+    @Bean public Queue googleCampaignHourQueue() { return QueueBuilder.durable(QUEUE_GOOGLE_CAMPAIGN_HOUR).build(); }
+    @Bean public Binding googleCampaignHourBinding(Queue googleCampaignHourQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(googleCampaignHourQueue).to(collectorExchange).with(ROUTING_GOOGLE_CAMPAIGN_HOUR); }
+
+    @Bean public Queue googleAdGroupDailyQueue() { return QueueBuilder.durable(QUEUE_GOOGLE_ADGROUP_DAILY).build(); }
+    @Bean public Binding googleAdGroupDailyBinding(Queue googleAdGroupDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(googleAdGroupDailyQueue).to(collectorExchange).with(ROUTING_GOOGLE_ADGROUP_DAILY); }
+
+    @Bean public Queue googleAdDailyQueue() { return QueueBuilder.durable(QUEUE_GOOGLE_AD_DAILY).build(); }
+    @Bean public Binding googleAdDailyBinding(Queue googleAdDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(googleAdDailyQueue).to(collectorExchange).with(ROUTING_GOOGLE_AD_DAILY); }
+
+    @Bean public Queue googleKeywordDailyQueue() { return QueueBuilder.durable(QUEUE_GOOGLE_KEYWORD_DAILY).build(); }
+    @Bean public Binding googleKeywordDailyBinding(Queue googleKeywordDailyQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(googleKeywordDailyQueue).to(collectorExchange).with(ROUTING_GOOGLE_KEYWORD_DAILY); }
 
     @Bean
     public Jackson2JsonMessageConverter messageConverter() {
