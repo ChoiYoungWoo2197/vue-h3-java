@@ -78,7 +78,7 @@ public class KakaoSaKeywordDayJob {
 
         String apiDate = LocalDate.parse(date, FMT).format(APIFMT);
 
-        // 키워드 목록 + 보고서를 광고그룹별로 수집
+        // 1단계: 광고그룹별 키워드 목록 수집
         Map<String, Map<String, Object>> keywordMap = new LinkedHashMap<>(); // kid → doc
 
         for (Map<String, Object> ag : adgroups) {
@@ -86,7 +86,6 @@ public class KakaoSaKeywordDayJob {
             String cid = str(ag, "cid");
             if (gid == null) continue;
 
-            // 키워드 목록
             List<Map<String, Object>> keywords = api.getList(
                 "/openapi/v1/keywords",
                 Map.of("adGroupId", gid)
@@ -94,28 +93,36 @@ public class KakaoSaKeywordDayJob {
             if (keywords == null) continue;
 
             for (Map<String, Object> kw : keywords) {
-                String kid    = str(kw, "id");
-                String kname  = str(kw, "text");
-                String onoff  = str(kw, "config");
+                String kid   = str(kw, "id");
+                String kname = str(kw, "text");
+                String onoff = str(kw, "config");
                 if (kid == null) continue;
 
                 Map<String, Object> doc = new HashMap<>();
-                doc.put("advkey",     advkey);
-                doc.put("daily_dt",   date);
+                doc.put("advkey",      advkey);
+                doc.put("daily_dt",    date);
                 doc.put("campaign_id", cid);
-                doc.put("adgroup_id", gid);
-                doc.put("keyword_id", kid);
-                doc.put("kname",      kname);
-                doc.put("onoff",      "ON".equals(onoff) ? 1 : 0);
-                doc.put("daily_im",   0L);
-                doc.put("daily_clk",  0L);
-                doc.put("daily_cst",  0L);
-                doc.put("daily_cv",   0L);
-                doc.put("daily_cr",   0L);
+                doc.put("adgroup_id",  gid);
+                doc.put("keyword_id",  kid);
+                doc.put("kname",       kname);
+                doc.put("onoff",       "ON".equals(onoff) ? 1 : 0);
+                doc.put("daily_im",    0L);
+                doc.put("daily_clk",   0L);
+                doc.put("daily_cst",   0L);
+                doc.put("daily_cv",    0L);
+                doc.put("daily_cr",    0L);
                 keywordMap.put(kid, doc);
             }
+        }
 
-            // 키워드 보고서 (캠페인 단위)
+        // 2단계: 캠페인 단위로 dedup 후 보고서 1회 호출
+        Set<String> calledCids = new HashSet<>();
+        for (Map<String, Object> ag : adgroups) {
+            String cid = str(ag, "cid");
+            if (cid == null || !calledCids.add(cid)) continue;
+
+            sleep(3_000);
+
             Map<String, String> params = new LinkedHashMap<>();
             params.put("campaignId",    cid);
             params.put("metricsGroups", "BASIC,ADDITION,PIXEL_SDK_CONVERSION");
@@ -201,5 +208,9 @@ public class KakaoSaKeywordDayJob {
     private String str(Map<String, Object> m, String key) {
         Object v = m.get(key);
         return v != null ? String.valueOf(v) : null;
+    }
+
+    private void sleep(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
     }
 }
