@@ -91,14 +91,39 @@ com.h3.h3_java
 
 | 시각 | Job |
 |---|---|
-| 02:00 | 마스터 수집 (NaverMasterReportJob) |
-| 03:00 | 캠페인 일별 |
-| 03:30 | 캠페인 시간별 |
-| 04:00 | 광고그룹 일별 |
-| 04:30 | 소재 일별 |
-| 04:45 | 쇼핑소재 일별 |
-| 05:00 | StateReport (키워드·타겟) |
-| 05:30 | 전환유형 |
+| 01:00 | 네이버 GFA 마스터 |
+| 02:00 | 네이버 SA 마스터 |
+| 03:00 | 네이버 SA 캠페인 일별 |
+| 03:30 | 네이버 SA 캠페인 시간별 |
+| 04:00 | 네이버 SA 광고그룹 일별 |
+| 04:30 | 네이버 SA 소재 일별 |
+| 04:45 | 네이버 SA 쇼핑소재 일별 |
+| 05:00 | 네이버 SA StateReport (키워드·타겟) |
+| 05:30 | 네이버 SA 전환유형 |
+| 06:00 | 네이버 GFA 캠페인 일별 |
+| 06:30 | 네이버 GFA 광고그룹 일별 |
+| 07:00 | 네이버 GFA 예산알람 |
+| 07:30 | 네이버 GFA 소재 일별 |
+| 08:00 | 네이버 GFA 전환유형 |
+| 09:00 | 카카오 SA 마스터 |
+| 10:00 | 카카오 SA 캠페인 일별 |
+| 10:30 | 카카오 SA 캠페인 시간별 |
+| 11:00 | 카카오 SA 광고그룹 일별 |
+| 11:30 | 카카오 SA 키워드 일별 |
+| 12:00 | 카카오 SA 소재 일별 |
+| 12:30 | 카카오 SA 예산알람 |
+| 13:00 | 카카오 MO 마스터 |
+| 14:00 | 카카오 MO 캠페인 일별 |
+| 14:30 | 카카오 MO 캠페인 시간별 |
+| 15:00 | 카카오 MO 광고그룹 일별 |
+| 15:30 | 카카오 MO 소재 일별 |
+| 16:00 | 카카오 MO 예산알람 |
+| 17:00 | 구글 마스터 |
+| 18:00 | 구글 캠페인 일별 |
+| 18:30 | 구글 캠페인 시간별 |
+| 19:00 | 구글 광고그룹 일별 |
+| 19:30 | 구글 소재 일별 |
+| 20:00 | 구글 키워드 일별 |
 | 매 10분 | 신규 계정 감지 (NaverNewAccountScheduler) |
 
 ---
@@ -106,12 +131,44 @@ com.h3.h3_java
 ## REST API
 
 ```
-POST /api/collector/naver/{job-type}                    전체 수집
-POST /api/collector/naver/{job-type}/{userId}           단일 유저 → MQ
-POST /api/collector/naver/{job-type}/{userId}/range?from=YYYYMMDD&to=YYYYMMDD  기간 → MQ
+# 네이버 SA
+POST /api/collector/naver/{job-type}
+POST /api/collector/naver/{job-type}/{userId}
+POST /api/collector/naver/{job-type}/{userId}/range?from=YYYY-MM-DD&to=YYYY-MM-DD
 ```
+job-type: `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-daily`, `shopping-daily`, `state-report`, `conv-type`
 
-`{job-type}` 목록: `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-daily`, `shopping-daily`, `state-report`, `conv-type`
+```
+# 네이버 GFA
+POST /api/collector/naver/gfa-{job-type}
+POST /api/collector/naver/gfa-{job-type}/{userId}
+POST /api/collector/naver/gfa-{job-type}/{userId}/range?from=YYYY-MM-DD&to=YYYY-MM-DD
+```
+job-type: `master`, `campaign-daily`, `adgroup-daily`, `ad-daily`, `budget-alarm`, `conv-type`
+
+```
+# 카카오 SA
+POST /api/collector/kakao/sa/{job-type}
+POST /api/collector/kakao/sa/{job-type}/{userId}
+POST /api/collector/kakao/sa/{job-type}/{userId}/range?from=YYYY-MM-DD&to=YYYY-MM-DD
+```
+job-type: `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-daily`, `keyword-daily`, `budget-alarm`
+
+```
+# 카카오 MO
+POST /api/collector/kakao/mo/{job-type}
+POST /api/collector/kakao/mo/{job-type}/{userId}
+POST /api/collector/kakao/mo/{job-type}/{userId}/range?from=YYYY-MM-DD&to=YYYY-MM-DD
+```
+job-type: `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-daily`, `budget-alarm`
+
+```
+# 구글
+POST /api/collector/google/{job-type}
+POST /api/collector/google/{job-type}/{userId}
+POST /api/collector/google/{job-type}/{userId}/range?from=YYYY-MM-DD&to=YYYY-MM-DD
+```
+job-type: `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-daily`, `keyword-daily`
 
 ---
 
@@ -163,6 +220,42 @@ POST /api/collector/naver/{job-type}/{userId}/range?from=YYYYMMDD&to=YYYYMMDD  �
 | `naver_convtype_adgroup` | 광고그룹 전환유형 |
 | `naver_convtype_keyword` | 키워드 전환유형 |
 | `naver_convtype_ad` | 소재 전환유형 |
+| `naver_gfa_token` | 네이버 GFA OAuth 토큰 |
+| `naver_gfa_campaign` | GFA 캠페인 마스터 |
+| `naver_gfa_adgroup` | GFA 광고그룹 마스터 |
+| `naver_gfa_ad` | GFA 소재 마스터 |
+| `naver_gfa_campaign_daily` | GFA 캠페인 일별 통계 |
+| `naver_gfa_adgroup_daily` | GFA 광고그룹 일별 통계 |
+| `naver_gfa_ad_daily` | GFA 소재 일별 통계 |
+| `kakao_sa_token` | 카카오 SA OAuth 토큰 |
+| `kakao_sa_campaign` | 카카오 SA 캠페인 마스터 |
+| `kakao_sa_adgroup` | 카카오 SA 광고그룹 마스터 |
+| `kakao_sa_ad` | 카카오 SA 소재 마스터 |
+| `kakao_sa_keyword` | 카카오 SA 키워드 마스터 |
+| `kakao_sa_campaign_daily` | 카카오 SA 캠페인 일별 통계 |
+| `kakao_sa_campaign_hour` | 카카오 SA 캠페인 시간별 통계 |
+| `kakao_sa_adgroup_daily` | 카카오 SA 광고그룹 일별 통계 |
+| `kakao_sa_ad_daily` | 카카오 SA 소재 일별 통계 |
+| `kakao_sa_keyword_daily` | 카카오 SA 키워드 일별 통계 |
+| `kakao_sa_budget_alarm` | 카카오 SA 예산알람 |
+| `kakao_mo_token` | 카카오 MO OAuth 토큰 |
+| `kakao_mo_campaign` | 카카오 MO 캠페인 마스터 |
+| `kakao_mo_adgroup` | 카카오 MO 광고그룹 마스터 |
+| `kakao_mo_ad` | 카카오 MO 소재 마스터 |
+| `kakao_mo_campaign_daily` | 카카오 MO 캠페인 일별 통계 |
+| `kakao_mo_campaign_hour` | 카카오 MO 캠페인 시간별 통계 |
+| `kakao_mo_adgroup_daily` | 카카오 MO 광고그룹 일별 통계 |
+| `kakao_mo_ad_daily` | 카카오 MO 소재 일별 통계 |
+| `kakao_mo_budget_alarm` | 카카오 MO 예산알람 |
+| `google_campaign` | 구글 캠페인 마스터 |
+| `google_adgroup` | 구글 광고그룹 마스터 |
+| `google_keyword` | 구글 키워드 마스터 |
+| `google_ad` | 구글 소재 마스터 |
+| `google_campaign_daily` | 구글 캠페인 일별 통계 |
+| `google_campaign_hour` | 구글 캠페인 시간별 통계 |
+| `google_adgroup_daily` | 구글 광고그룹 일별 통계 |
+| `google_ad_daily` | 구글 소재 일별 통계 |
+| `google_keyword_daily` | 구글 키워드 일별 통계 |
 
 ---
 
@@ -183,12 +276,51 @@ POST /api/collector/naver/{job-type}/{userId}/range?from=YYYYMMDD&to=YYYYMMDD  �
 | `naverbudgetalarmcollection.php` | — | ❌ 미이식 |
 | `navergfa*.php` | — | ❌ 미이식 |
 
-### 카카오 / 구글
+### 네이버 GFA
 
-| 대상 | 상태 |
-|---|---|
-| 카카오 SA, 카카오 Moment | ❌ 미이식 |
-| Google 전 계열 | ❌ 미이식 |
+| PHP 원본 | Java Job | 상태 |
+|---|---|---|
+| `navergfamasterreport.php` | `NaverGfaMasterJob` | ✅ |
+| `navergfacampaigndaycollection.php` | `NaverGfaCampaignDayCollectionJob` | ✅ |
+| `navergfaadgroupdaycollection.php` | `NaverGfaAdgroupDayCollectionJob` | ✅ |
+| `navergfaaddaycollection.php` | `NaverGfaAdDayCollectionJob` | ✅ |
+| `navergfabudgetalarm.php` | `NaverGfaBudgetAlarmJob` | ✅ |
+| `navergfaconvtype.php` | `NaverGfaConvTypeJob` | ✅ |
+
+### 카카오 SA
+
+| PHP 원본 | Java Job | 상태 |
+|---|---|---|
+| `kakaosamaster.php` | `KakaoSaMasterJob` | ✅ |
+| `kakaosacampaignday.php` | `KakaoSaCampaignDayJob` | ✅ |
+| `kakaosacampaignhour.php` | `KakaoSaCampaignHourJob` | ✅ |
+| `kakaosaadgroupday.php` | `KakaoSaAdGroupDayJob` | ✅ |
+| `kakaosaadday.php` | `KakaoSaAdDayJob` | ✅ |
+| `kakaosakey.php` | `KakaoSaKeywordDayJob` | ✅ |
+| `kakaosabudgetalarm.php` | `KakaoSaBudgetAlarmJob` | ✅ |
+
+### 카카오 MO
+
+| PHP 원본 | Java Job | 상태 |
+|---|---|---|
+| `kakaomomaster.php` | `KakaoMoMasterJob` | ✅ |
+| `kakaomocampaignday.php` | `KakaoMoCampaignDayJob` | ✅ |
+| `kakaomocampaignhour.php` | `KakaoMoCampaignHourJob` | ✅ |
+| `kakaomoadgroupday.php` | `KakaoMoAdGroupDayJob` | ✅ |
+| `kakaomoadday.php` | `KakaoMoAdDayJob` | ✅ |
+| `kakaomobudgetalarm.php` | `KakaoMoBudgetAlarmJob` | ✅ |
+
+### 구글 (Google)
+
+| PHP 원본 | Java Job | 상태 |
+|---|---|---|
+| `googlemasterreport.php` | `GoogleMasterJob` | ✅ |
+| `googlecampaigndaycollection.php` | `GoogleCampaignDayJob` | ✅ |
+| `googlecampaignhourcollection.php` | `GoogleCampaignHourJob` | ✅ |
+| `googleadgroupdaycollection.php` | `GoogleAdGroupDayJob` | ✅ |
+| `googleaddaycollection.php` | `GoogleAdDayJob` | ✅ |
+| `googlekeyworddaycollection.php` | `GoogleKeywordDayJob` | ✅ |
+| `googletargetdaycollection.php` | — | ❌ PHP DB INSERT 없음 (의도적 미이식) |
 
 ---
 
