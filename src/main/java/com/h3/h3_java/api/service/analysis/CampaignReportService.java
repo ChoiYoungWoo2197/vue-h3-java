@@ -274,8 +274,11 @@ public class CampaignReportService {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("daily_dt", e.getKey());
             double cst = vatNaver ? toDouble(e.getValue(), "cst") * 1.1 : toDouble(e.getValue(), "cst");
-            row.put("im", toDouble(e.getValue(), "im")); row.put("clk", toDouble(e.getValue(), "clk"));
-            row.put("cst", cst); row.put("cv", toDouble(e.getValue(), "cv")); row.put("cr", toDouble(e.getValue(), "cr"));
+            row.put("im",  Math.round(toDouble(e.getValue(), "im")));
+            row.put("clk", Math.round(toDouble(e.getValue(), "clk")));
+            row.put("cst", Math.round(cst));
+            row.put("cv",  Math.round(toDouble(e.getValue(), "cv")));
+            row.put("cr",  Math.round(toDouble(e.getValue(), "cr")));
             row.putAll(calcMetrics(toDouble(e.getValue(), "im"), toDouble(e.getValue(), "clk"),
                 cst, toDouble(e.getValue(), "cv"), toDouble(e.getValue(), "cr")));
             graph.add(row);
@@ -310,7 +313,8 @@ public class CampaignReportService {
         row.put("campaign_type",          type);
         row.put("campaign_status",        onoff);
         row.put("campaign_status_reason", "");
-        row.put("im", im); row.put("clk", clk); row.put("cst", cst); row.put("cv", cv); row.put("cr", cr);
+        row.put("im",  Math.round(im)); row.put("clk", Math.round(clk));
+        row.put("cst", Math.round(cst)); row.put("cv", Math.round(cv)); row.put("cr", Math.round(cr));
         row.putAll(calcMetrics(im, clk, cst, cv, cr));
 
         if (hasConvtype && convtype != null) {
@@ -336,7 +340,8 @@ public class CampaignReportService {
             cv += toDouble(r, "cv"); cr  += toDouble(r, "cr");
         }
         Map<String, Object> t = new LinkedHashMap<>();
-        t.put("im", im); t.put("clk", clk); t.put("cst", cst); t.put("cv", cv); t.put("cr", cr);
+        t.put("im",  Math.round(im)); t.put("clk", Math.round(clk));
+        t.put("cst", Math.round(cst)); t.put("cv", Math.round(cv)); t.put("cr", Math.round(cr));
         t.putAll(calcMetrics(im, clk, cst, cv, cr));
         return t;
     }

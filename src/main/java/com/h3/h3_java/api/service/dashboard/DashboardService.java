@@ -87,11 +87,11 @@ public class DashboardService {
 
             Map<String, Object> day = new LinkedHashMap<>();
             day.put("daily_dt", date);
-            day.put("im",  im);
-            day.put("clk", clk);
-            day.put("cst", cst);
-            day.put("cv",  cv);
-            day.put("cr",  cr);
+            day.put("im",  Math.round(im));
+            day.put("clk", Math.round(clk));
+            day.put("cst", Math.round(cst));
+            day.put("cv",  Math.round(cv));
+            day.put("cr",  Math.round(cr));
             day.putAll(calcMetrics(im, clk, cst, cv, cr));
             graph.add(day);
             cur = cur.plusDays(1);
@@ -131,14 +131,15 @@ public class DashboardService {
         }
 
         Map<String, Object> stat = new LinkedHashMap<>();
-        stat.put("im", im); stat.put("clk", clk); stat.put("cst", cst);
-        stat.put("cv", cv); stat.put("cr", cr);
+        stat.put("im",  Math.round(im));  stat.put("clk", Math.round(clk));
+        stat.put("cst", Math.round(cst)); stat.put("cv",  Math.round(cv));
+        stat.put("cr",  Math.round(cr));
         stat.putAll(calcMetrics(im, clk, cst, cv, cr));
-        stat.put("purchase_cv", purchaseCv); stat.put("purchase_cr", purchaseCr);
-        stat.put("signup_cv",   signupCv);   stat.put("signup_cr",   signupCr);
-        stat.put("cart_cv",     cartCv);     stat.put("cart_cr",     cartCr);
-        stat.put("lead_cv",     leadCv);     stat.put("lead_cr",     leadCr);
-        stat.put("other_cv",    otherCv);    stat.put("other_cr",    otherCr);
+        stat.put("purchase_cv", Math.round(purchaseCv)); stat.put("purchase_cr", Math.round(purchaseCr));
+        stat.put("signup_cv",   Math.round(signupCv));   stat.put("signup_cr",   Math.round(signupCr));
+        stat.put("cart_cv",     Math.round(cartCv));     stat.put("cart_cr",     Math.round(cartCr));
+        stat.put("lead_cv",     Math.round(leadCv));     stat.put("lead_cr",     Math.round(leadCr));
+        stat.put("other_cv",    Math.round(otherCv));    stat.put("other_cr",    Math.round(otherCr));
         stat.put("purchase_roas", (purchaseCr > 0 && cst > 0) ? fmt(purchaseCr / cst * 100) : 0);
         return stat;
     }
@@ -185,7 +186,8 @@ public class DashboardService {
         double im = toDouble(raw, "im"), clk = toDouble(raw, "clk"), cst = toDouble(raw, "cst"),
                cv = toDouble(raw, "cv"), cr = toDouble(raw, "cr");
         Map<String, Object> s = new LinkedHashMap<>();
-        s.put("im", im); s.put("clk", clk); s.put("cst", cst); s.put("cv", cv); s.put("cr", cr);
+        s.put("im",  Math.round(im)); s.put("clk", Math.round(clk));
+        s.put("cst", Math.round(cst)); s.put("cv", Math.round(cv)); s.put("cr", Math.round(cr));
         s.putAll(calcMetrics(im, clk, cst, cv, cr));
         return s;
     }
