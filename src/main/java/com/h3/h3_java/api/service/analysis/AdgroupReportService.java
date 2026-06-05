@@ -121,7 +121,8 @@ public class AdgroupReportService {
     private String getOnoff(Document d) {
         Object v = d.get("onoff");
         if (v == null) return "";
-        if (v instanceof Integer i) return i == 1 ? "on" : "off";
+        // Naver TSV: 0=ON(활성), 1=OFF(정지)
+        if (v instanceof Integer i) return i == 0 ? "on" : "off";
         if (v instanceof String s) return s.toLowerCase();
         return String.valueOf(v);
     }
