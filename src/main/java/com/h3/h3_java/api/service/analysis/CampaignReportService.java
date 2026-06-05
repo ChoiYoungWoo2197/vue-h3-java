@@ -367,15 +367,32 @@ public class CampaignReportService {
     }
 
     private Map<String, Object> getTotalForType(List<Map<String, Object>> list) {
-        double im = 0, clk = 0, cst = 0, cv = 0, cr = 0;
+        double im=0,clk=0,cst=0,cv=0,cr=0,pCv=0,pCr=0,sCv=0,sCr=0,cartCv=0,cartCr=0,lCv=0,lCr=0,oCv=0,oCr=0;
+        boolean hasConvtype = false;
         for (Map<String, Object> r : list) {
-            im += toDouble(r, "im"); clk += toDouble(r, "clk"); cst += toDouble(r, "cst");
-            cv += toDouble(r, "cv"); cr  += toDouble(r, "cr");
+            im+=toDouble(r,"im"); clk+=toDouble(r,"clk"); cst+=toDouble(r,"cst");
+            cv+=toDouble(r,"cv"); cr+=toDouble(r,"cr");
+            if (r.containsKey("purchase_cv")) {
+                hasConvtype = true;
+                pCv+=toDouble(r,"purchase_cv"); pCr+=toDouble(r,"purchase_cr");
+                sCv+=toDouble(r,"signup_cv"); sCr+=toDouble(r,"signup_cr");
+                cartCv+=toDouble(r,"cart_cv"); cartCr+=toDouble(r,"cart_cr");
+                lCv+=toDouble(r,"lead_cv"); lCr+=toDouble(r,"lead_cr");
+                oCv+=toDouble(r,"other_cv"); oCr+=toDouble(r,"other_cr");
+            }
         }
         Map<String, Object> t = new LinkedHashMap<>();
-        t.put("im",  Math.round(im)); t.put("clk", Math.round(clk));
-        t.put("cst", Math.round(cst)); t.put("cv", Math.round(cv)); t.put("cr", Math.round(cr));
-        t.putAll(calcMetrics(im, clk, cst, cv, cr));
+        t.put("im",Math.round(im)); t.put("clk",Math.round(clk));
+        t.put("cst",Math.round(cst)); t.put("cv",Math.round(cv)); t.put("cr",Math.round(cr));
+        t.putAll(calcMetrics(im,clk,cst,cv,cr));
+        if (hasConvtype) {
+            t.put("purchase_cv",(long)pCv); t.put("purchase_cr",(long)pCr);
+            t.put("signup_cv",(long)sCv); t.put("signup_cr",(long)sCr);
+            t.put("cart_cv",(long)cartCv); t.put("cart_cr",(long)cartCr);
+            t.put("lead_cv",(long)lCv); t.put("lead_cr",(long)lCr);
+            t.put("other_cv",(long)oCv); t.put("other_cr",(long)oCr);
+            t.put("purchase_roas",(pCr>0&&cst>0)?fmt(pCr/cst*100):0);
+        }
         return t;
     }
 
