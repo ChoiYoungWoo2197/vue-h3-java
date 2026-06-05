@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.h3.h3_java.api.mapper.AccountMapper">
+
+    <select id="selectByUserId" resultType="com.h3.h3_java.api.dto.AccountDto">
+        SELECT
+            user_id,
+            account_naver_customer,
+            account_kakaosa,
+            account_kakaomoment,
+            account_gfa,
+            account_google
+        FROM h3_account
+        WHERE user_id = #{userId}
+    </select>
+
+</mapper>
