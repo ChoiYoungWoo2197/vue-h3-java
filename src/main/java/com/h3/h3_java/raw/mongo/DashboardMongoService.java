@@ -83,17 +83,16 @@ public class DashboardMongoService {
 
         Aggregation agg = Aggregation.newAggregation(
             Aggregation.match(criteria),
-            Aggregation.group(Aggregation.fields().and("adgroup_id","adgroup_id").and("campaign_id","campaign_id"))
+            Aggregation.group("adgroup_id")
+                .first("campaign_id").as("campaign_id")
                 .sum("daily_im").as("im").sum("daily_clk").as("clk").sum("daily_cst").as("cst")
                 .sum("daily_cv").as("cv").sum("daily_cr").as("cr")
         );
         List<Map<String, Object>> result = new ArrayList<>();
         for (Document d : mongo.aggregate(agg, collection, Document.class).getMappedResults()) {
-            Document id = (Document) d.get("_id");
-            if (id == null) continue;
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("adgroup_id",  id.getString("adgroup_id"));
-            row.put("campaign_id", id.getString("campaign_id"));
+            row.put("adgroup_id",  d.getString("_id"));
+            row.put("campaign_id", d.getString("campaign_id"));
             row.put("im",  toDouble(d, "im")); row.put("clk", toDouble(d, "clk"));
             row.put("cst", toDouble(d, "cst")); row.put("cv", toDouble(d, "cv")); row.put("cr", toDouble(d, "cr"));
             result.add(row);
