@@ -83,13 +83,13 @@ public class CampaignReportService {
             String cid = (String) cs.get("campaign_id");
             Document master = masterMap.get(cid);
             if (master == null) continue;
-            int typeCode = master.getInteger("campaigntype", 0);
+            int typeCode = getInt(master, "campaigntype", 0);
             String typeName = typeCodeToName(typeCode, NAVER_CAMP_TYPE);
             if (typeName == null) continue;
 
             double cst = toDouble(cs, "cst") * 1.1;
             Map<String, Object> row = buildCampaignRow(cid, master.getString("cname"), typeName,
-                master.getInteger("onoff", 0), toDouble(cs, "im"), toDouble(cs, "clk"),
+                getInt(master, "onoff", 0), toDouble(cs, "im"), toDouble(cs, "clk"),
                 cst, toDouble(cs, "cv"), toDouble(cs, "cr"), convtype, true);
             groups.get(typeName).add(row);
         }
@@ -123,7 +123,7 @@ public class CampaignReportService {
             String cid = (String) cs.get("campaign_id");
             Document master = masterMap.get(cid);
             String name = master != null ? master.getString("cname") : cid;
-            int onoff   = master != null ? master.getInteger("onoff", 0) : 0;
+            int onoff   = master != null ? getInt(master, "onoff", 0) : 0;
             noneList.add(buildCampaignRow(cid, name, "none", onoff,
                 toDouble(cs, "im"), toDouble(cs, "clk"), toDouble(cs, "cst"),
                 toDouble(cs, "cv"), toDouble(cs, "cr"), null, false));
@@ -157,11 +157,11 @@ public class CampaignReportService {
             String cid    = (String) cs.get("campaign_id");
             Document master = masterMap.get(cid);
             if (master == null) continue;
-            int typeCode  = master.getInteger("type", -1);
+            int typeCode  = getInt(master, "type", -1);
             String typeName = typeCodeToName(typeCode, KAKAOMO_CAMP_TYPE);
             if (typeName == null) continue;
             String name = master.getString("cname");
-            int onoff   = master.getInteger("onoff", 0);
+            int onoff   = getInt(master, "onoff", 0);
             groups.get(typeName).add(buildCampaignRow(cid, name, typeName, onoff,
                 toDouble(cs, "im"), toDouble(cs, "clk"), toDouble(cs, "cst"),
                 toDouble(cs, "cv"), toDouble(cs, "cr"), null, false));
@@ -200,12 +200,12 @@ public class CampaignReportService {
             String cid    = (String) cs.get("campaign_id");
             Document master = masterMap.get(cid);
             if (master == null) continue;
-            int typeCode  = master.getInteger("type", -1);
+            int typeCode  = getInt(master, "type", -1);
             String typeName = typeCodeToName(typeCode, GFA_CAMP_TYPE);
             if (typeName == null) continue;
             double cst = toDouble(cs, "cst") * 1.1;
             groups.get(typeName).add(buildCampaignRow(cid, master.getString("cname"), typeName,
-                master.getInteger("onoff", 0), toDouble(cs, "im"), toDouble(cs, "clk"),
+                getInt(master, "onoff", 0), toDouble(cs, "im"), toDouble(cs, "clk"),
                 cst, toDouble(cs, "cv"), toDouble(cs, "cr"), convtype, true));
         }
 
@@ -240,11 +240,11 @@ public class CampaignReportService {
             String cid    = (String) cs.get("campaign_id");
             Document master = masterMap.get(cid);
             if (master == null) continue;
-            int typeCode  = master.getInteger("type", -1);
+            int typeCode  = getInt(master, "type", -1);
             String typeName = typeCodeToName(typeCode, GOOGLE_CAMP_TYPE);
             if (typeName == null) typeName = "unknown";
             String name = master.getString("cname");
-            int onoff   = master.getInteger("onoff", 0);
+            int onoff   = getInt(master, "onoff", 0);
             double cst  = Math.round(toDouble(cs, "cst"));
             double cv   = Math.round(toDouble(cs, "cv") * 100.0) / 100.0;
             double cr   = Math.round(toDouble(cs, "cr") * 100.0) / 100.0;
@@ -380,6 +380,18 @@ public class CampaignReportService {
         for (Map.Entry<String, Integer> e : typeMap.entrySet())
             if (e.getValue() == code) return e.getKey();
         return null;
+    }
+
+    /** MongoDB 필드가 String 또는 Integer로 저장되어 있어도 안전하게 int 반환 */
+    private int getInt(Document d, String key, int defaultVal) {
+        Object v = d.get(key);
+        if (v == null) return defaultVal;
+        if (v instanceof Integer) return (Integer) v;
+        if (v instanceof Long) return ((Long) v).intValue();
+        if (v instanceof String) {
+            try { return Integer.parseInt((String) v); } catch (NumberFormatException e) { return defaultVal; }
+        }
+        return defaultVal;
     }
 
     private double ctCnt(Map<String, Map<String, Object>> ct, String cid, String code) {
