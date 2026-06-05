@@ -1,5 +1,6 @@
 package com.h3.h3_java.api.controller;
 
+import com.h3.h3_java.api.service.analysis.AdgroupReportService;
 import com.h3.h3_java.api.service.analysis.CampaignReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,8 +16,9 @@ import java.util.Map;
 public class AnalysisController {
 
     private final CampaignReportService campaignReportService;
+    private final AdgroupReportService  adgroupReportService;
 
-    /** 캠페인 리포트 (매체별 캠페인 타입 그룹핑 + 비교기간) */
+    /** 캠페인 리포트 */
     @GetMapping("/campaignreport")
     public Map<String, Object> campaignReport(
             @RequestParam String userid,
@@ -25,5 +27,19 @@ public class AnalysisController {
             @RequestParam(required = false) String comparefromdate,
             @RequestParam(required = false) String comparetodate) {
         return campaignReportService.getCampaignReport(userid, fromdate, todate, comparefromdate, comparetodate);
+    }
+
+    /** 광고그룹 리포트 */
+    @GetMapping("/adgroupreport")
+    public Map<String, Object> adgroupReport(
+            @RequestParam String userid,
+            @RequestParam String fromdate,
+            @RequestParam String todate,
+            @RequestParam(required = false, defaultValue = "N") String md,
+            @RequestParam(required = false, defaultValue = "") String campaignid,
+            @RequestParam(required = false, defaultValue = "cstd") String sort,
+            @RequestParam(required = false, defaultValue = "0") int start,
+            @RequestParam(required = false, defaultValue = "20") int display) {
+        return adgroupReportService.getAdgroupReport(userid, md, fromdate, todate, campaignid, sort, start, display);
     }
 }
