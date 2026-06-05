@@ -124,6 +124,31 @@ public class DashboardMongoService {
         return result;
     }
 
+    // ─── 전환유형 캠페인별 집계 (campaignreport용) ───────────────────────────
+
+    public Map<String, Map<String, Object>> aggregateConvtypeByCampaignId(String advid, String from, String to, String collection) {
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where("daily_advid").is(advid)
+                .and("daily_dt").gte(from).lte(to)),
+            Aggregation.group(Aggregation.fields().and("campaign_id", "campaign_id").and("conv_type_code", "conv_type_code"))
+                .sum("conv_cnt").as("cnt")
+                .sum("conv_value").as("value")
+        );
+        Map<String, Map<String, Object>> result = new HashMap<>();
+        for (Document d : mongo.aggregate(agg, collection, Document.class).getMappedResults()) {
+            Document id = (Document) d.get("_id");
+            if (id == null) continue;
+            String cid  = id.getString("campaign_id");
+            String code = id.getString("conv_type_code");
+            if (cid == null || code == null) continue;
+            Map<String, Object> v = new HashMap<>();
+            v.put("cnt",   toDouble(d, "cnt"));
+            v.put("value", toDouble(d, "value"));
+            result.put(cid + "|" + code, v);
+        }
+        return result;
+    }
+
     // ─── 전환유형 날짜별 집계 (period용) ────────────────────────────────────
 
     public Map<String, Map<String, Object>> aggregateConvtypeByDate(String advid, String from, String to, String collection) {

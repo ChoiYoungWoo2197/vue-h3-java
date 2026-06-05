@@ -62,9 +62,9 @@ public class CampaignReportService {
     private Map<String, Object> buildNaverReport(String advid, String from, String to, String cfrom, String cto) {
         if (advid == null || advid.isBlank()) return emptyReport();
 
-        List<Map<String, Object>> graph     = buildGraph(advid, from, to, "naver_campaign_daily", true);
-        Map<String, Object>       compTotal = aggregateTotal(advid, cfrom, cto, "naver_campaign_daily", true);
-        Map<String, Object>       curTotal  = sumGraph(graph);
+        List<Map<String, Object>> graph     = buildGraph(advid, from, to, "naver_campaign_daily", false);
+        Map<String, Object>       compTotal = aggregateTotalFull(advid, cfrom, cto, "naver_campaign_daily", false, "naver_campaign_convtype");
+        Map<String, Object>       curTotal  = aggregateTotalFull(advid, from, to, "naver_campaign_daily", false, "naver_campaign_convtype");
 
         // 캠페인별 집계 + 마스터 JOIN
         List<Map<String, Object>> campStats  = mongoService.aggregateByCampaign(advid, from, to, "naver_campaign_daily");
@@ -72,8 +72,8 @@ public class CampaignReportService {
         Map<String, Document>     masterMap  = new HashMap<>();
         for (Document d : masters) masterMap.put(d.getString("campaignid"), d);
 
-        // 전환유형
-        Map<String, Map<String, Object>> convtype = mongoService.aggregateConvtype(advid, from, to, "naver_campaign_convtype");
+        // 전환유형 캠페인별
+        Map<String, Map<String, Object>> convtype = mongoService.aggregateConvtypeByCampaignId(advid, from, to, "naver_campaign_convtype");
 
         // 캠페인 타입별 그룹핑
         Map<String, List<Map<String, Object>>> groups = new LinkedHashMap<>();
@@ -87,8 +87,8 @@ public class CampaignReportService {
             String typeName = typeCodeToName(typeCode, NAVER_CAMP_TYPE);
             if (typeName == null) continue;
 
-            double cst = toDouble(cs, "cst") * 1.1;
-            Map<String, Object> row = buildCampaignRow(cid, master.getString("cname"), typeName,
+            double cst = toDouble(cs, "cst");
+            Map<String, Object> row = buildCampaignRow(cid, master.getString("campaignname"), typeName,
                 getInt(master, "onoff", 0), toDouble(cs, "im"), toDouble(cs, "clk"),
                 cst, toDouble(cs, "cv"), toDouble(cs, "cr"), convtype, true);
             groups.get(typeName).add(row);
@@ -183,15 +183,15 @@ public class CampaignReportService {
     private Map<String, Object> buildGfaReport(String advid, String from, String to, String cfrom, String cto) {
         if (advid == null || advid.isBlank()) return emptyReport();
 
-        List<Map<String, Object>> graph     = buildGraph(advid, from, to, "naver_gfa_campaign_daily", true);
-        Map<String, Object>       compTotal = aggregateTotal(advid, cfrom, cto, "naver_gfa_campaign_daily", true);
-        Map<String, Object>       curTotal  = sumGraph(graph);
+        List<Map<String, Object>> graph     = buildGraph(advid, from, to, "naver_gfa_campaign_daily", false);
+        Map<String, Object>       compTotal = aggregateTotalFull(advid, cfrom, cto, "naver_gfa_campaign_daily", false, "naver_gfa_campaign_convtype");
+        Map<String, Object>       curTotal  = aggregateTotalFull(advid, from, to, "naver_gfa_campaign_daily", false, "naver_gfa_campaign_convtype");
 
         List<Map<String, Object>> campStats = mongoService.aggregateByCampaign(advid, from, to, "naver_gfa_campaign_daily");
         List<Document>            masters   = mongoService.findCampaigns(advid, "naver_gfa_campaign");
         Map<String, Document>     masterMap = toMasterMap(masters, "cid");
 
-        Map<String, Map<String, Object>> convtype = mongoService.aggregateConvtype(advid, from, to, "naver_gfa_campaign_convtype");
+        Map<String, Map<String, Object>> convtype = mongoService.aggregateConvtypeByCampaignId(advid, from, to, "naver_gfa_campaign_convtype");
 
         Map<String, List<Map<String, Object>>> groups = new LinkedHashMap<>();
         GFA_CAMP_TYPE.keySet().forEach(t -> groups.put(t, new ArrayList<>()));
@@ -203,7 +203,7 @@ public class CampaignReportService {
             int typeCode  = getInt(master, "type", -1);
             String typeName = typeCodeToName(typeCode, GFA_CAMP_TYPE);
             if (typeName == null) continue;
-            double cst = toDouble(cs, "cst") * 1.1;
+            double cst = toDouble(cs, "cst");
             groups.get(typeName).add(buildCampaignRow(cid, master.getString("cname"), typeName,
                 getInt(master, "onoff", 0), toDouble(cs, "im"), toDouble(cs, "clk"),
                 cst, toDouble(cs, "cv"), toDouble(cs, "cr"), convtype, true));
@@ -294,6 +294,39 @@ public class CampaignReportService {
                       "cv", toDouble(r, "cv"), "cr", toDouble(r, "cr"));
     }
 
+    private Map<String, Object> aggregateTotalFull(String advid, String from, String to,
+                                                    String collection, boolean vatNaver, String convCollection) {
+        Map<String, Object> r = mongoService.aggregateTotal(advid, from, to, collection);
+        double im = toDouble(r, "im"), clk = toDouble(r, "clk"), cv = toDouble(r, "cv"), cr = toDouble(r, "cr");
+        double cst = vatNaver ? toDouble(r, "cst") * 1.1 : toDouble(r, "cst");
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("im", Math.round(im)); result.put("clk", Math.round(clk));
+        result.put("cst", Math.round(cst)); result.put("cv", Math.round(cv)); result.put("cr", Math.round(cr));
+        result.putAll(calcMetrics(im, clk, cst, cv, cr));
+        if (convCollection != null) {
+            Map<String, Map<String, Object>> ct = mongoService.aggregateConvtype(advid, from, to, convCollection);
+            double pCv = ctCnt2(ct,"purchase"), pCr = ctVal2(ct,"purchase");
+            double sCv = ctCnt2(ct,"sign_up"),  sCr = ctVal2(ct,"sign_up");
+            double caCv = ctCnt2(ct,"add_to_cart"), caCr = ctVal2(ct,"add_to_cart");
+            double lCv = ctCnt2(ct,"lead"), lCr = ctVal2(ct,"lead");
+            result.put("purchase_cv",(long)pCv); result.put("purchase_cr",(long)pCr);
+            result.put("signup_cv",(long)sCv); result.put("signup_cr",(long)sCr);
+            result.put("cart_cv",(long)caCv); result.put("cart_cr",(long)caCr);
+            result.put("lead_cv",(long)lCv); result.put("lead_cr",(long)lCr);
+            result.put("other_cv",0L); result.put("other_cr",0L);
+            result.put("purchase_roas", (pCr > 0 && cst > 0) ? fmt(pCr / cst * 100) : 0);
+        }
+        return result;
+    }
+
+    private double ctCnt2(Map<String, Map<String, Object>> ct, String code) {
+        return ct.containsKey(code) ? toDouble(ct.get(code), "cnt") : 0.0;
+    }
+
+    private double ctVal2(Map<String, Map<String, Object>> ct, String code) {
+        return ct.containsKey(code) ? toDouble(ct.get(code), "value") : 0.0;
+    }
+
     private Map<String, Object> sumGraph(List<Map<String, Object>> graph) {
         double im = 0, clk = 0, cst = 0, cv = 0, cr = 0;
         for (Map<String, Object> row : graph) {
@@ -347,14 +380,20 @@ public class CampaignReportService {
     }
 
     private Map<String, Object> buildCp(Map<String, Object> cur, Map<String, Object> comp) {
-        String[] keys = {"im", "clk", "cst", "cv", "cr"};
-        Map<String, Object> cp = new LinkedHashMap<>();
+        String[] keys = {"im","clk","cst","cv","cr","ctr","cpc","cpa","cvr","roas",
+                         "purchase_cv","purchase_cr","signup_cv","signup_cr","cart_cv","cart_cr",
+                         "lead_cv","lead_cr","other_cv","other_cr","purchase_roas"};
+        Map<String, Object> per = new LinkedHashMap<>();
+        Map<String, Object> cp  = new LinkedHashMap<>();
         for (String k : keys) {
             double c = toDouble(cur, k), p = toDouble(comp, k);
-            double per = (p != 0) ? fmt((c - p) / p * 100) : 0;
-            cp.put(k, Map.of("val", c, "cp", p, "per", per));
+            per.put(k, (c > 0 && p > 0) ? fmt((c - p) / p * 100) : 0);
+            cp.put(k,  p > 0 ? p : 0);
         }
-        return cp;
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("per", per);
+        result.put("cp",  cp);
+        return result;
     }
 
     private Map<String, Object> calcMetrics(double im, double clk, double cst, double cv, double cr) {
@@ -395,11 +434,13 @@ public class CampaignReportService {
     }
 
     private double ctCnt(Map<String, Map<String, Object>> ct, String cid, String code) {
-        return ct.containsKey(code) ? toDouble(ct.get(code), "cnt") : 0.0;
+        String key = cid + "|" + code;
+        return ct.containsKey(key) ? toDouble(ct.get(key), "cnt") : 0.0;
     }
 
     private double ctVal(Map<String, Map<String, Object>> ct, String cid, String code) {
-        return ct.containsKey(code) ? toDouble(ct.get(code), "value") : 0.0;
+        String key = cid + "|" + code;
+        return ct.containsKey(key) ? toDouble(ct.get(key), "value") : 0.0;
     }
 
     private double toDouble(Map<String, Object> m, String key) {
