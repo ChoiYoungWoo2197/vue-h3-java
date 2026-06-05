@@ -107,8 +107,7 @@ public class DashboardService {
         Map<String, Object> raw = mongoService.aggregateTotal(advid, from, to, collection);
         double im  = toDouble(raw, "im");
         double clk = toDouble(raw, "clk");
-        double cst = "naver_campaign_daily".equals(collection) || "naver_gfa_campaign_daily".equals(collection)
-                     ? toDouble(raw, "cst") * 1.1 : toDouble(raw, "cst");
+        double cst = toDouble(raw, "cst");
         double cv  = toDouble(raw, "cv");
         double cr  = toDouble(raw, "cr");
 
@@ -148,7 +147,7 @@ public class DashboardService {
         double im = 0, clk = 0, cst = 0, cv = 0, cr = 0;
         if (m[0] && acc.getAccountNaverCustomer() != null) {
             Map<String, Object> r = mongoService.aggregateTotal(acc.getAccountNaverCustomer(), from, to, "naver_campaign_daily");
-            im += toDouble(r, "im"); clk += toDouble(r, "clk"); cst += toDouble(r, "cst") * 1.1; cv += toDouble(r, "cv"); cr += toDouble(r, "cr");
+            im += toDouble(r, "im"); clk += toDouble(r, "clk"); cst += toDouble(r, "cst"); cv += toDouble(r, "cv"); cr += toDouble(r, "cr");
         }
         if (m[1] && acc.getAccountKakaosa() != null) {
             Map<String, Object> r = mongoService.aggregateTotal(acc.getAccountKakaosa(), from, to, "kakao_sa_campaign_daily");
@@ -160,7 +159,7 @@ public class DashboardService {
         }
         if (m[3] && acc.getAccountGfa() != null) {
             Map<String, Object> r = mongoService.aggregateTotal(acc.getAccountGfa(), from, to, "naver_gfa_campaign_daily");
-            im += toDouble(r, "im"); clk += toDouble(r, "clk"); cst += toDouble(r, "cst") * 1.1; cv += toDouble(r, "cv"); cr += toDouble(r, "cr");
+            im += toDouble(r, "im"); clk += toDouble(r, "clk"); cst += toDouble(r, "cst"); cv += toDouble(r, "cv"); cr += toDouble(r, "cr");
         }
         if (m[4] && acc.getAccountGoogle() != null) {
             Map<String, Object> r = mongoService.aggregateTotal(acc.getAccountGoogle(), from, to, "google_campaign_daily");
