@@ -28,11 +28,18 @@ public class DashboardService {
         boolean[] m = parseMedia(media);
         Map<String, Object> result = new LinkedHashMap<>();
 
-        if (m[0]) result.put("naver",   calcMediaStat(acc.getAccountNaverCustomer(), fromdate, todate, "naver_campaign_daily",     true,  "naver_campaign_convtype"));
-        if (m[1]) result.put("kakaosa", calcMediaStat(acc.getAccountKakaosa(),       fromdate, todate, "kakao_sa_campaign_daily",  false, null));
-        if (m[2]) result.put("kakaomo", calcMediaStat(acc.getAccountKakaomoment(),   fromdate, todate, "kakao_mo_campaign_daily",  false, null));
-        if (m[3]) result.put("naverda", calcMediaStat(acc.getAccountGfa(),           fromdate, todate, "naver_gfa_campaign_daily", true,  "naver_gfa_campaign_convtype"));
-        if (m[4]) result.put("google",  calcMediaStat(acc.getAccountGoogle(),        fromdate, todate, "google_campaign_daily",    false, null));
+        Map<String, Object> naver   = m[0] ? calcMediaStat(acc.getAccountNaverCustomer(), fromdate, todate, "naver_campaign_daily",     true,  "naver_campaign_convtype") : emptyMediaStat();
+        Map<String, Object> kakaosa = m[1] ? calcMediaStat(acc.getAccountKakaosa(),       fromdate, todate, "kakao_sa_campaign_daily",  false, null) : emptyMediaStat();
+        Map<String, Object> kakaomo = m[2] ? calcMediaStat(acc.getAccountKakaomoment(),   fromdate, todate, "kakao_mo_campaign_daily",  false, null) : emptyMediaStat();
+        Map<String, Object> naverda = m[3] ? calcMediaStat(acc.getAccountGfa(),           fromdate, todate, "naver_gfa_campaign_daily", true,  "naver_gfa_campaign_convtype") : emptyMediaStat();
+        Map<String, Object> google  = m[4] ? calcMediaStat(acc.getAccountGoogle(),        fromdate, todate, "google_campaign_daily",    false, null) : emptyMediaStat();
+
+        result.put("TOTAL",   calcTotal(List.of(naver, kakaosa, kakaomo, naverda, google)));
+        result.put("naver",   naver);
+        result.put("kakaosa", kakaosa);
+        result.put("kakaomo", kakaomo);
+        result.put("naverda", naverda);
+        result.put("google",  google);
 
         return Map.of("result", "success", "status", "200", "data", result);
     }
@@ -229,6 +236,39 @@ public class DashboardService {
 
     private double fmt(double v) {
         return Math.round(v * 100.0) / 100.0;
+    }
+
+    private Map<String, Object> calcTotal(List<Map<String, Object>> mediaList) {
+        String[] fields = {"im","clk","cst","cv","cr","purchase_cv","purchase_cr",
+                           "signup_cv","signup_cr","cart_cv","cart_cr","lead_cv","lead_cr","other_cv","other_cr"};
+        double im = 0, clk = 0, cst = 0, cv = 0, cr = 0;
+        double purchaseCv = 0, purchaseCr = 0, signupCv = 0, signupCr = 0;
+        double cartCv = 0, cartCr = 0, leadCv = 0, leadCr = 0, otherCv = 0, otherCr = 0;
+        for (Map<String, Object> m : mediaList) {
+            im += toLong(m, "im"); clk += toLong(m, "clk"); cst += toLong(m, "cst");
+            cv += toLong(m, "cv"); cr  += toLong(m, "cr");
+            purchaseCv += toLong(m, "purchase_cv"); purchaseCr += toLong(m, "purchase_cr");
+            signupCv   += toLong(m, "signup_cv");   signupCr   += toLong(m, "signup_cr");
+            cartCv     += toLong(m, "cart_cv");     cartCr     += toLong(m, "cart_cr");
+            leadCv     += toLong(m, "lead_cv");     leadCr     += toLong(m, "lead_cr");
+            otherCv    += toLong(m, "other_cv");    otherCr    += toLong(m, "other_cr");
+        }
+        Map<String, Object> t = new LinkedHashMap<>();
+        t.put("im", (long)im); t.put("clk", (long)clk); t.put("cst", (long)cst);
+        t.put("cv", (long)cv); t.put("cr", (long)cr);
+        t.putAll(calcMetrics(im, clk, cst, cv, cr));
+        t.put("purchase_cv", (long)purchaseCv); t.put("purchase_cr", (long)purchaseCr);
+        t.put("signup_cv",   (long)signupCv);   t.put("signup_cr",   (long)signupCr);
+        t.put("cart_cv",     (long)cartCv);     t.put("cart_cr",     (long)cartCr);
+        t.put("lead_cv",     (long)leadCv);     t.put("lead_cr",     (long)leadCr);
+        t.put("other_cv",    (long)otherCv);    t.put("other_cr",    (long)otherCr);
+        t.put("purchase_roas", (purchaseCr > 0 && cst > 0) ? fmt(purchaseCr / cst * 100) : 0);
+        return t;
+    }
+
+    private long toLong(Map<String, Object> m, String key) {
+        Object v = m.get(key);
+        return (v instanceof Number) ? ((Number) v).longValue() : 0L;
     }
 
     private Map<String, Object> emptyMediaStat() {
