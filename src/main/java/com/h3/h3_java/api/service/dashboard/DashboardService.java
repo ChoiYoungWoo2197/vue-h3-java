@@ -133,32 +133,53 @@ public class DashboardService {
         Map<String, Map<String, Object>> gfaMap     = m[3] ? mongoService.aggregateByDate(acc.getAccountGfa(),            fromdate, todate, "naver_gfa_campaign_daily") : Collections.emptyMap();
         Map<String, Map<String, Object>> googleMap  = m[4] ? mongoService.aggregateByDate(acc.getAccountGoogle(),         fromdate, todate, "google_campaign_daily")    : Collections.emptyMap();
 
+        // 전환유형 날짜별 (Naver SA/GFA)
+        Map<String, Map<String, Object>> naverCtMap = m[0] ? mongoService.aggregateConvtypeByDate(acc.getAccountNaverCustomer(), fromdate, todate, "naver_campaign_convtype")     : Collections.emptyMap();
+        Map<String, Map<String, Object>> gfaCtMap   = m[3] ? mongoService.aggregateConvtypeByDate(acc.getAccountGfa(),           fromdate, todate, "naver_gfa_campaign_convtype") : Collections.emptyMap();
+
         // 날짜 범위 순회, 매일 합산
-        List<Map<String, Object>> graph = new ArrayList<>();
+        Map<String, Map<String, Object>> result = new LinkedHashMap<>();
         LocalDate cur = LocalDate.parse(fromdate, FMT);
         LocalDate end = LocalDate.parse(todate, FMT);
         while (!cur.isAfter(end)) {
             String date = cur.format(FMT);
-            double im  = getVal(naverMap, date, "im")  * 1 + getVal(kakaoSaMap, date, "im")  + getVal(kakaoMoMap, date, "im")  + getVal(gfaMap, date, "im")  + getVal(googleMap, date, "im");
+            double im  = getVal(naverMap, date, "im")  + getVal(kakaoSaMap, date, "im")  + getVal(kakaoMoMap, date, "im")  + getVal(gfaMap, date, "im")  + getVal(googleMap, date, "im");
             double clk = getVal(naverMap, date, "clk") + getVal(kakaoSaMap, date, "clk") + getVal(kakaoMoMap, date, "clk") + getVal(gfaMap, date, "clk") + getVal(googleMap, date, "clk");
-            double cst = getVal(naverMap, date, "cst") * 1.1
-                       + getVal(kakaoSaMap, date, "cst") + getVal(kakaoMoMap, date, "cst")
-                       + getVal(gfaMap, date, "cst") + getVal(googleMap, date, "cst");
+            double cstd = getVal(naverMap, date, "cst") * 1.1
+                        + getVal(kakaoSaMap, date, "cst") + getVal(kakaoMoMap, date, "cst")
+                        + getVal(gfaMap, date, "cst") + getVal(googleMap, date, "cst");
+            double cst = Math.floor(cstd / 1.1);
             double cv  = getVal(naverMap, date, "cv")  + getVal(kakaoSaMap, date, "cv")  + getVal(kakaoMoMap, date, "cv")  + getVal(gfaMap, date, "cv")  + getVal(googleMap, date, "cv");
             double cr  = getVal(naverMap, date, "cr")  + getVal(kakaoSaMap, date, "cr")  + getVal(kakaoMoMap, date, "cr")  + getVal(gfaMap, date, "cr")  + getVal(googleMap, date, "cr");
 
+            // 전환유형 합산 (Naver SA + GFA)
+            double pCv = getCtVal(naverCtMap, date, "purchase", "cnt") + getCtVal(gfaCtMap, date, "purchase", "cnt");
+            double pCr = getCtVal(naverCtMap, date, "purchase", "value") + getCtVal(gfaCtMap, date, "purchase", "value");
+            double sCv = getCtVal(naverCtMap, date, "sign_up",  "cnt") + getCtVal(gfaCtMap, date, "sign_up",  "cnt");
+            double sCr = getCtVal(naverCtMap, date, "sign_up",  "value") + getCtVal(gfaCtMap, date, "sign_up",  "value");
+            double cartCv = getCtVal(naverCtMap, date, "add_to_cart", "cnt") + getCtVal(gfaCtMap, date, "add_to_cart", "cnt");
+            double cartCr = getCtVal(naverCtMap, date, "add_to_cart", "value") + getCtVal(gfaCtMap, date, "add_to_cart", "value");
+            double lCv = getCtVal(naverCtMap, date, "lead", "cnt") + getCtVal(gfaCtMap, date, "lead", "cnt");
+            double lCr = getCtVal(naverCtMap, date, "lead", "value") + getCtVal(gfaCtMap, date, "lead", "value");
+
             Map<String, Object> day = new LinkedHashMap<>();
-            day.put("daily_dt", date);
-            day.put("im",  Math.round(im));
-            day.put("clk", Math.round(clk));
-            day.put("cst", Math.round(cst));
-            day.put("cv",  Math.round(cv));
-            day.put("cr",  Math.round(cr));
-            day.putAll(calcMetrics(im, clk, cst, cv, cr));
-            graph.add(day);
+            day.put("im",   Math.round(im));
+            day.put("clk",  Math.round(clk));
+            day.put("cst",  Math.round(cst));
+            day.put("cstd", Math.round(cstd));
+            day.put("cv",   Math.round(cv));
+            day.put("cr",   Math.round(cr));
+            day.put("purchase_cv",  Math.round(pCv)); day.put("purchase_cr",  Math.round(pCr));
+            day.put("signup_cv",    Math.round(sCv)); day.put("signup_cr",    Math.round(sCr));
+            day.put("cart_cv",      Math.round(cartCv)); day.put("cart_cr",   Math.round(cartCr));
+            day.put("lead_cv",      Math.round(lCv)); day.put("lead_cr",      Math.round(lCr));
+            day.put("other_cv", 0L); day.put("other_cr", 0L);
+            day.putAll(calcMetrics(im, clk, cstd, cv, cr));
+            day.put("purchase_roas", (pCr > 0 && cstd > 0) ? fmt(pCr / cstd * 100) : 0);
+            result.put(date, day);
             cur = cur.plusDays(1);
         }
-        return Map.of("result", "success", "status", "200", "data", graph);
+        return Map.of("result", "success", "status", "200", "data", result);
     }
 
     // ─── 내부 헬퍼 ───────────────────────────────────────────────────────────
@@ -269,6 +290,11 @@ public class DashboardService {
         boolean[] r = new boolean[5];
         for (int i = 0; i < Math.min(5, parts.length); i++) r[i] = "1".equals(parts[i].trim());
         return r;
+    }
+
+    private double getCtVal(Map<String, Map<String, Object>> ctMap, String date, String code, String field) {
+        Map<String, Object> v = ctMap.get(date + "|" + code);
+        return v != null ? toDouble(v, field) : 0.0;
     }
 
     private double getVal(Map<String, Map<String, Object>> map, String date, String key) {

@@ -124,6 +124,34 @@ public class DashboardMongoService {
         return result;
     }
 
+    // ─── 전환유형 날짜별 집계 (period용) ────────────────────────────────────
+
+    public Map<String, Map<String, Object>> aggregateConvtypeByDate(String advid, String from, String to, String collection) {
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where("daily_advid").is(advid)
+                .and("daily_dt").gte(from).lte(to)),
+            Aggregation.group(Aggregation.fields().and("daily_dt", "daily_dt").and("conv_type_code", "conv_type_code"))
+                .sum("conv_cnt").as("cnt")
+                .sum("conv_value").as("value"),
+            Aggregation.sort(org.springframework.data.domain.Sort.by("_id.daily_dt"))
+        );
+        // result: Map<"date|typeCode", {cnt, value}>
+        Map<String, Map<String, Object>> result = new HashMap<>();
+        for (Document d : mongo.aggregate(agg, collection, Document.class).getMappedResults()) {
+            Document id = (Document) d.get("_id");
+            if (id == null) continue;
+            String date = id.getString("daily_dt");
+            String code = id.getString("conv_type_code");
+            if (date == null || code == null) continue;
+            String key = date + "|" + code;
+            Map<String, Object> v = new HashMap<>();
+            v.put("cnt",   toDouble(d, "cnt"));
+            v.put("value", toDouble(d, "value"));
+            result.put(key, v);
+        }
+        return result;
+    }
+
     // ─── 마스터 캠페인 조회 ──────────────────────────────────────────────────
 
     /** naver_campaign: advkey + campaignid 기준 */
