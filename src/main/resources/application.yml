@@ -42,6 +42,11 @@ google:
   developer-token: vxKM6J4s-oTW3gbvMLMjlg
   manager-id: "6769413271"
 
+# JWT
+jwt:
+  secret: h3-heeil-jwt-secret-key-must-be-at-least-32-characters-long
+  expiration-ms: 86400000  # 24시간
+
 # MyBatis
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
