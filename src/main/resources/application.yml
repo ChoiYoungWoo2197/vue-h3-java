@@ -16,7 +16,7 @@ spring:
 
   # RabbitMQ
   rabbitmq:
-    host: 101.101.211.31
+    host: 192.168.100.12
     port: 5672
     username: heeilh3
     password: heeil@0801!@#
