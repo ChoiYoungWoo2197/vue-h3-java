@@ -51,16 +51,71 @@ public class DashboardService {
         AccountDto acc = accountMapper.selectByUserId(userId);
         if (acc == null) return Map.of("result", "failed", "status", "1009", "errormessage", "계정 없음");
 
-        boolean[] m   = parseMedia(media);
-        String cfrom  = (comparefromdate != null && !comparefromdate.isEmpty()) ? comparefromdate : fromdate;
-        String cto    = (comparetodate  != null && !comparetodate.isEmpty())  ? comparetodate  : todate;
+        boolean[] m  = parseMedia(media);
+        String cfrom = (comparefromdate != null && !comparefromdate.isEmpty()) ? comparefromdate : fromdate;
+        String cto   = (comparetodate  != null && !comparetodate.isEmpty())  ? comparetodate  : todate;
 
-        Map<String, Object> cur  = aggregateAllMedia(acc, fromdate,  todate, m);
-        Map<String, Object> comp = aggregateAllMedia(acc, cfrom,     cto,    m);
+        // 현재 기간 - 매체별 stat (convtype 포함)
+        Map<String, Object> curNaver   = m[0] ? calcMediaStat(acc.getAccountNaverCustomer(), fromdate, todate, "naver_campaign_daily",     true,  "naver_campaign_convtype") : emptyMediaStat();
+        Map<String, Object> curKakaosa = m[1] ? calcMediaStat(acc.getAccountKakaosa(),       fromdate, todate, "kakao_sa_campaign_daily",  false, null) : emptyMediaStat();
+        Map<String, Object> curKakaomo = m[2] ? calcMediaStat(acc.getAccountKakaomoment(),   fromdate, todate, "kakao_mo_campaign_daily",  false, null) : emptyMediaStat();
+        Map<String, Object> curNaverda = m[3] ? calcMediaStat(acc.getAccountGfa(),           fromdate, todate, "naver_gfa_campaign_daily", true,  "naver_gfa_campaign_convtype") : emptyMediaStat();
+        Map<String, Object> curGoogle  = m[4] ? calcMediaStat(acc.getAccountGoogle(),        fromdate, todate, "google_campaign_daily",    false, null) : emptyMediaStat();
+        Map<String, Object> cur = sumMediaStats(List.of(curNaver, curKakaosa, curKakaomo, curNaverda, curGoogle));
 
-        Map<String, Object> stat = calcStat(cur);
-        stat.put("cp", buildCp(cur, comp));
-        return Map.of("result", "success", "status", "200", "data", stat);
+        // 비교 기간
+        Map<String, Object> compNaver   = m[0] ? calcMediaStat(acc.getAccountNaverCustomer(), cfrom, cto, "naver_campaign_daily",     true,  "naver_campaign_convtype") : emptyMediaStat();
+        Map<String, Object> compKakaosa = m[1] ? calcMediaStat(acc.getAccountKakaosa(),       cfrom, cto, "kakao_sa_campaign_daily",  false, null) : emptyMediaStat();
+        Map<String, Object> compKakaomo = m[2] ? calcMediaStat(acc.getAccountKakaomoment(),   cfrom, cto, "kakao_mo_campaign_daily",  false, null) : emptyMediaStat();
+        Map<String, Object> compNaverda = m[3] ? calcMediaStat(acc.getAccountGfa(),           cfrom, cto, "naver_gfa_campaign_daily", true,  "naver_gfa_campaign_convtype") : emptyMediaStat();
+        Map<String, Object> compGoogle  = m[4] ? calcMediaStat(acc.getAccountGoogle(),        cfrom, cto, "google_campaign_daily",    false, null) : emptyMediaStat();
+        Map<String, Object> comp = sumMediaStats(List.of(compNaver, compKakaosa, compKakaomo, compNaverda, compGoogle));
+
+        // 응답 구성 (PHP 구조 동일)
+        Map<String, Object> data = new LinkedHashMap<>(cur);
+        data.put("per", buildPerFlat(cur, comp));
+        data.put("cp",  buildCpFlat(comp));
+        return Map.of("result", "success", "status", "200", "data", data);
+    }
+
+    private Map<String, Object> sumMediaStats(List<Map<String, Object>> list) {
+        String[] fields = {"im","clk","cst","cv","cr","purchase_cv","purchase_cr",
+                           "signup_cv","signup_cr","cart_cv","cart_cr","lead_cv","lead_cr","other_cv","other_cr"};
+        double im=0,clk=0,cst=0,cv=0,cr=0,pCv=0,pCr=0,sCv=0,sCr=0,cartCv=0,cartCr=0,lCv=0,lCr=0,oCv=0,oCr=0;
+        for (Map<String, Object> m : list) {
+            im+=toLong(m,"im"); clk+=toLong(m,"clk"); cst+=toLong(m,"cst"); cv+=toLong(m,"cv"); cr+=toLong(m,"cr");
+            pCv+=toLong(m,"purchase_cv"); pCr+=toLong(m,"purchase_cr");
+            sCv+=toLong(m,"signup_cv");   sCr+=toLong(m,"signup_cr");
+            cartCv+=toLong(m,"cart_cv"); cartCr+=toLong(m,"cart_cr");
+            lCv+=toLong(m,"lead_cv");    lCr+=toLong(m,"lead_cr");
+            oCv+=toLong(m,"other_cv");   oCr+=toLong(m,"other_cr");
+        }
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("cst",(long)cst); r.put("im",(long)im); r.put("clk",(long)clk); r.put("cv",(long)cv); r.put("cr",(long)cr);
+        r.put("purchase_cv",(long)pCv); r.put("purchase_cr",(long)pCr);
+        r.put("signup_cv",(long)sCv);   r.put("signup_cr",(long)sCr);
+        r.put("cart_cv",(long)cartCv);  r.put("cart_cr",(long)cartCr);
+        r.put("lead_cv",(long)lCv);     r.put("lead_cr",(long)lCr);
+        r.put("other_cv",(long)oCv);    r.put("other_cr",(long)oCr);
+        r.putAll(calcMetrics(im, clk, cst, cv, cr));
+        r.put("purchase_roas", (pCr > 0 && cst > 0) ? fmt(pCr / cst * 100) : 0);
+        return r;
+    }
+
+    private Map<String, Object> buildPerFlat(Map<String, Object> cur, Map<String, Object> comp) {
+        String[] keys = {"cst","im","clk","cv","cr","ctr","cpc","cpa","cvr","roas",
+                         "purchase_cv","purchase_cr","signup_cv","signup_cr","cart_cv","cart_cr",
+                         "lead_cv","lead_cr","other_cv","other_cr","purchase_roas"};
+        Map<String, Object> per = new LinkedHashMap<>();
+        for (String k : keys) {
+            double c = toDouble(cur, k), p = toDouble(comp, k);
+            per.put(k, (c > 0 && p > 0) ? fmt((c - p) / p * 100) : 0);
+        }
+        return per;
+    }
+
+    private Map<String, Object> buildCpFlat(Map<String, Object> comp) {
+        return new LinkedHashMap<>(comp);
     }
 
     // ─── 날짜별 통계 (period) ────────────────────────────────────────────────
