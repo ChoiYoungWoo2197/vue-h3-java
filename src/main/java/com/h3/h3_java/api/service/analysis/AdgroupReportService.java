@@ -128,16 +128,22 @@ public class AdgroupReportService {
     }
 
     private void sortGroups(List<Map<String, Object>> groups, String sort) {
-        if (sort == null || sort.trim().length() < 2) {
-            groups.sort((a, b) -> Long.compare(toLong(b, "cst"), toLong(a, "cst")));
-            return;
+        String s = (sort != null) ? sort.trim() : "";
+        String field;
+        boolean desc;
+        if (s.length() >= 2) {
+            field = s.substring(0, s.length() - 1);
+            desc  = s.charAt(s.length() - 1) == 'd';
+        } else {
+            field = "cst";
+            desc  = true;
         }
-        sort = sort.trim();
-        String field = sort.substring(0, sort.length() - 1);
-        boolean asc  = sort.endsWith("a");
-        groups.sort((a, b) -> {
-            double va = toDouble2(a, field), vb = toDouble2(b, field);
-            return asc ? Double.compare(va, vb) : Double.compare(vb, va);
+        String f = field;
+        groups.sort((x, y) -> {
+            Object ox = x.get(f), oy = y.get(f);
+            double dx = (ox instanceof Number n) ? n.doubleValue() : 0.0;
+            double dy = (oy instanceof Number n) ? n.doubleValue() : 0.0;
+            return desc ? Double.compare(dy, dx) : Double.compare(dx, dy);
         });
     }
 
