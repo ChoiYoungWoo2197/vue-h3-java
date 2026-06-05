@@ -128,10 +128,11 @@ public class AdgroupReportService {
     }
 
     private void sortGroups(List<Map<String, Object>> groups, String sort) {
-        if (sort == null || sort.length() < 2) {
+        if (sort == null || sort.trim().length() < 2) {
             groups.sort((a, b) -> Long.compare(toLong(b, "cst"), toLong(a, "cst")));
             return;
         }
+        sort = sort.trim();
         String field = sort.substring(0, sort.length() - 1);
         boolean asc  = sort.endsWith("a");
         groups.sort((a, b) -> {
