@@ -74,6 +74,29 @@ public class DashboardMongoService {
         return result;
     }
 
+    // ─── 전환유형 키워드별 집계 (keywordreport용) ─────────────────────────────
+
+    public Map<String, Map<String, Object>> aggregateConvtypeByKeywordId(String advid, String from, String to, String collection) {
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where("daily_advid").is(advid).and("daily_dt").gte(from).lte(to)),
+            Aggregation.group(Aggregation.fields().and("keyword_id","keyword_id").and("conv_type_code","conv_type_code"))
+                .sum("conv_cnt").as("cnt").sum("conv_value").as("value")
+        );
+        Map<String, Map<String, Object>> result = new HashMap<>();
+        for (Document d : mongo.aggregate(agg, collection, Document.class).getMappedResults()) {
+            Document id = (Document) d.get("_id");
+            if (id == null) continue;
+            String kwid = id.getString("keyword_id");
+            String code = id.getString("conv_type_code");
+            if (kwid == null || code == null) continue;
+            Map<String, Object> v = new HashMap<>();
+            v.put("cnt",   toDouble(d, "cnt"));
+            v.put("value", toDouble(d, "value"));
+            result.put(kwid + "|" + code, v);
+        }
+        return result;
+    }
+
     // ─── 키워드별 집계 (keywordreport) ──────────────────────────────────────
 
     public List<Map<String, Object>> aggregateByKeyword(String advid, String from, String to,
