@@ -79,10 +79,19 @@ public class MediaReportService {
 
     private Map<String, Map<String, Object>> fetchMediaDaily(String advid, String from, String to,
                                                                String dailyCol, String convtypeCol) {
-        if (advid == null || advid.isBlank()) return new LinkedHashMap<>();
+        if (advid == null || advid.isBlank()) return zeroFilledDates(from, to, convtypeCol != null);
 
         Map<String, Map<String, Object>> daily = mongoService.aggregateByDate(advid, from, to, dailyCol);
-        if (daily.isEmpty()) return daily;
+        if (daily.isEmpty()) return zeroFilledDates(from, to, convtypeCol != null);
+
+        // 날짜 범위 내 데이터 없는 날 0으로 채움
+        LocalDate d = LocalDate.parse(from, FMT);
+        LocalDate end = LocalDate.parse(to, FMT);
+        while (!d.isAfter(end)) {
+            String date = d.format(FMT);
+            if (!daily.containsKey(date)) daily.put(date, emptyRow(convtypeCol != null));
+            d = d.plusDays(1);
+        }
 
         if (convtypeCol != null) {
             Map<String, Map<String, Object>> convByDate = mongoService.aggregateConvtypeByDate(advid, from, to, convtypeCol);
@@ -94,7 +103,35 @@ public class MediaReportService {
         for (Map<String, Object> row : daily.values()) {
             enrichRow(row, convtypeCol != null);
         }
-        return daily;
+        return new TreeMap<>(daily);
+    }
+
+    private Map<String, Map<String, Object>> zeroFilledDates(String from, String to, boolean hasConvtype) {
+        Map<String, Map<String, Object>> result = new TreeMap<>();
+        LocalDate d = LocalDate.parse(from, FMT);
+        LocalDate end = LocalDate.parse(to, FMT);
+        while (!d.isAfter(end)) {
+            result.put(d.format(FMT), emptyRow(hasConvtype));
+            d = d.plusDays(1);
+        }
+        return result;
+    }
+
+    private Map<String, Object> emptyRow(boolean hasConvtype) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("im", 0L); row.put("clk", 0L); row.put("cst", 0L);
+        row.put("cv", 0.0); row.put("cr", 0.0);
+        if (hasConvtype) {
+            row.put("purchase_cv", 0L); row.put("purchase_cr", 0L);
+            row.put("signup_cv",   0L); row.put("signup_cr",   0L);
+            row.put("cart_cv",     0L); row.put("cart_cr",     0L);
+            row.put("lead_cv",     0L); row.put("lead_cr",     0L);
+            row.put("other_cv",    0L); row.put("other_cr",    0L);
+        }
+        row.put("ctr", 0); row.put("cpc", 0); row.put("cpa", 0);
+        row.put("cvr", 0); row.put("roas", 0);
+        if (hasConvtype) row.put("purchase_roas", 0);
+        return row;
     }
 
     private void mergeConvtype(Map<String, Object> row, String date, Map<String, Map<String, Object>> convByDate) {
