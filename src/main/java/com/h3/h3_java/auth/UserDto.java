@@ -12,4 +12,5 @@ public class UserDto {
     private String userPhone;
     private Integer userLevel;
     private String userStatus;
+    private String userManager;
 }

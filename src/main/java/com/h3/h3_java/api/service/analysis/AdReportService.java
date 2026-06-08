@@ -2,6 +2,8 @@ package com.h3.h3_java.api.service.analysis;
 
 import com.h3.h3_java.api.dto.AccountDto;
 import com.h3.h3_java.api.mapper.AccountMapper;
+import com.h3.h3_java.auth.UserDto;
+import com.h3.h3_java.auth.UserMapper;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
@@ -14,23 +16,37 @@ import java.util.*;
 public class AdReportService {
 
     private final AccountMapper accountMapper;
+    private final UserMapper     userMapper;
     private final DashboardMongoService mongoService;
 
     record AdConfig(String dailyCol, String adMasterCol, String agMasterCol, String campMasterCol,
                     String advField, String campIdField, String campNameField,
-                    String adMasterIdField, String convtypeCol, boolean isNaver) {}
+                    String adMasterIdField, String convtypeCol, boolean isNaver, boolean isBanner) {}
 
     private static final Map<String, AdConfig> MD_MAP = Map.of(
         "N",      new AdConfig("naver_ad_daily",      "naver_ad",       "naver_adgroup",      "naver_campaign",
-                               "daily_advid", "campaignid", "campaignname", "adid",  "naver_ad_convtype",      true),
+                               "daily_advid", "campaignid", "campaignname", "adid",  "naver_ad_convtype",     true,  false),
         "D",      new AdConfig("kakao_sa_ad_daily",   "kakao_sa_ad",    "kakao_sa_adgroup",   "kakao_sa_campaign",
-                               "advkey",      "cid",        "cname",        "aid",   null,                      false),
+                               "advkey",      "cid",        "cname",        "aid",   null,                    false, false),
         "K",      new AdConfig("kakao_mo_ad_daily",   "kakao_mo_ad",    "kakao_mo_adgroup",   "kakao_mo_campaign",
-                               "advkey",      "cid",        "cname",        "aid",   null,                      false),
+                               "advkey",      "cid",        "cname",        "aid",   null,                    false, true),
         "Nda",    new AdConfig("naver_gfa_ad_daily",  "naver_gfa_ad",   "naver_gfa_adgroup",  "naver_gfa_campaign",
-                               "daily_advid", "cid",        "cname",        "aid",   "naver_gfa_ad_convtype",  false),
+                               "daily_advid", "cid",        "cname",        "aid",   "naver_gfa_ad_convtype", false, true),
         "google", new AdConfig("google_ad_daily",     "google_ad",      "google_adgroup",     "google_campaign",
-                               "daily_advid", "cid",        "cname",        "aid",   null,                      false)
+                               "daily_advid", "cid",        "cname",        "aid",   null,                    false, true)
+    );
+
+    // GFA 코드 역매핑 (정수 → 문자열)
+    private static final Map<Integer, String> GFA_TYPE    = Map.of(
+        0,"conversion",1,"web_site_traffic",2,"install_app",3,"watch_video",4,"catalog",5,"shopping",6,"lead",7,"pmax");
+    private static final Map<Integer, String> GFA_BIDGOAL = Map.of(0,"max_click",1,"max_conv",2,"none");
+    private static final Map<Integer, String> GFA_BIDTYPE = Map.of(0,"cpc",1,"cpm",2,"cpv");
+    private static final Map<Integer, String> GFA_BUDGETTYPE = Map.of(0,"daily",1,"total");
+    private static final Map<Integer, String> GFA_PGROUPS = Map.ofEntries(
+        Map.entry(0,"band"), Map.entry(1,"f_banner"), Map.entry(2,"f_smartchannel"),
+        Map.entry(3,"m_banner"), Map.entry(4,"m_feed"), Map.entry(5,"m_main"),
+        Map.entry(6,"m_smartchannel"), Map.entry(7,"nw_banner"), Map.entry(8,"nw_smartchannel"),
+        Map.entry(9,"n_communication"), Map.entry(10,"n_instream"), Map.entry(11,"n_shopping")
     );
 
     public Map<String, Object> getAdReport(String userId, String md, String fromdate, String todate,
@@ -45,13 +61,13 @@ public class AdReportService {
         if (kpi != null && !kpi.isBlank()) {
             return getAdTop(acc, md, fromdate, todate, comparefrom, compareto, kpi);
         } else {
-            return getAd(acc, md, fromdate, todate, comparefrom, compareto, sort, start, display);
+            return getAd(acc, userId, md, fromdate, todate, comparefrom, compareto, sort, start, display);
         }
     }
 
     // ─── 소재 목록 ────────────────────────────────────────────────────────────
 
-    private Map<String, Object> getAd(AccountDto acc, String md, String from, String to,
+    private Map<String, Object> getAd(AccountDto acc, String userId, String md, String from, String to,
                                        String cfrom, String cto, String sort, int start, int display) {
         List<Map<String, Object>> allRows = new ArrayList<>();
 
@@ -71,8 +87,11 @@ public class AdReportService {
                 ? mongoService.aggregateConvtypeByAdId(advid, from, to, cfg.convtypeCol())
                 : new HashMap<>();
 
+            // 배너 타입 유저 정보 조회 (1회)
+            BannerUser bu = cfg.isBanner() ? loadBannerUser(userId, advid) : null;
+
             for (Map<String, Object> stat : stats) {
-                allRows.add(buildRow(stat, adMasterMap, agMasterMap, campMasterMap, adConvtype, cfg));
+                allRows.add(buildRow(stat, adMasterMap, agMasterMap, campMasterMap, adConvtype, cfg, bu));
             }
         }
 
@@ -85,13 +104,8 @@ public class AdReportService {
         int toIdx   = Math.min(fromIdx + display, total);
         List<Map<String, Object>> paged = fromIdx < total ? allRows.subList(fromIdx, toIdx) : Collections.emptyList();
 
-        // 현재 기간 전체 합계
         Map<String, Object> totalMap = buildRowTotal(allRows);
-
-        // 비교 기간 전체 합계
-        Map<String, Object> compMap = buildCompTotal(acc, md, cfrom, cto);
-
-        // cp 계산
+        Map<String, Object> compMap  = buildCompTotal(acc, md, cfrom, cto);
         totalMap.put("cp", buildCp2(totalMap, compMap));
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -100,11 +114,9 @@ public class AdReportService {
         data.put("total",  totalMap);
 
         Map<String, Object> res = new LinkedHashMap<>();
-        res.put("result",      "success");
-        res.put("status",      "200");
-        res.put("data",        data);
-        res.put("resultcount", 0);
-        res.put("totalcount",  total);
+        res.put("result", "success"); res.put("status", "200");
+        res.put("data", data);
+        res.put("resultcount", 0); res.put("totalcount", total);
         return res;
     }
 
@@ -114,11 +126,9 @@ public class AdReportService {
                                           String cfrom, String cto, String kpi) {
         String[] kpis = kpi.split(",");
 
-        // kpi별 독립 row 목록 (KeywordReport 패턴: 각 kpi에 별도 복사본 추가)
         Map<String, List<Map<String, Object>>> allStats = new LinkedHashMap<>();
         for (String k : kpis) allStats.put(k.trim(), new ArrayList<>());
 
-        // 비교기간 ad_id → {raw stats + 파생지표}
         Map<String, Map<String, Object>> compStatsByAdId = new HashMap<>();
 
         for (String targetMd : getMdList(md)) {
@@ -130,7 +140,6 @@ public class AdReportService {
             List<Map<String, Object>> stats = mongoService.aggregateByAd(advid, from, to, cfg.dailyCol(), cfg.advField());
             if (stats.isEmpty()) continue;
 
-            // 비교기간 stats (파생지표 포함)
             List<Map<String, Object>> compStats = mongoService.aggregateByAd(advid, cfrom, cto, cfg.dailyCol(), cfg.advField());
             for (Map<String, Object> s : compStats) {
                 String adid = (String) s.get("ad_id");
@@ -150,8 +159,7 @@ public class AdReportService {
                 : new HashMap<>();
 
             for (Map<String, Object> stat : stats) {
-                Map<String, Object> row = buildRow(stat, adMasterMap, agMasterMap, campMasterMap, adConvtype, cfg);
-                // kpi마다 별도 복사본 추가 (공유 객체 사용 금지)
+                Map<String, Object> row = buildRow(stat, adMasterMap, agMasterMap, campMasterMap, adConvtype, cfg, null);
                 for (String k : kpis) allStats.get(k.trim()).add(new LinkedHashMap<>(row));
             }
         }
@@ -160,11 +168,7 @@ public class AdReportService {
         for (String k : kpis) {
             String t = k.trim();
             List<Map<String, Object>> rows = allStats.get(t);
-
-            if (rows.isEmpty()) {
-                topads.put(t, Collections.emptyList());
-                continue;
-            }
+            if (rows.isEmpty()) { topads.put(t, Collections.emptyList()); continue; }
 
             rows.sort((a, b) -> Double.compare(toDoubleObj(b.get(t)), toDoubleObj(a.get(t))));
             List<Map<String, Object>> top10 = rows.size() > 10 ? new ArrayList<>(rows.subList(0, 10)) : rows;
@@ -185,20 +189,36 @@ public class AdReportService {
             topads.put(t, top10);
         }
 
-        boolean anyData = allStats.values().stream().anyMatch(l -> !l.isEmpty());
-        if (!anyData) {
-            Map<String, Object> res = new LinkedHashMap<>();
-            res.put("result", "success"); res.put("status", "200");
-            res.put("data",   Map.of("ads", "", "topads", topads, "total", ""));
-            res.put("resultcount", 0); res.put("totalcount", 0);
-            return res;
-        }
-
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("result", "success"); res.put("status", "200");
         res.put("data",  Map.of("ads", "", "topads", topads, "total", ""));
         res.put("resultcount", 0); res.put("totalcount", 0);
         return res;
+    }
+
+    // ─── 배너 유저 정보 로드 ──────────────────────────────────────────────────
+
+    record BannerUser(String advid, String userId, String userName, String userCompany,
+                      String mngId, String mngName) {}
+
+    private BannerUser loadBannerUser(String userId, String advid) {
+        String userName = "", userCompany = "", mngId = "", mngName = "";
+        try {
+            UserDto user = userMapper.selectByUserId(userId);
+            if (user != null) {
+                userName    = user.getUserName()    != null ? user.getUserName()    : "";
+                userCompany = user.getUserCompany() != null ? user.getUserCompany() : "";
+                String mgr  = user.getUserManager();
+                if (mgr != null && !mgr.isBlank()) {
+                    UserDto manager = userMapper.selectByUserId(mgr);
+                    if (manager != null) {
+                        mngId   = manager.getUserId()   != null ? manager.getUserId()   : "";
+                        mngName = manager.getUserName() != null ? manager.getUserName() : "";
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return new BannerUser(advid, userId, userName, userCompany, mngId, mngName);
     }
 
     // ─── 행 빌드 ─────────────────────────────────────────────────────────────
@@ -208,7 +228,8 @@ public class AdReportService {
                                           Map<String, Document> agMasterMap,
                                           Map<String, Document> campMasterMap,
                                           Map<String, Map<String, Object>> adConvtype,
-                                          AdConfig cfg) {
+                                          AdConfig cfg,
+                                          BannerUser bu) {
         String adid = (String) stat.get("ad_id");
         String agid = (String) stat.get("adgroup_id");
         String cid  = (String) stat.get("campaign_id");
@@ -221,15 +242,57 @@ public class AdReportService {
                cv=toDouble(stat,"cv"), cr=toDouble(stat,"cr");
 
         Map<String, Object> row = new LinkedHashMap<>();
-        row.put("campaignid",        cid  != null ? cid  : "");
-        row.put("campaign_name",     str(campM, cfg.campNameField()));
-        row.put("adgroup_id",        agid != null ? agid : "");
-        row.put("adgroup_name",      str(agM, "gname"));
-        row.put("ad_id",             adid != null ? adid : "");
-        row.put("ad_headline",       getAdField(adM, cfg, "headline"));
-        row.put("ad_description",    str(adM, "description"));
-        row.put("ad_pc_display",     getAdField(adM, cfg, "pc_url"));
-        row.put("ad_pc_final",       getAdField(adM, cfg, "pc_url"));
+
+        if (cfg.isBanner() && bu != null) {
+            // 배너 타입: 유저 정보 포함
+            row.put("advkey",       bu.advid());
+            row.put("user_id",      bu.userId());
+            row.put("user_name",    bu.userName());
+            row.put("user_company", bu.userCompany());
+            row.put("mng_id",       bu.mngId());
+            row.put("mng_name",     bu.mngName());
+        }
+
+        row.put("campaignid",    cid != null ? cid : "");
+
+        if (cfg.isBanner()) {
+            row.put("campaign_type", reverseCode(campM, "type", GFA_TYPE));
+        }
+
+        row.put("campaign_name", str(campM, cfg.campNameField()));
+        row.put("adgroup_id",    agid != null ? agid : "");
+        row.put("adgroup_name",  str(agM, "gname"));
+
+        if (cfg.isBanner()) {
+            row.put("adgroup_bidgoal",      reverseCode(agM, "bidgoal",    GFA_BIDGOAL));
+            row.put("adgroup_bidtype",      reverseCode(agM, "bidtype",    GFA_BIDTYPE));
+            row.put("adgroup_budgettype",   reverseCode(agM, "budgettype", GFA_BUDGETTYPE));
+            row.put("adgroup_budgetamount", agM != null ? agM.getInteger("budgetamount", 0) : 0);
+            row.put("adgroup_bidprice",     agM != null ? agM.getInteger("bidprice",     0) : 0);
+            row.put("adgroup_pgroups",      reverseCode(agM, "pgroups",    GFA_PGROUPS));
+        }
+
+        row.put("ad_id",          adid != null ? adid : "");
+        row.put("ad_headline",    getAdHeadline(adM, cfg));
+        row.put("ad_description", str(adM, "description"));
+
+        if (cfg.isBanner()) {
+            // 배너 타입: mo/image 필드 포함, imgurl 미포함
+            row.put("ad_type",         "");
+            String landingUrl = landingUrl(adM, cfg);
+            row.put("ad_pc_display",   landingUrl);
+            row.put("ad_pc_final",     landingUrl);
+            row.put("ad_mo_display",   landingUrl);
+            row.put("ad_mo_final",     landingUrl);
+            row.put("ad_image_name",   "");
+            row.put("ad_image_url",    str(adM, "purl"));
+            row.put("ad_image_pbase64", "");
+        } else {
+            // 검색 타입: imgurl1/2/3 포함
+            row.put("ad_pc_display",   getAdField(adM, cfg, "pc_url"));
+            row.put("ad_pc_final",     getAdField(adM, cfg, "pc_url"));
+        }
+
         row.put("im",  Math.round(im));  row.put("clk", Math.round(clk));
         row.put("cst", Math.round(cst)); row.put("cv",  Math.round(cv)); row.put("cr", Math.round(cr));
         row.putAll(calcMetrics(im, clk, cst, cv, cr));
@@ -245,20 +308,40 @@ public class AdReportService {
         row.put("other_cv",    0L);        row.put("other_cr",    0L);
         row.put("purchase_roas", (pCr > 0 && cst > 0) ? fmt(pCr / cst * 100) : 0);
 
-        row.put("ad_imgurl1", str(adM, "imgurl1"));
-        row.put("ad_imgurl2", str(adM, "imgurl2"));
-        row.put("ad_imgurl3", str(adM, "imgurl3"));
-        Object typeVal = adM.get("type");
-        row.put("ad_type", typeVal instanceof Number n ? n.intValue() : "");
-        row.put("ad_image_pbase64", "");
+        if (!cfg.isBanner()) {
+            row.put("ad_imgurl1", str(adM, "imgurl1"));
+            row.put("ad_imgurl2", str(adM, "imgurl2"));
+            row.put("ad_imgurl3", str(adM, "imgurl3"));
+            Object typeVal = adM.get("type");
+            row.put("ad_type", typeVal instanceof Number n ? n.intValue() : "");
+            row.put("ad_image_pbase64", "");
+        }
 
         return row;
     }
 
+    private String getAdHeadline(Document ad, AdConfig cfg) {
+        if (cfg.isNaver()) return str(ad, "subject");
+        return str(ad, "headline");
+    }
+
+    private String landingUrl(Document ad, AdConfig cfg) {
+        // GFA: murl = linkUrl(랜딩), purl = imageUrl
+        // 기타: purl = 랜딩URL
+        String murl = str(ad, "murl");
+        return !murl.isEmpty() ? murl : str(ad, "purl");
+    }
+
+    private String reverseCode(Document doc, String field, Map<Integer, String> reverseMap) {
+        if (doc == null) return "";
+        Integer code = doc.getInteger(field);
+        return code != null ? reverseMap.getOrDefault(code, "") : "";
+    }
+
     private String getAdField(Document ad, AdConfig cfg, String field) {
         return switch (field) {
-            case "headline" -> cfg.isNaver() ? str(ad, "subject")      : str(ad, "headline");
-            case "pc_url"   -> cfg.isNaver() ? str(ad, "plandingurl")  : str(ad, "purl");
+            case "headline" -> cfg.isNaver() ? str(ad, "subject")     : str(ad, "headline");
+            case "pc_url"   -> cfg.isNaver() ? str(ad, "plandingurl") : str(ad, "purl");
             default -> "";
         };
     }
@@ -340,7 +423,7 @@ public class AdReportService {
         return t;
     }
 
-    // ─── getCp2 상당 (PHP getCp2 구현) ───────────────────────────────────────
+    // ─── getCp2 ──────────────────────────────────────────────────────────────
 
     private Map<String, Object> buildCp2(Map<String, Object> cur, Map<String, Object> comp) {
         String[] keys = {"im","clk","cst","cv","cr","ctr","cpc","cpa","cvr","roas",
@@ -353,7 +436,6 @@ public class AdReportService {
             double b = toDoubleObj(comp.get(k));
             if (a > 0 && b > 0) {
                 per.put(k, fmt((a - b) / b * 100));
-                // compMap 원본 타입 그대로 유지 (Long→integer, Double→float 직렬화 보장)
                 Object orig = comp.get(k);
                 cp.put(k, orig != null ? orig : b);
             } else {
