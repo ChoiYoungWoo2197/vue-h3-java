@@ -120,7 +120,7 @@ public class MediaReportService {
     private Map<String, Object> emptyRow(boolean hasConvtype) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("im", 0L); row.put("clk", 0L); row.put("cst", 0L);
-        row.put("cv", 0.0); row.put("cr", 0.0);
+        row.put("cv", 0L); row.put("cr", 0L);
         if (hasConvtype) {
             row.put("purchase_cv", 0L); row.put("purchase_cr", 0L);
             row.put("signup_cv",   0L); row.put("signup_cr",   0L);
@@ -161,8 +161,8 @@ public class MediaReportService {
         row.put("im",  Math.round(im));
         row.put("clk", Math.round(clk));
         row.put("cst", Math.round(cst));
-        row.put("cv",  fmt2(cv));
-        row.put("cr",  fmt2(cr));
+        row.put("cv",  Math.round(cv));
+        row.put("cr",  Math.round(cr));
         row.put("ctr",  (clk>0&&im>0)  ? fmt2(clk/im*100)  : 0);
         row.put("cpc",  (cst>0&&clk>0) ? fmt2(cst/clk)     : 0);
         row.put("cpa",  (cst>0&&cv>0)  ? fmt2(cst/cv)      : 0);
@@ -215,7 +215,7 @@ public class MediaReportService {
             Map<String, Object> dateRow = new LinkedHashMap<>();
             long cst = Math.round(t[2]);
             dateRow.put("im",(long)t[0]); dateRow.put("clk",(long)t[1]); dateRow.put("cst",cst);
-            dateRow.put("cv",fmt2(t[3])); dateRow.put("cr",fmt2(t[4]));
+            dateRow.put("cv",Math.round(t[3])); dateRow.put("cr",Math.round(t[4]));
             dateRow.put("purchase_cv",(long)t[5]); dateRow.put("purchase_cr",(long)t[6]);
             dateRow.put("signup_cv",  (long)t[7]); dateRow.put("signup_cr",  (long)t[8]);
             dateRow.put("cart_cv",    (long)t[9]); dateRow.put("cart_cr",    (long)t[10]);
@@ -257,7 +257,7 @@ public class MediaReportService {
         long cst = Math.round(s[2]);
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("im",(long)s[0]); r.put("clk",(long)s[1]); r.put("cst",cst);
-        r.put("cv",fmt2(s[3])); r.put("cr",fmt2(s[4]));
+        r.put("cv",Math.round(s[3])); r.put("cr",Math.round(s[4]));
         r.put("ctr",  (s[1]>0&&s[0]>0) ? fmt2(s[1]/s[0]*100)    : 0);
         r.put("cpc",  (cst>0&&s[1]>0)  ? fmt2((double)cst/s[1]) : 0);
         r.put("cpa",  (cst>0&&s[3]>0)  ? fmt2((double)cst/s[3]) : 0);
