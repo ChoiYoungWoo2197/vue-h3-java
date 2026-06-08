@@ -158,8 +158,10 @@ public class AdReportService {
                 ? mongoService.aggregateConvtypeByAdId(advid, from, to, cfg.convtypeCol())
                 : new HashMap<>();
 
+            BannerUser bu = cfg.isBanner() ? loadBannerUser(targetMd, advid) : null;
+
             for (Map<String, Object> stat : stats) {
-                Map<String, Object> row = buildRow(stat, adMasterMap, agMasterMap, campMasterMap, adConvtype, cfg, null);
+                Map<String, Object> row = buildRow(stat, adMasterMap, agMasterMap, campMasterMap, adConvtype, cfg, bu);
                 for (String k : kpis) allStats.get(k.trim()).add(new LinkedHashMap<>(row));
             }
         }
