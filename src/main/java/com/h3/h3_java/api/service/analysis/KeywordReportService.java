@@ -37,7 +37,7 @@ public class KeywordReportService {
         String compareto   = (cto   != null && !cto.isBlank())   ? cto   : todate;
 
         if (kpi != null && !kpi.isBlank()) {
-            return getKeywordTop(acc, md, fromdate, todate, kpi);
+            return getKeywordTop(acc, md, fromdate, todate, comparefrom, compareto, kpi);
         } else {
             return getKeyword(acc, md, fromdate, todate, comparefrom, compareto, sort, start, display);
         }
@@ -118,10 +118,14 @@ public class KeywordReportService {
 
     // ─── KPI 상위 10개 ────────────────────────────────────────────────────────
 
-    private Map<String, Object> getKeywordTop(AccountDto acc, String md, String from, String to, String kpi) {
+    private Map<String, Object> getKeywordTop(AccountDto acc, String md, String from, String to,
+                                               String cfrom, String cto, String kpi) {
         String[] kpis = kpi.split(",");
         Map<String, List<Map<String, Object>>> allStats = new LinkedHashMap<>();
         for (String k : kpis) allStats.put(k.trim(), new ArrayList<>());
+
+        // 비교기간 kwid → {field → value}
+        Map<String, Map<String, Object>> compStatsByKwid = new HashMap<>();
 
         for (String targetMd : getMdList(md)) {
             KwConfig cfg = MD_MAP.get(targetMd);
@@ -132,6 +136,13 @@ public class KeywordReportService {
             List<Map<String, Object>> stats = mongoService.aggregateByKeyword(advid, from, to, cfg.dailyCol(), cfg.advField());
             if (stats.isEmpty()) continue;
 
+            // 비교기간 stats
+            List<Map<String, Object>> compStats = mongoService.aggregateByKeyword(advid, cfrom, cto, cfg.dailyCol(), cfg.advField());
+            for (Map<String, Object> s : compStats) {
+                String kwid = (String) s.get("keyword_id");
+                if (kwid != null) compStatsByKwid.put(kwid, s);
+            }
+
             Map<String, Map<String, Object>> kwMasterMap = buildKwMasterMap(advid, cfg, stats);
             Map<String, String> agNameMap   = buildNameMap(advid, cfg.agMasterCol(), "gid", "gname");
             Map<String, String> campNameMap = buildNameMap(advid, cfg.campMasterCol(), cfg.campIdField(), cfg.campNameField());
@@ -141,7 +152,7 @@ public class KeywordReportService {
 
             for (Map<String, Object> stat : stats) {
                 Map<String, Object> row = buildRow(stat, kwMasterMap, agNameMap, campNameMap, kwConvtype, true);
-                for (String k : kpis) allStats.get(k.trim()).add(row);
+                for (String k : kpis) allStats.get(k.trim()).add(new LinkedHashMap<>(row));
             }
         }
 
@@ -150,17 +161,36 @@ public class KeywordReportService {
             String t = k.trim();
             List<Map<String, Object>> rows = allStats.get(t);
             rows.sort((a, b) -> {
-                Object oa = a.get(t), ob = b.get(t);
-                double da = oa instanceof Number n ? n.doubleValue() : 0.0;
-                double db = ob instanceof Number n ? n.doubleValue() : 0.0;
+                double da = toDoubleObj(a.get(t)), db = toDoubleObj(b.get(t));
                 return Double.compare(db, da);
             });
-            kpisResult.put(t, rows.size() > 10 ? new ArrayList<>(rows.subList(0, 10)) : rows);
+            List<Map<String, Object>> top10 = rows.size() > 10 ? new ArrayList<>(rows.subList(0, 10)) : rows;
+
+            // 각 행에 per-keyword cp 추가
+            for (Map<String, Object> row : top10) {
+                String kwid = (String) row.get("keyword_id");
+                Map<String, Object> compStat = compStatsByKwid.get(kwid);
+                double cur  = toDoubleObj(row.get(t));
+                double comp = compStat != null ? toDoubleObj(compStat.get(t)) : 0.0;
+                Map<String, Object> cpPer = new LinkedHashMap<>();
+                cpPer.put(t, (cur > 0 && comp > 0) ? fmt((cur - comp) / comp * 100) : 0);
+                Map<String, Object> cpCp = new LinkedHashMap<>();
+                cpCp.put(t, Math.round(comp));
+                Map<String, Object> cp = new LinkedHashMap<>();
+                cp.put("per", cpPer); cp.put("cp", cpCp);
+                row.put("cp", cp);
+            }
+            kpisResult.put(t, top10);
         }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("keywords", "");
+        data.put("kpis",     kpisResult);
+        data.put("total",    "");
 
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("result", "success"); res.put("status", "200");
-        res.put("data", Map.of("kpis", kpisResult));
+        res.put("data", data);
         res.put("resultcount", 0); res.put("totalcount", 0);
         return res;
     }
