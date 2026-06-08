@@ -55,14 +55,14 @@ Consumer에서 `hasRange()` 분기 후 `collectRange` 또는 `collectForUserId`�
 com.h3.h3_java
 ├── api/
 │   ├── collector/      수집 트리거 REST 엔드포인트
-│   ├── analysis/       분석 데이터 REST 엔드포인트 (준비 중)
-│   ├── dashboard/      대시보드 REST 엔드포인트 (준비 중)
-│   └── report/         리포트 REST 엔드포인트 (준비 중)
-├── analytics/
-│   ├── dto/            분석 결과 DTO (준비 중)
-│   ├── mapper/         분석 쿼리 mapper (준비 중)
-│   └── service/        분석 비즈니스 로직 (준비 중)
-├── auth/               인증·인가 (준비 중)
+│   ├── controller/     서비스 레이어 REST 엔드포인트 (대시보드·분석·리포트)
+│   ├── service/
+│   │   ├── dashboard/  DashboardService
+│   │   └── analysis/   CampaignReportService, AdgroupReportService,
+│   │                   KeywordReportService, AdReportService, MediaReportService
+│   ├── dto/            계정 DTO
+│   └── mapper/         계정 MyBatis mapper
+├── auth/               JWT 인증·인가 (JwtUtil, JwtFilter, SecurityConfig)
 ├── batch/
 │   ├── master/         마스터 수집 Job (캠페인·광고그룹·소재·키워드 구조)
 │   ├── stat/           일별·시간별·TSV 통계 수집 Job
@@ -128,7 +128,39 @@ com.h3.h3_java
 
 ---
 
-## REST API
+## 서비스 레이어 API (PHP → Java 이식 현황)
+
+PHP `api/rest/app/` 서비스를 Java Spring Boot + MongoDB로 이식. JWT 인증 필요.
+
+```
+GET /v1/h3/app/dashboard/{endpoint}
+GET /v1/h3/app/analysis/{endpoint}
+```
+
+| 구분 | 엔드포인트 | 상태 |
+|---|---|---|
+| Dashboard | `summarymedia` | ✅ 완료·검증 |
+| Dashboard | `summary` | ✅ 완료·검증 |
+| Dashboard | `period` | ✅ 완료·검증 |
+| Analysis | `campaignreport` | ✅ 완료·검증 |
+| Analysis | `adgroupreport` | ✅ 완료·검증 |
+| Analysis | `keywordreport` | ✅ 완료·검증 |
+| Analysis | `adreport` | ✅ 완료·검증 |
+| Analysis | `mediareport` | ✅ 완료·검증 |
+| Analysis | `keywordrereport` | 🔄 구현 예정 |
+| Shopping | `shoppingreport` | 🔄 구현 예정 |
+| Shopping | `adgroupshoppingreport` | ⏳ 대기 |
+| Shopping | `campaignshoppingreport` | ⏳ 대기 |
+| Analysis | `periodreport` | ⏳ 대기 |
+| Analysis | `targetreport` | ⏳ 대기 |
+| Analysis | `campaignadreport`, `campaignkeywordreport` | ⏳ 대기 |
+| Analysis | `adgroupadreport`, `adgroupkeywordreport` | ⏳ 대기 |
+
+> ✅ 완료·검증 8개 / 🔄 구현 예정 2개 / ⏳ 대기 6개 (MySQL 전용, MongoDB 매핑 필요)
+
+---
+
+## REST API (수집)
 
 ```
 # 네이버 SA
