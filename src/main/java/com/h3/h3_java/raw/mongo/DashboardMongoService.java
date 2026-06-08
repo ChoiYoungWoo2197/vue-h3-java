@@ -74,6 +74,29 @@ public class DashboardMongoService {
         return result;
     }
 
+    // ─── 전환유형 소재별 집계 (adreport용) ───────────────────────────────────
+
+    public Map<String, Map<String, Object>> aggregateConvtypeByAdId(String advid, String from, String to, String collection) {
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where("daily_advid").is(advid).and("daily_dt").gte(from).lte(to)),
+            Aggregation.group(Aggregation.fields().and("ad_id","ad_id").and("conv_type_code","conv_type_code"))
+                .sum("conv_cnt").as("cnt").sum("conv_value").as("value")
+        );
+        Map<String, Map<String, Object>> result = new HashMap<>();
+        for (Document d : mongo.aggregate(agg, collection, Document.class).getMappedResults()) {
+            Document id = (Document) d.get("_id");
+            if (id == null) continue;
+            String aid  = id.getString("ad_id");
+            String code = id.getString("conv_type_code");
+            if (aid == null || code == null) continue;
+            Map<String, Object> v = new HashMap<>();
+            v.put("cnt",   toDouble(d, "cnt"));
+            v.put("value", toDouble(d, "value"));
+            result.put(aid + "|" + code, v);
+        }
+        return result;
+    }
+
     // ─── 소재별 집계 (adreport용) ────────────────────────────────────────────
 
     public List<Map<String, Object>> aggregateByAd(String advid, String from, String to,
