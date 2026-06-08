@@ -342,13 +342,6 @@ public class AdReportService {
 
     // ─── getCp2 상당 (PHP getCp2 구현) ───────────────────────────────────────
 
-    // 정수로 직렬화해야 할 필드 (double 저장 시 지수표기·.0 방지)
-    private static final Set<String> CP_INT_FIELDS = Set.of(
-        "im","clk","cst","cv","cr",
-        "purchase_cv","purchase_cr","signup_cv","signup_cr",
-        "cart_cv","cart_cr","lead_cv","lead_cr","other_cv","other_cr"
-    );
-
     private Map<String, Object> buildCp2(Map<String, Object> cur, Map<String, Object> comp) {
         String[] keys = {"im","clk","cst","cv","cr","ctr","cpc","cpa","cvr","roas",
                          "purchase_cv","purchase_cr","signup_cv","signup_cr",
@@ -360,8 +353,9 @@ public class AdReportService {
             double b = toDoubleObj(comp.get(k));
             if (a > 0 && b > 0) {
                 per.put(k, fmt((a - b) / b * 100));
-                // 정수 필드는 long으로 저장 (지수표기·.0 방지, KeywordReport 동일 패턴)
-                cp.put(k, CP_INT_FIELDS.contains(k) ? Math.round(b) : b);
+                // compMap 원본 타입 그대로 유지 (Long→integer, Double→float 직렬화 보장)
+                Object orig = comp.get(k);
+                cp.put(k, orig != null ? orig : b);
             } else {
                 per.put(k, 0);
                 cp.put(k, 0);
