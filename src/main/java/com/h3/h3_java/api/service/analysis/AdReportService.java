@@ -88,7 +88,7 @@ public class AdReportService {
                 : new HashMap<>();
 
             // 배너 타입 유저 정보 조회 (1회)
-            BannerUser bu = cfg.isBanner() ? loadBannerUser(userId, advid) : null;
+            BannerUser bu = cfg.isBanner() ? loadBannerUser(targetMd, advid) : null;
 
             for (Map<String, Object> stat : stats) {
                 allRows.add(buildRow(stat, adMasterMap, agMasterMap, campMasterMap, adConvtype, cfg, bu));
@@ -201,25 +201,44 @@ public class AdReportService {
     record BannerUser(String advid, String userId, String userName, String userCompany,
                       String mngId, String mngName) {}
 
-    private BannerUser loadBannerUser(String userId, String advid) {
+    private BannerUser loadBannerUser(String targetMd, String advid) {
+        // advkey로 실제 계정 소유자 조회 (PHP getUsers 동일 방식)
+        String ownerId = findAccountOwner(targetMd, advid);
+        if (ownerId == null) ownerId = "";
+
         String userName = "", userCompany = "", mngId = "", mngName = "";
         try {
-            UserDto user = userMapper.selectByUserId(userId);
-            if (user != null) {
-                userName    = user.getUserName()    != null ? user.getUserName()    : "";
-                userCompany = user.getUserCompany() != null ? user.getUserCompany() : "";
-                String mgr  = user.getUserManager();
-                if (mgr != null && !mgr.isBlank()) {
-                    UserDto manager = userMapper.selectByUserId(mgr);
-                    if (manager != null) {
-                        mngId   = manager.getUserId()   != null ? manager.getUserId()   : "";
-                        mngName = manager.getUserName() != null ? manager.getUserName() : "";
+            if (!ownerId.isEmpty()) {
+                UserDto user = userMapper.selectByUserId(ownerId);
+                if (user != null) {
+                    userName    = safe(user.getUserName());
+                    userCompany = safe(user.getUserCompany());
+                    String mgr  = user.getUserManager();
+                    if (mgr != null && !mgr.isBlank()) {
+                        UserDto manager = userMapper.selectByUserId(mgr);
+                        if (manager != null) {
+                            mngId   = safe(manager.getUserId());
+                            mngName = safe(manager.getUserName());
+                        }
                     }
                 }
             }
         } catch (Exception ignored) {}
-        return new BannerUser(advid, userId, userName, userCompany, mngId, mngName);
+        return new BannerUser(advid, ownerId, userName, userCompany, mngId, mngName);
     }
+
+    private String findAccountOwner(String targetMd, String advid) {
+        try {
+            return switch (targetMd) {
+                case "Nda"    -> accountMapper.selectUserIdByGfa(advid);
+                case "K"      -> accountMapper.selectUserIdByKakaomo(advid);
+                case "google" -> accountMapper.selectUserIdByGoogle(advid);
+                default       -> null;
+            };
+        } catch (Exception e) { return null; }
+    }
+
+    private String safe(String s) { return s != null ? s : ""; }
 
     // ─── 행 빌드 ─────────────────────────────────────────────────────────────
 
@@ -327,10 +346,13 @@ public class AdReportService {
 
     private String landingUrl(Document ad, AdConfig cfg) {
         // GFA: murl = linkUrl(랜딩), purl = imageUrl
-        // 기타: purl = 랜딩URL
-        String murl = str(ad, "murl");
-        return !murl.isEmpty() ? murl : str(ad, "purl");
+        // MongoDB에 "null" 문자열로 저장될 수 있으므로 null 체크 필수
+        String murl = notNull(str(ad, "murl"));
+        if (!murl.isEmpty()) return murl;
+        return notNull(str(ad, "purl"));
     }
+
+    private String notNull(String s) { return "null".equals(s) ? "" : s; }
 
     private String reverseCode(Document doc, String field, Map<Integer, String> reverseMap) {
         if (doc == null) return "";
