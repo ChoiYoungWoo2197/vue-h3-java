@@ -16,15 +16,17 @@ public class AdgroupReportService {
     private final AccountMapper accountMapper;
     private final DashboardMongoService mongoService;
 
+    // naverOnoff=true: 0=on(Naver SA, parseInt("ON")→0), false: 1=on(표준)
     record MediaConfig(String dailyCol, String masterCol, String campCol,
-                       String advField, String campIdField, String campNameField) {}
+                       String advField, String campIdField, String campNameField,
+                       boolean naverOnoff) {}
 
     private static final Map<String, MediaConfig> MD_MAP = Map.of(
-        "N",      new MediaConfig("naver_adgroup_daily",     "naver_adgroup",     "naver_campaign",     "daily_advid", "campaignid", "campaignname"),
-        "D",      new MediaConfig("kakao_sa_adgroup_daily",  "kakao_sa_adgroup",  "kakao_sa_campaign",  "advkey",      "cid",        "cname"),
-        "K",      new MediaConfig("kakao_mo_adgroup_daily",  "kakao_mo_adgroup",  "kakao_mo_campaign",  "advkey",      "cid",        "cname"),
-        "Nda",    new MediaConfig("naver_gfa_adgroup_daily", "naver_gfa_adgroup", "naver_gfa_campaign", "daily_advid", "cid",        "cname"),
-        "google", new MediaConfig("google_adgroup_daily",    "google_adgroup",    "google_campaign",    "daily_advid", "cid",        "cname")
+        "N",      new MediaConfig("naver_adgroup_daily",     "naver_adgroup",     "naver_campaign",     "daily_advid", "campaignid", "campaignname", true),
+        "D",      new MediaConfig("kakao_sa_adgroup_daily",  "kakao_sa_adgroup",  "kakao_sa_campaign",  "advkey",      "cid",        "cname",        false),
+        "K",      new MediaConfig("kakao_mo_adgroup_daily",  "kakao_mo_adgroup",  "kakao_mo_campaign",  "advkey",      "cid",        "cname",        false),
+        "Nda",    new MediaConfig("naver_gfa_adgroup_daily", "naver_gfa_adgroup", "naver_gfa_campaign", "daily_advid", "cid",        "cname",        false),
+        "google", new MediaConfig("google_adgroup_daily",    "google_adgroup",    "google_campaign",    "daily_advid", "cid",        "cname",        false)
     );
 
     public Map<String, Object> getAdgroupReport(String userId, String md, String fromdate, String todate,
@@ -78,9 +80,10 @@ public class AdgroupReportService {
             row.put("adgroup_id",             agid   != null ? agid : "");
             row.put("adgroup_name",           master != null ? master.getString("gname") : "");
             row.put("adgroup_type",           "");
-            row.put("adgroup_regtm",          master != null ? master.getString("regtm") : "");
+            String regtm = master != null ? master.getString("regtm") : null;
+            row.put("adgroup_regtm",          regtm != null ? regtm : "");
             row.put("adgroup_editm",          "");
-            row.put("adgroup_status",         master != null ? getOnoff(master) : "");
+            row.put("adgroup_status",         master != null ? getOnoff(master, cfg.naverOnoff()) : "");
             row.put("adgroup_status_reason",  "");
             row.put("im",  Math.round(im));  row.put("clk", Math.round(clk));
             row.put("cst", Math.round(cst)); row.put("cv",  Math.round(cv)); row.put("cr", Math.round(cr));
@@ -118,11 +121,14 @@ public class AdgroupReportService {
         };
     }
 
-    private String getOnoff(Document d) {
+    private String getOnoff(Document d, boolean naverOnoff) {
         Object v = d.get("onoff");
         if (v == null) return "";
-        // Naver TSV: 0=ON(활성), 1=OFF(정지)
-        if (v instanceof Integer i) return i == 0 ? "on" : "off";
+        if (v instanceof Integer i) {
+            // naverOnoff=true: Naver SA parseInt("ON")→0, 0=on
+            // naverOnoff=false: 표준(GFA activated→1, Kakao, Google), 1=on
+            return naverOnoff ? (i == 0 ? "on" : "off") : (i == 1 ? "on" : "off");
+        }
         if (v instanceof String s) return s.toLowerCase();
         return String.valueOf(v);
     }
