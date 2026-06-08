@@ -74,6 +74,31 @@ public class DashboardMongoService {
         return result;
     }
 
+    // ─── 소재별 집계 (adreport용) ────────────────────────────────────────────
+
+    public List<Map<String, Object>> aggregateByAd(String advid, String from, String to,
+                                                     String collection, String advField) {
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where(advField).is(advid).and("daily_dt").gte(from).lte(to)),
+            Aggregation.group("ad_id")
+                .first("campaign_id").as("campaign_id")
+                .first("adgroup_id").as("adgroup_id")
+                .sum("daily_im").as("im").sum("daily_clk").as("clk").sum("daily_cst").as("cst")
+                .sum("daily_cv").as("cv").sum("daily_cr").as("cr")
+        );
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Document d : mongo.aggregate(agg, collection, Document.class).getMappedResults()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("ad_id",       d.getString("_id"));
+            row.put("campaign_id", d.getString("campaign_id"));
+            row.put("adgroup_id",  d.getString("adgroup_id"));
+            row.put("im",  toDouble(d,"im")); row.put("clk", toDouble(d,"clk"));
+            row.put("cst", toDouble(d,"cst")); row.put("cv", toDouble(d,"cv")); row.put("cr", toDouble(d,"cr"));
+            result.add(row);
+        }
+        return result;
+    }
+
     // ─── 전환유형 키워드별 집계 (keywordreport용) ─────────────────────────────
 
     public Map<String, Map<String, Object>> aggregateConvtypeByKeywordId(String advid, String from, String to, String collection) {
