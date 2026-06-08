@@ -303,6 +303,18 @@ public class DashboardMongoService {
 
     // ─── 마스터 캠페인 조회 ──────────────────────────────────────────────────
 
+    /** naver_keyword: advkey 기준 kword 목록 조회 (keywordrereport 중복 필터용) */
+    public List<String> findNaverKeywordNames(String advkey) {
+        org.springframework.data.mongodb.core.query.Query q =
+            new org.springframework.data.mongodb.core.query.Query(
+                Criteria.where("advkey").is(advkey));
+        q.fields().include("kword").exclude("_id");
+        return mongo.find(q, Document.class, "naver_keyword").stream()
+            .map(d -> d.getString("kword"))
+            .filter(s -> s != null && !s.isBlank())
+            .collect(java.util.stream.Collectors.toList());
+    }
+
     /** naver_campaign: advkey + campaignid 기준 */
     public List<Document> findNaverCampaigns(String advkey) {
         org.springframework.data.mongodb.core.query.Query q =

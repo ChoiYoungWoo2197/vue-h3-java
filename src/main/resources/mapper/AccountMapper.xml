@@ -6,6 +6,8 @@
     <select id="selectByUserId" resultType="com.h3.h3_java.api.dto.AccountDto">
         SELECT
             user_id,
+            account_naver_access,
+            account_naver_secret,
             account_naver_customer,
             account_kakaosa,
             account_kakaomoment,

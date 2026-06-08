@@ -4,6 +4,7 @@ import com.h3.h3_java.api.service.analysis.AdReportService;
 import com.h3.h3_java.api.service.analysis.AdgroupReportService;
 import com.h3.h3_java.api.service.analysis.CampaignReportService;
 import com.h3.h3_java.api.service.analysis.KeywordReportService;
+import com.h3.h3_java.api.service.analysis.KeywordReReportService;
 import com.h3.h3_java.api.service.analysis.MediaReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,7 +23,8 @@ public class AnalysisController {
     private final AdgroupReportService  adgroupReportService;
     private final KeywordReportService  keywordReportService;
     private final AdReportService       adReportService;
-    private final MediaReportService    mediaReportService;
+    private final MediaReportService      mediaReportService;
+    private final KeywordReReportService  keywordReReportService;
 
     /** 캠페인 리포트 */
     @GetMapping("/campaignreport")
@@ -67,6 +69,15 @@ public class AnalysisController {
             @RequestParam(required = false, defaultValue = "20") int display) {
         return adReportService.getAdReport(userid, md, fromdate, todate,
                 comparefromdate, comparetodate, kpi, sort, start, display);
+    }
+
+    /** 키워드 추천 리포트 */
+    @GetMapping("/keywordrereport")
+    public Map<String, Object> keywordReReport(
+            @RequestParam String userid,
+            @RequestParam(required = false, defaultValue = "") String keywords,
+            @RequestParam(required = false, defaultValue = "") String dkeywords) {
+        return keywordReReportService.getKeywordReReport(userid, keywords, dkeywords);
     }
 
     /** 매체 리포트 */
