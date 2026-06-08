@@ -23,10 +23,18 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/v1/h3/auth/**").permitAll()      // 로그인
-                .requestMatchers("/api/collector/**").permitAll()    // 수집 트리거
-                .requestMatchers("/v1/h3/app/**").authenticated()    // 서비스 API 인증 필요
+                .requestMatchers("/v1/h3/auth/**").permitAll()
+                .requestMatchers("/api/collector/**").permitAll()
+                .requestMatchers("/v1/h3/app/**").authenticated()
                 .anyRequest().permitAll()
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) -> {
+                    res.setStatus(401);
+                    res.setContentType("application/json;charset=UTF-8");
+                    res.getWriter().write(
+                        "{\"result\":\"failed\",\"status\":\"401\",\"errormessage\":\"로그인이 필요합니다.\"}");
+                })
             )
             .addFilterBefore(new JwtFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
 

@@ -35,6 +35,12 @@ public class JwtFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(
                         userId, null, List.of(new SimpleGrantedAuthority(role)));
                 SecurityContextHolder.getContext().setAuthentication(auth);
+            } else {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write(
+                    "{\"result\":\"failed\",\"status\":\"401\",\"errormessage\":\"JWT 토큰이 만료됐습니다. 다시 로그인해 주세요.\"}");
+                return;
             }
         }
         chain.doFilter(request, response);
