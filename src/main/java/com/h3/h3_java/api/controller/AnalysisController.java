@@ -56,12 +56,15 @@ public class AnalysisController {
             @RequestParam String userid,
             @RequestParam String fromdate,
             @RequestParam String todate,
+            @RequestParam(required = false) String comparefromdate,
+            @RequestParam(required = false) String comparetodate,
             @RequestParam(required = false, defaultValue = "N") String md,
             @RequestParam(required = false, defaultValue = "") String kpi,
             @RequestParam(required = false, defaultValue = "cstd") String sort,
             @RequestParam(required = false, defaultValue = "0") int start,
             @RequestParam(required = false, defaultValue = "20") int display) {
-        return adReportService.getAdReport(userid, md, fromdate, todate, kpi, sort, start, display);
+        return adReportService.getAdReport(userid, md, fromdate, todate,
+                comparefromdate, comparetodate, kpi, sort, start, display);
     }
 
     /** 광고그룹 리포트 */
