@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -245,6 +246,50 @@ public class NaverStatMongoService {
         Update update = new Update();
         row.forEach(update::set);
         mongoTemplate.upsert(Query.query(criteria), update, collection);
+    }
+
+    // =====================================================================
+    // 쇼핑소재 API용
+    // =====================================================================
+
+    public List<Map<String, Object>> aggregateShoppingByAdId(String advkey, String from, String to) {
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where("daily_advid").is(advkey).and("daily_dt").gte(from).lte(to)),
+            Aggregation.group("ad_id")
+                .first("campaign_id").as("campaign_id")
+                .first("adgroup_id").as("adgroup_id")
+                .first("ad_pid").as("ad_pid")
+                .sum("daily_im").as("im").sum("daily_clk").as("clk").sum("daily_cst").as("cst")
+                .sum("daily_cv").as("cv").sum("daily_cr").as("cr")
+        );
+        return mongoTemplate.aggregate(agg, "naver_shopping_ad_daily", Document.class)
+            .getMappedResults().stream().map(d -> {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("ad_id",      d.getString("_id") != null ? d.getString("_id") : "");
+                row.put("campaign_id", d.getString("campaign_id") != null ? d.getString("campaign_id") : "");
+                row.put("adgroup_id",  d.getString("adgroup_id") != null ? d.getString("adgroup_id") : "");
+                row.put("ad_pid",     d.getString("ad_pid") != null ? d.getString("ad_pid") : "");
+                row.put("im",  docToDouble(d, "im"));  row.put("clk", docToDouble(d, "clk")); row.put("cst", docToDouble(d, "cst"));
+                row.put("cv",  docToDouble(d, "cv"));  row.put("cr",  docToDouble(d, "cr"));
+                return row;
+            }).collect(Collectors.toList());
+    }
+
+    public List<Document> findShoppingProducts(String advkey) {
+        return mongoTemplate.find(Query.query(Criteria.where("advkey").is(advkey)), Document.class, "naver_shopping_product");
+    }
+
+    public List<Document> findNaverCampaignDocs(String advkey) {
+        return mongoTemplate.find(Query.query(Criteria.where("advkey").is(advkey)), Document.class, "naver_campaign");
+    }
+
+    public List<Document> findNaverAdgroupDocs(String advkey) {
+        return mongoTemplate.find(Query.query(Criteria.where("advkey").is(advkey)), Document.class, "naver_adgroup");
+    }
+
+    private double docToDouble(Document d, String key) {
+        Object v = d.get(key);
+        return v instanceof Number n ? n.doubleValue() : 0.0;
     }
 
     private void bulkUpsert(String collection, List<Map<String, Object>> rows, String... keyFields) {

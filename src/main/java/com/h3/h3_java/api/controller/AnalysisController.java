@@ -6,6 +6,7 @@ import com.h3.h3_java.api.service.analysis.CampaignReportService;
 import com.h3.h3_java.api.service.analysis.KeywordReportService;
 import com.h3.h3_java.api.service.analysis.KeywordReReportService;
 import com.h3.h3_java.api.service.analysis.MediaReportService;
+import com.h3.h3_java.api.service.analysis.ShoppingReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,12 +20,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AnalysisController {
 
-    private final CampaignReportService campaignReportService;
-    private final AdgroupReportService  adgroupReportService;
-    private final KeywordReportService  keywordReportService;
-    private final AdReportService       adReportService;
-    private final MediaReportService      mediaReportService;
-    private final KeywordReReportService  keywordReReportService;
+    private final CampaignReportService  campaignReportService;
+    private final AdgroupReportService   adgroupReportService;
+    private final KeywordReportService   keywordReportService;
+    private final AdReportService        adReportService;
+    private final MediaReportService     mediaReportService;
+    private final KeywordReReportService keywordReReportService;
+    private final ShoppingReportService  shoppingReportService;
 
     /** 캠페인 리포트 */
     @GetMapping("/campaignreport")
@@ -89,6 +91,21 @@ public class AnalysisController {
             @RequestParam(required = false) String comparefromdate,
             @RequestParam(required = false) String comparetodate) {
         return mediaReportService.getMediaReport(userid, fromdate, todate, comparefromdate, comparetodate);
+    }
+
+    /** 쇼핑 리포트 */
+    @GetMapping("/shoppingreport")
+    public Map<String, Object> shoppingReport(
+            @RequestParam String userid,
+            @RequestParam String fromdate,
+            @RequestParam String todate,
+            @RequestParam(required = false, defaultValue = "") String kpi,
+            @RequestParam(required = false, defaultValue = "") String adpid,
+            @RequestParam(required = false, defaultValue = "") String adid,
+            @RequestParam(required = false, defaultValue = "cstd") String sort,
+            @RequestParam(required = false, defaultValue = "0") int start,
+            @RequestParam(required = false, defaultValue = "20") int display) {
+        return shoppingReportService.getShoppingReport(userid, fromdate, todate, kpi, adpid, adid, sort, start, display);
     }
 
     /** 광고그룹 리포트 */
