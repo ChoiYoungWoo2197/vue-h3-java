@@ -22,30 +22,56 @@ PHP 크론 스크립트(`h3-백엔드`)를 Spring Boot로 이식한 광고 데�
 
 ## 아키텍처
 
+시스템은 두 개의 독립적인 흐름으로 구성된다.
+
+### 1. 수집 흐름 (Collection)
+
 ```
-[ REST API / Scheduler ]
+[ Collector REST API ]   [ CollectorScheduler (cron) ]
+          │                          │
+          └──────────┬───────────────┘
+                     ▼
+           RabbitMQ (h3.collector DirectExchange)
+                     │
+                     ▼
+             CollectorConsumer
+                     │
+              ┌──────┴──────┐
+              │             │
+          Master Job     Stat Job
+              │             │
+              ▼             ▼
+           MongoDB     MySQL + MongoDB
+```
+
+- 수집 트리거: Collector REST API(`/api/collector/**`) 또는 `CollectorScheduler`(cron)
+- 단일 유저·기간 요청은 항상 **MQ 경유 비동기** 처리
+- Consumer에서 `hasRange()` 분기 → `collectRange` 또는 `collectForUserId`
+
+### 2. 조회 흐름 (Service Layer)
+
+```
+[ vue-h3 Frontend ]
+        │  Authorization: Bearer <JWT>
+        ▼
+  Spring Security (JwtFilter)
         │
         ▼
-  RabbitMQ (h3.collector DirectExchange)
+  Service Layer API
+  (/v1/h3/app/dashboard/**, /v1/h3/app/analysis/**)
+        │                        │
+        ▼                        ▼
+     MongoDB                  OpenAI API
+  (통계·마스터 조회)          (aiinsight/followup)
         │
         ▼
-  CollectorConsumer
-        │
-   ┌────┴────┐
-   │         │
-Master Job  Stat Job
-   │         │
-   ▼         ▼
-MongoDB    MySQL + MongoDB
+     MySQL
+  (계정·마스터 조회)
 ```
 
-수집 트리거는 두 가지 경로로 들어온다.
-
-1. **REST API** — `/api/collector/naver/{job-type}`
-2. **Scheduler** — `CollectorScheduler` (cron, Asia/Seoul)
-
-단일 유저(`/{userId}`) 또는 기간(`/{userId}/range`) 요청은 항상 **MQ 경유 비동기** 처리된다.  
-Consumer에서 `hasRange()` 분기 후 `collectRange` 또는 `collectForUserId`를 호출한다.
+- `/v1/h3/app/**` 경로 전체 JWT 인증 필수
+- Dashboard: `summary`, `summarymedia`, `period`, `aiinsight`, `aiinsight_followup`
+- Analysis: `campaign/adgroup/keyword/ad/media/periodreport`, `keywordrereport`, `shopping` 계열
 
 ---
 
