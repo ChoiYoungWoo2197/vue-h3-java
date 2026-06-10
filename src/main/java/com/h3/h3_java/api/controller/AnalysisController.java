@@ -8,6 +8,7 @@ import com.h3.h3_java.api.service.analysis.CampaignShoppingReportService;
 import com.h3.h3_java.api.service.analysis.KeywordReportService;
 import com.h3.h3_java.api.service.analysis.KeywordReReportService;
 import com.h3.h3_java.api.service.analysis.MediaReportService;
+import com.h3.h3_java.api.service.analysis.PeriodReportService;
 import com.h3.h3_java.api.service.analysis.ShoppingReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,6 +32,7 @@ public class AnalysisController {
     private final ShoppingReportService          shoppingReportService;
     private final AdgroupShoppingReportService   adgroupShoppingReportService;
     private final CampaignShoppingReportService  campaignShoppingReportService;
+    private final PeriodReportService            periodReportService;
 
     /** 캠페인 리포트 */
     @GetMapping("/campaignreport")
@@ -140,6 +142,19 @@ public class AnalysisController {
             @RequestParam(required = false, defaultValue = "") String campaignid) {
         return campaignShoppingReportService.getCampaignShoppingReport(
             userid, fromdate, todate, comparefromdate, comparetodate, kpi, campaignid);
+    }
+
+    /** 기간별 리포트 */
+    @GetMapping("/periodreport")
+    public Map<String, Object> periodReport(
+            @RequestParam String userid,
+            @RequestParam String fromdate,
+            @RequestParam String todate,
+            @RequestParam(required = false) String comparefromdate,
+            @RequestParam(required = false) String comparetodate,
+            @RequestParam(required = false, defaultValue = "day") String periodunit) {
+        return periodReportService.getPeriodReport(userid, fromdate, todate,
+                comparefromdate, comparetodate, periodunit);
     }
 
     /** 광고그룹 리포트 */

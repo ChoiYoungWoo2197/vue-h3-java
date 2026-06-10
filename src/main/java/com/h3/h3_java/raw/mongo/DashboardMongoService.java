@@ -330,6 +330,41 @@ public class DashboardMongoService {
         return mongo.find(q, Document.class, collection);
     }
 
+    // ─── 시간별 집계 (periodreport hour mode) ────────────────────────────────
+
+    /** hour 컬렉션(adv_id, hour_dt, hour_XX_im/clk/cst/cv/cr) → date → hour → {im,clk,cst,cv,cr} */
+    public Map<String, Map<String, Map<String, Object>>> aggregateHourByDate(
+            String advid, String from, String to, String collection) {
+        if (advid == null || advid.isBlank()) return Collections.emptyMap();
+        org.springframework.data.mongodb.core.query.Query q =
+            new org.springframework.data.mongodb.core.query.Query(
+                Criteria.where("adv_id").is(advid).and("hour_dt").gte(from).lte(to));
+        List<Document> docs = mongo.find(q, Document.class, collection);
+
+        Map<String, Map<String, Map<String, Object>>> result = new LinkedHashMap<>();
+        for (Document doc : docs) {
+            String date = doc.getString("hour_dt");
+            if (date == null) continue;
+            Map<String, Map<String, Object>> hourMap =
+                result.computeIfAbsent(date, k -> new LinkedHashMap<>());
+            for (int h = 0; h < 24; h++) {
+                String hh = String.format("%02d", h);
+                Map<String, Object> row = hourMap.computeIfAbsent(hh, k -> new LinkedHashMap<>());
+                row.merge("im",  numVal(doc, "hour_" + hh + "_im"),  (a, b) -> ((Number)a).doubleValue() + ((Number)b).doubleValue());
+                row.merge("clk", numVal(doc, "hour_" + hh + "_clk"), (a, b) -> ((Number)a).doubleValue() + ((Number)b).doubleValue());
+                row.merge("cst", numVal(doc, "hour_" + hh + "_cst"), (a, b) -> ((Number)a).doubleValue() + ((Number)b).doubleValue());
+                row.merge("cv",  numVal(doc, "hour_" + hh + "_cv"),  (a, b) -> ((Number)a).doubleValue() + ((Number)b).doubleValue());
+                row.merge("cr",  numVal(doc, "hour_" + hh + "_cr"),  (a, b) -> ((Number)a).doubleValue() + ((Number)b).doubleValue());
+            }
+        }
+        return result;
+    }
+
+    private double numVal(Document d, String key) {
+        Object v = d.get(key);
+        return v instanceof Number ? ((Number) v).doubleValue() : 0.0;
+    }
+
     // ─── 유틸 ────────────────────────────────────────────────────────────────
 
     private double toDouble(Document d, String key) {
