@@ -215,6 +215,10 @@ public class NaverGfaMasterMongoService {
         bulk.execute();
     }
 
+    public boolean hasCampaignData(String advkey) {
+        return mongoTemplate.exists(Query.query(Criteria.where("advkey").is(advkey)), "naver_gfa_campaign");
+    }
+
     private void upsert(String collection, Map<String, Object> data, String... keys) {
         Criteria criteria = Criteria.where(keys[0]).is(data.get(keys[0]));
         for (int i = 1; i < keys.length; i++) {

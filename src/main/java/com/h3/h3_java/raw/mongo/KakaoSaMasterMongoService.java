@@ -83,6 +83,10 @@ public class KakaoSaMasterMongoService {
             .collect(Collectors.toList());
     }
 
+    public boolean hasCampaignData(String advkey) {
+        return mongoTemplate.exists(Query.query(Criteria.where("advkey").is(advkey)), "kakao_sa_campaign");
+    }
+
     // ── Internal ─────────────────────────────────────────────────────────────
 
     private void upsert(String collection, Map<String, Object> doc, String idField) {

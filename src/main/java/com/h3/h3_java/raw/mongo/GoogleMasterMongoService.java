@@ -112,6 +112,10 @@ public class GoogleMasterMongoService {
             ));
     }
 
+    public boolean hasCampaignData(String advkey) {
+        return mongoTemplate.exists(Query.query(Criteria.where("advkey").is(advkey)), "google_campaign");
+    }
+
     private void upsert(String collection, Map<String, Object> doc, String idField) {
         Query q = Query.query(Criteria.where(idField).is(doc.get(idField)));
         Update u = new Update();
