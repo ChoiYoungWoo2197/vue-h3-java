@@ -57,9 +57,12 @@ com.h3.h3_java
 │   ├── collector/      수집 트리거 REST 엔드포인트
 │   ├── controller/     서비스 레이어 REST 엔드포인트 (대시보드·분석·리포트)
 │   ├── service/
-│   │   ├── dashboard/  DashboardService
+│   │   ├── dashboard/  DashboardService, AiInsightService
 │   │   └── analysis/   CampaignReportService, AdgroupReportService,
-│   │                   KeywordReportService, AdReportService, MediaReportService
+│   │                   KeywordReportService, AdReportService, MediaReportService,
+│   │                   KeywordReReportService, PeriodReportService,
+│   │                   ShoppingReportService, AdgroupShoppingReportService,
+│   │                   CampaignShoppingReportService
 │   ├── dto/            계정 DTO
 │   └── mapper/         계정 MyBatis mapper
 ├── auth/               JWT 인증·인가 (JwtUtil, JwtFilter, SecurityConfig)
@@ -128,35 +131,59 @@ com.h3.h3_java
 
 ---
 
+## 인증 (JWT)
+
+`/v1/h3/app/**` 경로는 Bearer JWT 인증이 필요하다.
+
+```
+# 로그인
+POST /v1/h3/auth/login
+Body: { "userid": "...", "password": "..." }
+Response: { "token": "<JWT>" }
+
+# 이후 모든 /app/** 요청에 헤더 첨부
+Authorization: Bearer <JWT>
+```
+
+- 토큰 유효기간: 24시간
+- JWT secret: `application.yml` `jwt.secret` 참조
+- `JwtFilter` → `SecurityConfig` → Spring Security 필터 체인
+
+---
+
 ## 서비스 레이어 API (PHP → Java 이식 현황)
 
 PHP `api/rest/app/` 서비스를 Java Spring Boot + MongoDB로 이식. JWT 인증 필요.
 
 ```
-GET /v1/h3/app/dashboard/{endpoint}
-GET /v1/h3/app/analysis/{endpoint}
+GET /v1/h3/app/dashboard/{endpoint}     # 대시보드
+GET /v1/h3/app/analysis/{endpoint}      # 광고 분석
+POST /v1/h3/app/dashboard/aiinsight          # AI 인사이트 분석
+POST /v1/h3/app/dashboard/aiinsight_followup # AI 인사이트 추가 질문
 ```
 
 | 구분 | 엔드포인트 | 상태 |
 |---|---|---|
-| Dashboard | `summarymedia` | ✅ 완료·검증 |
-| Dashboard | `summary` | ✅ 완료·검증 |
-| Dashboard | `period` | ✅ 완료·검증 |
-| Analysis | `campaignreport` | ✅ 완료·검증 |
-| Analysis | `adgroupreport` | ✅ 완료·검증 |
-| Analysis | `keywordreport` | ✅ 완료·검증 |
-| Analysis | `adreport` | ✅ 완료·검증 |
-| Analysis | `mediareport` | ✅ 완료·검증 |
-| Analysis | `keywordrereport` | 🔄 구현 예정 |
-| Shopping | `shoppingreport` | 🔄 구현 예정 |
-| Shopping | `adgroupshoppingreport` | ⏳ 대기 |
-| Shopping | `campaignshoppingreport` | ⏳ 대기 |
-| Analysis | `periodreport` | ⏳ 대기 |
-| Analysis | `targetreport` | ⏳ 대기 |
+| Dashboard | `summarymedia` | ✅ 완료 |
+| Dashboard | `summary` | ✅ 완료 |
+| Dashboard | `period` | ✅ 완료 |
+| Dashboard | `aiinsight` | ✅ 완료 (OpenAI gpt-4.1-mini) |
+| Dashboard | `aiinsight_followup` | ✅ 완료 (OpenAI gpt-4.1-mini) |
+| Analysis | `campaignreport` | ✅ 완료 |
+| Analysis | `adgroupreport` | ✅ 완료 |
+| Analysis | `keywordreport` | ✅ 완료 |
+| Analysis | `adreport` | ✅ 완료 |
+| Analysis | `mediareport` | ✅ 완료 |
+| Analysis | `keywordrereport` | ✅ 완료 |
+| Analysis | `periodreport` | ✅ 완료 |
+| Shopping | `shoppingreport` | ✅ 완료 |
+| Shopping | `adgroupshoppingreport` | ✅ 완료 |
+| Shopping | `campaignshoppingreport` | ✅ 완료 |
+| Analysis | `targetreport` | ⏳ 대기 (MySQL 전용) |
 | Analysis | `campaignadreport`, `campaignkeywordreport` | ⏳ 대기 |
 | Analysis | `adgroupadreport`, `adgroupkeywordreport` | ⏳ 대기 |
 
-> ✅ 완료·검증 8개 / 🔄 구현 예정 2개 / ⏳ 대기 6개 (MySQL 전용, MongoDB 매핑 필요)
+> ✅ 완료 15개 / ⏳ 대기 3개 (MySQL 전용, MongoDB 매핑 필요)
 
 ---
 
