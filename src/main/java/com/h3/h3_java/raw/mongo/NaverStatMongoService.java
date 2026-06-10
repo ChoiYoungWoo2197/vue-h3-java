@@ -275,6 +275,34 @@ public class NaverStatMongoService {
             }).collect(Collectors.toList());
     }
 
+    public List<Map<String, Object>> aggregateShoppingByAdIdFiltered(
+            String advkey, String from, String to, String filterField, String filterValue) {
+        Criteria criteria = Criteria.where("daily_advid").is(advkey).and("daily_dt").gte(from).lte(to);
+        if (filterValue != null && !filterValue.isBlank()) {
+            criteria = criteria.and(filterField).is(filterValue);
+        }
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(criteria),
+            Aggregation.group("ad_id")
+                .first("campaign_id").as("campaign_id")
+                .first("adgroup_id").as("adgroup_id")
+                .first("ad_pid").as("ad_pid")
+                .sum("daily_im").as("im").sum("daily_clk").as("clk").sum("daily_cst").as("cst")
+                .sum("daily_cv").as("cv").sum("daily_cr").as("cr")
+        );
+        return mongoTemplate.aggregate(agg, "naver_shopping_ad_daily", Document.class)
+            .getMappedResults().stream().map(d -> {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("ad_id",       d.getString("_id") != null ? d.getString("_id") : "");
+                row.put("campaign_id", d.getString("campaign_id") != null ? d.getString("campaign_id") : "");
+                row.put("adgroup_id",  d.getString("adgroup_id") != null ? d.getString("adgroup_id") : "");
+                row.put("ad_pid",      d.getString("ad_pid") != null ? d.getString("ad_pid") : "");
+                row.put("im",  docToDouble(d, "im"));  row.put("clk", docToDouble(d, "clk")); row.put("cst", docToDouble(d, "cst"));
+                row.put("cv",  docToDouble(d, "cv"));  row.put("cr",  docToDouble(d, "cr"));
+                return row;
+            }).collect(Collectors.toList());
+    }
+
     public List<Document> findShoppingProducts(String advkey) {
         return mongoTemplate.find(Query.query(Criteria.where("advkey").is(advkey)), Document.class, "naver_shopping_product");
     }
