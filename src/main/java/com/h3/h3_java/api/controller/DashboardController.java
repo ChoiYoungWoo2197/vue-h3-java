@@ -3,6 +3,7 @@ package com.h3.h3_java.api.controller;
 import com.h3.h3_java.api.service.dashboard.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +19,7 @@ public class DashboardController {
 
     /** 매체별 요약 */
     @GetMapping("/summarymedia")
+    @PostMapping("/summarymedia")
     public Map<String, Object> summaryMedia(
             @RequestParam String userid,
             @RequestParam String fromdate,
@@ -28,6 +30,7 @@ public class DashboardController {
 
     /** 전체 요약 (비교기간 포함) */
     @GetMapping("/summary")
+    @PostMapping("/summary")
     public Map<String, Object> summary(
             @RequestParam String userid,
             @RequestParam String fromdate,
@@ -40,6 +43,7 @@ public class DashboardController {
 
     /** 날짜별 통계 */
     @GetMapping("/period")
+    @PostMapping("/period")
     public Map<String, Object> period(
             @RequestParam String userid,
             @RequestParam String fromdate,
