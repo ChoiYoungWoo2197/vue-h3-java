@@ -103,13 +103,15 @@ public class AnalysisController {
             @RequestParam String userid,
             @RequestParam String fromdate,
             @RequestParam String todate,
+            @RequestParam(required = false) String comparefromdate,
+            @RequestParam(required = false) String comparetodate,
             @RequestParam(required = false, defaultValue = "") String kpi,
             @RequestParam(required = false, defaultValue = "") String adpid,
             @RequestParam(required = false, defaultValue = "") String adid,
             @RequestParam(required = false, defaultValue = "cstd") String sort,
             @RequestParam(required = false, defaultValue = "0") int start,
             @RequestParam(required = false, defaultValue = "20") int display) {
-        return shoppingReportService.getShoppingReport(userid, fromdate, todate, kpi, adpid, adid, sort, start, display);
+        return shoppingReportService.getShoppingReport(userid, fromdate, todate, comparefromdate, comparetodate, kpi, adpid, adid, sort, start, display);
     }
 
     /** 광고그룹 쇼핑 리포트 */

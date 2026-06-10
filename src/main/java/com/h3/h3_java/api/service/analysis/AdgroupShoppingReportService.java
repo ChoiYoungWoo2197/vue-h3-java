@@ -103,14 +103,14 @@ public class AdgroupShoppingReportService {
             row.put("ad_pimageurl",   product != null ? str(product, "pimageurl") : "");
             row.put("ad_imgurl",      product != null ? str(product, "pimageurl") : "");
             row.put("ad_bidamount",   product != null ? str(product, "bid") : "");
-            row.put("ad_pprice",      "");
-            row.put("ad_mprice",      "");
+            row.put("ad_pprice",      product != null ? str(product, "pprice") : "");
+            row.put("ad_mprice",      product != null ? str(product, "mprice") : "");
             row.put("ad_deliveryfee", product != null ? str(product, "deliveryfee") : "");
             row.put("ad_cnameofmall", product != null ? str(product, "cnameofmall") : "");
             row.put("ad_qigrade",     product != null ? str(product, "qigrade") : "");
             row.put("ad_brand",       product != null ? str(product, "brand") : "");
             row.put("ad_maker",       product != null ? str(product, "maker") : "");
-            row.put("ad_plandingurl", "");
+            row.put("ad_plandingurl", product != null ? str(product, "plandingurl") : "");
             row.put("im",  (long) im);  row.put("clk", (long) clk); row.put("cst", (long) cst);
             row.put("cv",  (long) cv);  row.put("cr",  (long) cr);
             row.putAll(calcMetrics(im, clk, cst, cv, cr));

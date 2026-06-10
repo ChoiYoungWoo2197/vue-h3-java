@@ -19,6 +19,7 @@ public class ShoppingReportService {
 
     public Map<String, Object> getShoppingReport(
             String userId, String fromdate, String todate,
+            String comparefromdate, String comparetodate,
             String kpi, String adpid, String adid,
             String sort, int start, int display) {
 
@@ -34,7 +35,7 @@ public class ShoppingReportService {
         }
 
         if (!kpi.isBlank()) {
-            return getShoppingTop(advkey, fromdate, todate, kpi);
+            return getShoppingTop(advkey, fromdate, todate, comparefromdate, comparetodate, kpi);
         }
         return getShopping(advkey, fromdate, todate, sort, start, display);
     }
@@ -130,9 +131,10 @@ public class ShoppingReportService {
         return res;
     }
 
-    // ─── KPI별 Top 2 ─────────────────────────────────────────────────────────
+    // ─── KPI별 Top 2 (cp 포함) ───────────────────────────────────────────────
 
-    private Map<String, Object> getShoppingTop(String advkey, String from, String to, String kpi) {
+    private Map<String, Object> getShoppingTop(String advkey, String from, String to,
+                                                String cfrom, String cto, String kpi) {
         String[] kpis = kpi.split(",");
         Map<String, Object> topads = new LinkedHashMap<>();
 
@@ -142,23 +144,51 @@ public class ShoppingReportService {
             return buildTopResponse(topads);
         }
 
+        List<Map<String, Object>> compareStats =
+            (cfrom != null && !cfrom.isBlank() && cto != null && !cto.isBlank())
+                ? naverStatMongoService.aggregateShoppingByAdId(advkey, cfrom, cto)
+                : Collections.emptyList();
+
         Map<String, Document> productMap     = buildProductMap(advkey);
         Map<String, String>   campaignNameMap = buildCampaignNameMap(advkey);
         Map<String, String>   adgroupNameMap  = buildAdgroupNameMap(advkey);
 
+        List<Map<String, Object>> rows = buildTopRows(stats, productMap, campaignNameMap, adgroupNameMap);
+        Map<String, Map<String, Object>> compareMap = buildCompareMap(compareStats);
+
+        for (String k : kpis) {
+            String t = k.trim();
+            List<Map<String, Object>> sorted = new ArrayList<>(rows);
+            sorted.sort((a, b) -> Double.compare(toDoubleObj(b.get(t)), toDoubleObj(a.get(t))));
+
+            List<Map<String, Object>> top2 = new ArrayList<>();
+            for (int i = 0; i < Math.min(2, sorted.size()); i++) {
+                Map<String, Object> rowCopy = new LinkedHashMap<>(sorted.get(i));
+                rowCopy.put("cp", buildCp(t, rowCopy, compareMap));
+                top2.add(rowCopy);
+            }
+            topads.put(t, top2);
+        }
+        return buildTopResponse(topads);
+    }
+
+    private List<Map<String, Object>> buildTopRows(
+            List<Map<String, Object>> stats,
+            Map<String, Document> productMap,
+            Map<String, String> campaignNameMap,
+            Map<String, String> adgroupNameMap) {
+
         List<Map<String, Object>> rows = new ArrayList<>();
         for (Map<String, Object> stat : stats) {
-            String adId  = (String) stat.get("ad_id");
-            String adPid = (String) stat.get("ad_pid");
-            if (adPid == null || adPid.isBlank()) {
-                Document p = productMap.get(adId);
-                if (p != null) adPid = p.getString("pid");
-            }
-            if (adPid == null || adPid.isBlank()) continue;
-
-            Document product  = productMap.get(adId);
+            String adId       = (String) stat.get("ad_id");
+            String adPid      = (String) stat.get("ad_pid");
             String campaignId = (String) stat.get("campaign_id");
             String adgroupId  = (String) stat.get("adgroup_id");
+
+            Document product = productMap.get(adId);
+            if ((adPid == null || adPid.isBlank()) && product != null) adPid = product.getString("pid");
+            if (adPid == null) adPid = "";
+
             double im  = toDoubleMap(stat,"im"),  clk = toDoubleMap(stat,"clk");
             double cst = toDoubleMap(stat,"cst"), cv  = toDoubleMap(stat,"cv");
             double cr  = toDoubleMap(stat,"cr");
@@ -171,22 +201,67 @@ public class ShoppingReportService {
             row.put("ad_id",          s(adId));
             row.put("ad_pid",         adPid);
             row.put("ad_pidofmall",   product != null ? str(product, "pidofmall") : "");
-            row.put("ad_pimageurl",   product != null ? str(product, "pimageurl") : "");
             row.put("ad_pname",       product != null ? str(product, "pname") : "");
             row.put("ad_productname", product != null ? str(product, "productname") : "");
+            row.put("ad_pimageurl",   product != null ? str(product, "pimageurl") : "");
+            row.put("ad_imgurl",      product != null ? str(product, "pimageurl") : "");
+            row.put("ad_bidamount",   product != null ? str(product, "bid") : "");
+            row.put("ad_pprice",      product != null ? str(product, "pprice") : "");
+            row.put("ad_mprice",      product != null ? str(product, "mprice") : "");
+            row.put("ad_deliveryfee", product != null ? str(product, "deliveryfee") : "");
+            row.put("ad_cnameofmall", product != null ? str(product, "cnameofmall") : "");
+            row.put("ad_qigrade",     product != null ? str(product, "qigrade") : "");
+            row.put("ad_brand",       product != null ? str(product, "brand") : "");
+            row.put("ad_maker",       product != null ? str(product, "maker") : "");
+            row.put("ad_plandingurl", product != null ? str(product, "plandingurl") : "");
+            row.put("ad_image_pbase64", "");
             row.put("im",  (long) im);  row.put("clk", (long) clk); row.put("cst", (long) cst);
             row.put("cv",  (long) cv);  row.put("cr",  (long) cr);
             row.putAll(calcMetrics(im, clk, cst, cv, cr));
             rows.add(row);
         }
+        return rows;
+    }
 
-        for (String k : kpis) {
-            String t = k.trim();
-            List<Map<String, Object>> sorted = new ArrayList<>(rows);
-            sorted.sort((a, b) -> Double.compare(toDoubleObj(b.get(t)), toDoubleObj(a.get(t))));
-            topads.put(t, sorted.size() > 2 ? new ArrayList<>(sorted.subList(0, 2)) : sorted);
+    // ─── 비교기간 맵 ─────────────────────────────────────────────────────────
+
+    private Map<String, Map<String, Object>> buildCompareMap(List<Map<String, Object>> compareStats) {
+        Map<String, Map<String, Object>> map = new HashMap<>();
+        for (Map<String, Object> stat : compareStats) {
+            String adId = (String) stat.get("ad_id");
+            if (adId != null && !adId.isBlank()) {
+                double im  = toDoubleMap(stat,"im"),  clk = toDoubleMap(stat,"clk");
+                double cst = toDoubleMap(stat,"cst"), cv  = toDoubleMap(stat,"cv");
+                double cr  = toDoubleMap(stat,"cr");
+                Map<String, Object> enriched = new LinkedHashMap<>(stat);
+                enriched.putAll(calcMetrics(im, clk, cst, cv, cr));
+                map.put(adId, enriched);
+            }
         }
-        return buildTopResponse(topads);
+        return map;
+    }
+
+    private Object buildCp(String kpi, Map<String, Object> row, Map<String, Map<String, Object>> compareMap) {
+        String adId = (String) row.get("ad_id");
+        Map<String, Object> cRow = compareMap.get(adId);
+        if (cRow == null) return null;
+
+        double curr = toDoubleObj(row.get(kpi));
+        double comp = toDoubleObj(cRow.get(kpi));
+
+        Map<String, Object> per   = new LinkedHashMap<>();
+        Map<String, Object> cpVal = new LinkedHashMap<>();
+        if (curr > 0 && comp > 0) {
+            per.put(kpi, Math.round(((curr - comp) / comp * 100) * 10.0) / 10.0);
+            cpVal.put(kpi, (long) comp);
+        } else {
+            per.put(kpi, 0);
+            cpVal.put(kpi, 0);
+        }
+        Map<String, Object> cp = new LinkedHashMap<>();
+        cp.put("per", per);
+        cp.put("cp", cpVal);
+        return cp;
     }
 
     // ─── 헬퍼 ─────────────────────────────────────────────────────────────────
@@ -255,8 +330,8 @@ public class ShoppingReportService {
 
     private String str(Document d, String key) {
         if (d == null) return "";
-        String v = d.getString(key);
-        return v != null ? v : "";
+        Object v = d.get(key);
+        return v != null ? String.valueOf(v) : "";
     }
     private String s(String v)                            { return v != null ? v : ""; }
     private double toDoubleMap(Map<String, Object> m, String k) { Object v=m.get(k); return v instanceof Number n ? n.doubleValue() : 0.0; }
