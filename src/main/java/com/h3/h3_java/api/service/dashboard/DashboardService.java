@@ -145,10 +145,10 @@ public class DashboardService {
             String date = cur.format(FMT);
             double im  = getVal(naverMap, date, "im")  + getVal(kakaoSaMap, date, "im")  + getVal(kakaoMoMap, date, "im")  + getVal(gfaMap, date, "im")  + getVal(googleMap, date, "im");
             double clk = getVal(naverMap, date, "clk") + getVal(kakaoSaMap, date, "clk") + getVal(kakaoMoMap, date, "clk") + getVal(gfaMap, date, "clk") + getVal(googleMap, date, "clk");
-            double cstd = getVal(naverMap, date, "cst") * 1.1
-                        + getVal(kakaoSaMap, date, "cst") + getVal(kakaoMoMap, date, "cst")
-                        + getVal(gfaMap, date, "cst") + getVal(googleMap, date, "cst");
-            double cst = Math.floor(cstd / 1.1);
+            // raw cst 합계 (summary와 동일 기준 - VAT 미적용)
+            double cst = getVal(naverMap, date, "cst")
+                       + getVal(kakaoSaMap, date, "cst") + getVal(kakaoMoMap, date, "cst")
+                       + getVal(gfaMap, date, "cst") + getVal(googleMap, date, "cst");
             double cv  = getVal(naverMap, date, "cv")  + getVal(kakaoSaMap, date, "cv")  + getVal(kakaoMoMap, date, "cv")  + getVal(gfaMap, date, "cv")  + getVal(googleMap, date, "cv");
             double cr  = getVal(naverMap, date, "cr")  + getVal(kakaoSaMap, date, "cr")  + getVal(kakaoMoMap, date, "cr")  + getVal(gfaMap, date, "cr")  + getVal(googleMap, date, "cr");
 
@@ -166,7 +166,6 @@ public class DashboardService {
             day.put("im",   Math.round(im));
             day.put("clk",  Math.round(clk));
             day.put("cst",  Math.round(cst));
-            day.put("cstd", Math.round(cstd));
             day.put("cv",   Math.round(cv));
             day.put("cr",   Math.round(cr));
             day.put("purchase_cv",  Math.round(pCv)); day.put("purchase_cr",  Math.round(pCr));
@@ -174,8 +173,8 @@ public class DashboardService {
             day.put("cart_cv",      Math.round(cartCv)); day.put("cart_cr",   Math.round(cartCr));
             day.put("lead_cv",      Math.round(lCv)); day.put("lead_cr",      Math.round(lCr));
             day.put("other_cv", 0L); day.put("other_cr", 0L);
-            day.putAll(calcMetrics(im, clk, cstd, cv, cr));
-            day.put("purchase_roas", (pCr > 0 && cstd > 0) ? fmt(pCr / cstd * 100) : 0);
+            day.putAll(calcMetrics(im, clk, cst, cv, cr));
+            day.put("purchase_roas", (pCr > 0 && cst > 0) ? fmt(pCr / cst * 100) : 0);
             result.put(date, day);
             cur = cur.plusDays(1);
         }
