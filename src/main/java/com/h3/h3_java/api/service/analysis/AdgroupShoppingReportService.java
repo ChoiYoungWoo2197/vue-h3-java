@@ -100,8 +100,8 @@ public class AdgroupShoppingReportService {
             row.put("ad_pidofmall",   product != null ? str(product, "pidofmall") : "");
             row.put("ad_pname",       product != null ? str(product, "pname") : "");
             row.put("ad_productname", product != null ? str(product, "productname") : "");
-            row.put("ad_pimageurl",   product != null ? str(product, "imageurl") : "");
-            row.put("ad_imgurl",      product != null ? str(product, "imageurl") : "");
+            row.put("ad_pimageurl",   product != null ? str(product, "pimageurl") : "");
+            row.put("ad_imgurl",      product != null ? str(product, "pimageurl") : "");
             row.put("ad_bidamount",   product != null ? str(product, "bid") : "");
             row.put("ad_pprice",      "");
             row.put("ad_mprice",      "");

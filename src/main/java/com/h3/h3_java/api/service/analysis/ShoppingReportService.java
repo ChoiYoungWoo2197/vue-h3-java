@@ -76,8 +76,8 @@ public class ShoppingReportService {
             target.put("adgroup_name",   adgroupNameMap.getOrDefault(adgroupId, ""));
             target.put("ad_id",          s(adId));
             target.put("ad_pid",         adPid);
-            target.put("ad_pidofmall",   "");
-            target.put("ad_pimageurl",   product != null ? str(product, "imageurl") : "");
+            target.put("ad_pidofmall",   product != null ? str(product, "pidofmall") : "");
+            target.put("ad_pimageurl",   product != null ? str(product, "pimageurl") : "");
             target.put("ad_pname",       product != null ? str(product, "pname") : "");
             target.put("ad_productname", product != null ? str(product, "productname") : "");
             target.put("im",  (long) im);  target.put("clk", (long) clk); target.put("cst", (long) cst);
@@ -170,8 +170,8 @@ public class ShoppingReportService {
             row.put("adgroup_name",   adgroupNameMap.getOrDefault(adgroupId, ""));
             row.put("ad_id",          s(adId));
             row.put("ad_pid",         adPid);
-            row.put("ad_pidofmall",   "");
-            row.put("ad_pimageurl",   product != null ? str(product, "imageurl") : "");
+            row.put("ad_pidofmall",   product != null ? str(product, "pidofmall") : "");
+            row.put("ad_pimageurl",   product != null ? str(product, "pimageurl") : "");
             row.put("ad_pname",       product != null ? str(product, "pname") : "");
             row.put("ad_productname", product != null ? str(product, "productname") : "");
             row.put("im",  (long) im);  row.put("clk", (long) clk); row.put("cst", (long) cst);
