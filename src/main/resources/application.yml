@@ -42,6 +42,12 @@ google:
   developer-token: vxKM6J4s-oTW3gbvMLMjlg
   manager-id: "6769413271"
 
+# OpenAI
+openai:
+  api-key: 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
+  model: gpt-4.1-mini
+  temperature: 0.2
+
 # JWT
 jwt:
   secret: h3-heeil-jwt-secret-key-must-be-at-least-32-characters-long
