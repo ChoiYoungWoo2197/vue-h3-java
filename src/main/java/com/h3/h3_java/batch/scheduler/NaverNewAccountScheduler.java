@@ -26,6 +26,7 @@ public class NaverNewAccountScheduler {
     private final CollectorProducer producer;
 
     private final Set<String> processing = ConcurrentHashMap.newKeySet();
+    private final Set<String> initiated  = ConcurrentHashMap.newKeySet();
 
     @Scheduled(fixedDelay = 600_000, initialDelay = 60_000)
     public void detectAndInit() {
@@ -37,12 +38,15 @@ public class NaverNewAccountScheduler {
             String cid = acc.getAccountNaverCustomer();
             if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
             if (masterMongoService.hasCampaignData(cid)) continue;
+            if (initiated.contains(cid)) continue;
             if (!processing.add(cid)) continue;
 
             try {
                 initAccount(acc);
+                initiated.add(cid);
             } catch (Exception e) {
                 log.error("[NEW-ACCOUNT] 초기 수집 실패 userId={} customerId={} error={}", acc.getUserId(), cid, e.getMessage(), e);
+                initiated.add(cid);
             } finally {
                 processing.remove(cid);
             }
