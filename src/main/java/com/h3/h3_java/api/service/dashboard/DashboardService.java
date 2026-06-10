@@ -34,12 +34,12 @@ public class DashboardService {
         Map<String, Object> naverda = m[3] ? calcMediaStat(acc.getAccountGfa(),           fromdate, todate, "naver_gfa_campaign_daily", true,  "naver_gfa_campaign_convtype") : emptyMediaStat();
         Map<String, Object> google  = m[4] ? calcMediaStat(acc.getAccountGoogle(),        fromdate, todate, "google_campaign_daily",    false, null) : emptyMediaStat();
 
-        result.put("TOTAL",  calcTotal(List.of(naver, kakaosa, kakaomo, naverda, google)));
-        result.put("N",      naver);
-        result.put("D",      kakaosa);
-        result.put("K",      kakaomo);
-        result.put("Nda",    naverda);
-        result.put("google", google);
+        result.put("TOTAL",   calcTotal(List.of(naver, kakaosa, kakaomo, naverda, google)));
+        result.put("naver",   naver);
+        result.put("kakaosa", kakaosa);
+        result.put("kakaomo", kakaomo);
+        result.put("naverda", naverda);
+        result.put("google",  google);
 
         return Map.of("result", "success", "status", "200", "data", result);
     }
