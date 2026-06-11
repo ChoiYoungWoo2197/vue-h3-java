@@ -191,6 +191,29 @@ public class NaverCollectorController {
         }
     }
 
+    @PostMapping("/campaign-daily/range")
+    public ResponseEntity<Map<String, String>> collectCampaignDailyAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] 캠페인 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverCampaignDailyRange(account.getUserId(), cid, from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " 캠페인 일별 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 캠페인 일별 전체 기간 수집 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/campaign-daily/{userId}")
     public ResponseEntity<Map<String, String>> collectCampaignDailyByUser(@PathVariable String userId) {
         log.info("[NaverCollector] 캠페인 일별 단일 수집 MQ 발행 userId={}", userId);
@@ -238,6 +261,29 @@ public class NaverCollectorController {
             log.error("[NaverCollector] 캠페인 시간별 수집 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/campaign-hour/range")
+    public ResponseEntity<Map<String, String>> collectCampaignHourAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] 캠페인 시간별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverCampaignHourRange(account.getUserId(), cid, from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " 캠페인 시간별 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 캠페인 시간별 전체 기간 수집 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
         }
     }
 
@@ -291,6 +337,29 @@ public class NaverCollectorController {
         }
     }
 
+    @PostMapping("/adgroup-daily/range")
+    public ResponseEntity<Map<String, String>> collectAdGroupDailyAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] 광고그룹 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverAdGroupDailyRange(account.getUserId(), cid, from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " 광고그룹 일별 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 광고그룹 일별 전체 기간 수집 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/adgroup-daily/{userId}")
     public ResponseEntity<Map<String, String>> collectAdGroupDailyByUser(@PathVariable String userId) {
         log.info("[NaverCollector] 광고그룹 일별 단일 수집 MQ 발행 userId={}", userId);
@@ -341,6 +410,29 @@ public class NaverCollectorController {
         }
     }
 
+    @PostMapping("/ad-daily/range")
+    public ResponseEntity<Map<String, String>> collectAdDailyAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] 소재 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverAdDailyRange(account.getUserId(), cid, from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " 소재 일별 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 소재 일별 전체 기간 수집 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/ad-daily/{userId}")
     public ResponseEntity<Map<String, String>> collectAdDailyByUser(@PathVariable String userId) {
         log.info("[NaverCollector] 소재 일별 단일 수집 MQ 발행 userId={}", userId);
@@ -388,6 +480,29 @@ public class NaverCollectorController {
             log.error("[NaverCollector] 쇼핑소재 일별 수집 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/shopping-daily/range")
+    public ResponseEntity<Map<String, String>> collectShoppingDailyAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] 쇼핑소재 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverShoppingDailyRange(account.getUserId(), cid, from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " 쇼핑소재 일별 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 쇼핑소재 일별 전체 기간 수집 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
         }
     }
 
@@ -450,6 +565,29 @@ public class NaverCollectorController {
         }
     }
 
+    @PostMapping("/state-report/range")
+    public ResponseEntity<Map<String, String>> collectStateReportAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] StateReport 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverStateReportRange(account.getUserId(), cid, from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " StateReport 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] StateReport 전체 기간 수집 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/state-report/{userId}")
     public ResponseEntity<Map<String, String>> collectStateReportByUser(@PathVariable String userId) {
         log.info("[NaverCollector] StateReport 단일 수집 MQ 발행 userId={}", userId);
@@ -506,6 +644,29 @@ public class NaverCollectorController {
             log.error("[NaverCollector] 전환유형 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/conv-type/range")
+    public ResponseEntity<Map<String, String>> collectConvTypeAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] 전환유형 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            Set<String> seen = new HashSet<>();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                String cid = account.getAccountNaverCustomer();
+                if (cid == null || cid.isBlank() || !seen.add(cid)) continue;
+                producer.sendNaverConvTypeRange(account.getUserId(), cid, from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " 전환유형 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] 전환유형 전체 기간 수집 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
         }
     }
 
