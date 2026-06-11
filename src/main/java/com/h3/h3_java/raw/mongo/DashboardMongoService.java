@@ -202,9 +202,9 @@ public class DashboardMongoService {
 
     // ─── 캠페인별 집계 (campaignreport) ─────────────────────────────────────
 
-    public List<Map<String, Object>> aggregateByCampaign(String advid, String from, String to, String collection) {
+    public List<Map<String, Object>> aggregateByCampaign(String advid, String from, String to, String collection, String advField) {
         Aggregation agg = Aggregation.newAggregation(
-            Aggregation.match(Criteria.where("daily_advid").is(advid)
+            Aggregation.match(Criteria.where(advField).is(advid)
                 .and("daily_dt").gte(from).lte(to)),
             Aggregation.group("campaign_id")
                 .sum("daily_im").as("im")

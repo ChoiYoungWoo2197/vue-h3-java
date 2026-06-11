@@ -67,7 +67,7 @@ public class CampaignReportService {
         Map<String, Object>       curTotal  = aggregateTotalFull(advid, from, to, "naver_campaign_daily", false, "naver_campaign_convtype");
 
         // 캠페인별 집계 + 마스터 JOIN
-        List<Map<String, Object>> campStats  = mongoService.aggregateByCampaign(advid, from, to, "naver_campaign_daily");
+        List<Map<String, Object>> campStats  = mongoService.aggregateByCampaign(advid, from, to, "naver_campaign_daily", "daily_advid");
         List<Document>            masters    = mongoService.findNaverCampaigns(advid);
         Map<String, Document>     masterMap  = new HashMap<>();
         for (Document d : masters) masterMap.put(d.getString("campaignid"), d);
@@ -114,7 +114,7 @@ public class CampaignReportService {
         Map<String, Object>       compTotal = aggregateTotal(advid, cfrom, cto, "kakao_sa_campaign_daily", false);
         Map<String, Object>       curTotal  = sumGraph(graph);
 
-        List<Map<String, Object>> campStats = mongoService.aggregateByCampaign(advid, from, to, "kakao_sa_campaign_daily");
+        List<Map<String, Object>> campStats = mongoService.aggregateByCampaign(advid, from, to, "kakao_sa_campaign_daily", "advkey");
         List<Document>            masters   = mongoService.findCampaigns(advid, "kakao_sa_campaign");
         Map<String, Document>     masterMap = toMasterMap(masters, "cid");
 
@@ -146,7 +146,7 @@ public class CampaignReportService {
         Map<String, Object>       compTotal = aggregateTotal(advid, cfrom, cto, "kakao_mo_campaign_daily", false);
         Map<String, Object>       curTotal  = sumGraph(graph);
 
-        List<Map<String, Object>> campStats = mongoService.aggregateByCampaign(advid, from, to, "kakao_mo_campaign_daily");
+        List<Map<String, Object>> campStats = mongoService.aggregateByCampaign(advid, from, to, "kakao_mo_campaign_daily", "advkey");
         List<Document>            masters   = mongoService.findCampaigns(advid, "kakao_mo_campaign");
         Map<String, Document>     masterMap = toMasterMap(masters, "cid");
 
@@ -187,7 +187,7 @@ public class CampaignReportService {
         Map<String, Object>       compTotal = aggregateTotalFull(advid, cfrom, cto, "naver_gfa_campaign_daily", false, "naver_gfa_campaign_convtype");
         Map<String, Object>       curTotal  = aggregateTotalFull(advid, from, to, "naver_gfa_campaign_daily", false, "naver_gfa_campaign_convtype");
 
-        List<Map<String, Object>> campStats = mongoService.aggregateByCampaign(advid, from, to, "naver_gfa_campaign_daily");
+        List<Map<String, Object>> campStats = mongoService.aggregateByCampaign(advid, from, to, "naver_gfa_campaign_daily", "daily_advid");
         List<Document>            masters   = mongoService.findCampaigns(advid, "naver_gfa_campaign");
         Map<String, Document>     masterMap = toMasterMap(masters, "cid");
 
@@ -229,7 +229,7 @@ public class CampaignReportService {
         Map<String, Object>       compTotal = aggregateTotal(advid, cfrom, cto, "google_campaign_daily", false);
         Map<String, Object>       curTotal  = sumGraph(graph);
 
-        List<Map<String, Object>> campStats = mongoService.aggregateByCampaign(advid, from, to, "google_campaign_daily");
+        List<Map<String, Object>> campStats = mongoService.aggregateByCampaign(advid, from, to, "google_campaign_daily", "daily_advid");
         List<Document>            masters   = mongoService.findCampaigns(advid, "google_campaign");
         Map<String, Document>     masterMap = toMasterMap(masters, "cid");
 
