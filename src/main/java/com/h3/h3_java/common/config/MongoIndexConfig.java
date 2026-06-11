@@ -62,6 +62,68 @@ public class MongoIndexConfig {
         unique("naver_gfa_adgroup",  "advkey", "gid");
         unique("naver_gfa_ad",       "advkey", "aid");
 
+        // ── GFA 일별 통계 ──────────────────────────────────────────────────────
+        unique("naver_gfa_campaign_daily", "daily_advid", "daily_dt", "campaign_id");
+        unique("naver_gfa_adgroup_daily",  "daily_advid", "daily_dt", "adgroup_id");
+        unique("naver_gfa_ad_daily",       "daily_advid", "daily_dt", "ad_id");
+
+        // ── GFA 전환유형 ───────────────────────────────────────────────────────
+        unique("naver_gfa_campaign_convtype", "daily_advid", "daily_dt", "campaign_id", "conv_type_code");
+        unique("naver_gfa_adgroup_convtype",  "daily_advid", "daily_dt", "adgroup_id",  "conv_type_code");
+        unique("naver_gfa_ad_convtype",       "daily_advid", "daily_dt", "ad_id",       "conv_type_code");
+
+        // ── 카카오 SA 마스터 ───────────────────────────────────────────────────
+        unique("kakao_sa_campaign", "cid");
+        index ("kakao_sa_campaign", "advkey");
+        unique("kakao_sa_adgroup",  "gid");
+        index ("kakao_sa_adgroup",  "advkey");
+        unique("kakao_sa_ad",       "aid");
+        index ("kakao_sa_ad",       "advkey");
+        unique("kakao_sa_keyword",  "kid");
+        index ("kakao_sa_keyword",  "advkey");
+        unique("kakao_sa_token",    "key");
+
+        // ── 카카오 SA 일별·시간별 통계 ────────────────────────────────────────
+        unique("kakao_sa_campaign_daily", "advkey", "daily_dt", "campaign_id");
+        unique("kakao_sa_campaign_hour",  "advkey", "hour_dt");
+        unique("kakao_sa_adgroup_daily",  "advkey", "daily_dt", "adgroup_id");
+        unique("kakao_sa_ad_daily",       "advkey", "daily_dt", "ad_id");
+        unique("kakao_sa_keyword_daily",  "advkey", "daily_dt", "keyword_id");
+        index ("kakao_sa_budget_alarm",   "advkey");
+
+        // ── 카카오 MO 마스터 ───────────────────────────────────────────────────
+        unique("kakao_mo_campaign", "cid");
+        index ("kakao_mo_campaign", "advkey");
+        unique("kakao_mo_adgroup",  "gid");
+        index ("kakao_mo_adgroup",  "advkey");
+        unique("kakao_mo_ad",       "aid");
+        index ("kakao_mo_ad",       "advkey");
+        unique("kakao_mo_token",    "key");
+
+        // ── 카카오 MO 일별·시간별 통계 ────────────────────────────────────────
+        unique("kakao_mo_campaign_daily", "advkey", "daily_dt", "campaign_id");
+        unique("kakao_mo_campaign_hour",  "advkey", "hour_dt");
+        unique("kakao_mo_adgroup_daily",  "advkey", "daily_dt", "adgroup_id");
+        unique("kakao_mo_ad_daily",       "advkey", "daily_dt", "ad_id");
+        index ("kakao_mo_budget_alarm",   "advkey");
+
+        // ── 구글 마스터 ────────────────────────────────────────────────────────
+        unique("google_campaign", "cid");
+        index ("google_campaign", "advkey");
+        unique("google_adgroup",  "gid");
+        index ("google_adgroup",  "advkey");
+        unique("google_ad",       "aid");
+        index ("google_ad",       "advkey");
+        unique("google_keyword",  "kid");
+        index ("google_keyword",  "advkey");
+
+        // ── 구글 일별·시간별 통계 ─────────────────────────────────────────────
+        unique("google_campaign_daily", "daily_advid", "daily_dt", "campaign_id");
+        unique("google_campaign_hour",  "adv_id",      "hour_dt");
+        unique("google_adgroup_daily",  "daily_advid", "daily_dt", "adgroup_id");
+        unique("google_ad_daily",       "daily_advid", "daily_dt", "ad_id");
+        unique("google_keyword_daily",  "daily_advid", "daily_dt", "keyword_id");
+
         log.info("[MONGO INDEX] 인덱스 생성 완료");
     }
 
