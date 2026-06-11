@@ -24,8 +24,9 @@ public class DashboardMongoService {
     // ─── 기간 합산 (summarymedia, summary) ──────────────────────────────────
 
     public Map<String, Object> aggregateTotal(String advid, String from, String to, String collection) {
+        String advField = getAdvField(collection);
         Aggregation agg = Aggregation.newAggregation(
-            Aggregation.match(Criteria.where("daily_advid").is(advid)
+            Aggregation.match(Criteria.where(advField).is(advid)
                 .and("daily_dt").gte(from).lte(to)),
             Aggregation.group()
                 .sum("daily_im").as("im")
@@ -49,8 +50,9 @@ public class DashboardMongoService {
     // ─── 날짜별 집계 (period) ────────────────────────────────────────────────
 
     public Map<String, Map<String, Object>> aggregateByDate(String advid, String from, String to, String collection) {
+        String advField = getAdvField(collection);
         Aggregation agg = Aggregation.newAggregation(
-            Aggregation.match(Criteria.where("daily_advid").is(advid)
+            Aggregation.match(Criteria.where(advField).is(advid)
                 .and("daily_dt").gte(from).lte(to)),
             Aggregation.group("daily_dt")
                 .sum("daily_im").as("im")
@@ -372,6 +374,11 @@ public class DashboardMongoService {
         if (v == null) return 0.0;
         if (v instanceof Number) return ((Number) v).doubleValue();
         return 0.0;
+    }
+
+    /** kakao_* 컬렉션은 "advkey", 나머지는 "daily_advid" 로 어드버타이저 식별 */
+    private String getAdvField(String collection) {
+        return (collection != null && collection.startsWith("kakao_")) ? "advkey" : "daily_advid";
     }
 
     private Map<String, Object> emptyTotals() {
