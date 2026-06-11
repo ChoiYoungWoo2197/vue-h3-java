@@ -217,11 +217,13 @@ POST /v1/h3/app/dashboard/aiinsight_followup # AI 인사이트 추가 질문
 
 ```
 # 네이버 SA
-POST /api/collector/naver/{job-type}
-POST /api/collector/naver/{job-type}/{userId}
-POST /api/collector/naver/{job-type}/{userId}/range?from=YYYY-MM-DD&to=YYYY-MM-DD
+POST /api/collector/naver/{job-type}                                          # 전체 계정, 자동 날짜
+POST /api/collector/naver/{job-type}/range?from=YYYY-MM-DD&to=YYYY-MM-DD     # 전체 계정, 기간 지정
+POST /api/collector/naver/{job-type}/{userId}                                 # 단일 계정, 자동 날짜
+POST /api/collector/naver/{job-type}/{userId}/range?from=YYYY-MM-DD&to=YYYY-MM-DD  # 단일 계정, 기간 지정
 ```
-job-type: `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-daily`, `shopping-daily`, `state-report`, `conv-type`
+job-type (전체): `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-daily`, `shopping-daily`, `state-report`, `conv-type`  
+`/range` (전체 계정 기간): `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-daily`, `shopping-daily`, `state-report`, `conv-type`
 
 ```
 # 네이버 GFA
