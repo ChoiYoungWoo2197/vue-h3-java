@@ -157,6 +157,19 @@ public class AnalysisController {
                 comparefromdate, comparetodate, periodunit);
     }
 
+    /** 확장검색 키워드 리포트 (stub - 추후 구현) */
+    @GetMapping("/expkeywordreport")
+    public Map<String, Object> expKeywordReport(
+            @RequestParam String userid,
+            @RequestParam(required = false) String fromdate,
+            @RequestParam(required = false) String todate) {
+        return Map.of(
+            "result", "success",
+            "status", "200",
+            "data",   Map.of("expkeywords", java.util.List.of())
+        );
+    }
+
     /** 광고그룹 리포트 */
     @GetMapping("/adgroupreport")
     public Map<String, Object> adgroupReport(
