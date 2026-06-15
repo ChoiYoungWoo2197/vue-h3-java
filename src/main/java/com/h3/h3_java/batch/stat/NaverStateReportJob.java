@@ -108,8 +108,9 @@ public class NaverStateReportJob {
                 int kwSaved = processKeywords(customerId, date, tsvData);
                 log.info("[NaverStateReport][KEYWORD] customerId={} date={} saved={}", customerId, date, kwSaved);
 
-                int tgSaved = processTargets(customerId, date, tsvData);
-                log.info("[NaverStateReport][TARGET] customerId={} date={} saved={}", customerId, date, tgSaved);
+                // naver_target_daily 수집 비활성화 (타겟팅 페이지 연결 시 재활성화)
+                // int tgSaved = processTargets(customerId, date, tsvData);
+                // log.info("[NaverStateReport][TARGET] customerId={} date={} saved={}", customerId, date, tgSaved);
 
             } catch (Exception e) {
                 log.error("[NaverStateReport] 오류 customerId={} date={} error={}", customerId, date, e.getMessage(), e);
@@ -328,8 +329,8 @@ public class NaverStateReportJob {
         for (int i = 1; i <= 7; i++) {
             String d = today.minusDays(i).format(DATE_FMT);
             boolean kwMiss = !statMongoService.hasKeywordDailyData(customerId, d);
-            boolean tgMiss = !statMongoService.hasTargetDailyData(customerId, d);
-            if (kwMiss || tgMiss) dates.add(d);
+            // naver_target_daily 비활성화 중 → target gap 체크 제외
+            if (kwMiss) dates.add(d);
         }
         return new ArrayList<>(dates);
     }
