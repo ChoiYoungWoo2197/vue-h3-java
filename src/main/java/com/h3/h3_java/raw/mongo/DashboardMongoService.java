@@ -124,6 +124,36 @@ public class DashboardMongoService {
         return result;
     }
 
+    // ─── 소재별 집계 (필터 포함: adgroupad / campaignad) ─────────────────────
+
+    public List<Map<String, Object>> aggregateByAdWithFilter(String advid, String from, String to,
+                                                              String collection, String advField,
+                                                              String filterField, String filterValue) {
+        Criteria criteria = Criteria.where(advField).is(advid).and("daily_dt").gte(from).lte(to);
+        if (filterField != null && !filterField.isBlank() && filterValue != null && !filterValue.isBlank()) {
+            criteria = criteria.and(filterField).is(filterValue);
+        }
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(criteria),
+            Aggregation.group("ad_id")
+                .first("campaign_id").as("campaign_id")
+                .first("adgroup_id").as("adgroup_id")
+                .sum("daily_im").as("im").sum("daily_clk").as("clk").sum("daily_cst").as("cst")
+                .sum("daily_cv").as("cv").sum("daily_cr").as("cr")
+        );
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Document d : mongo.aggregate(agg, collection, Document.class).getMappedResults()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("ad_id",       d.getString("_id"));
+            row.put("campaign_id", d.getString("campaign_id"));
+            row.put("adgroup_id",  d.getString("adgroup_id"));
+            row.put("im",  toDouble(d,"im")); row.put("clk", toDouble(d,"clk"));
+            row.put("cst", toDouble(d,"cst")); row.put("cv", toDouble(d,"cv")); row.put("cr", toDouble(d,"cr"));
+            result.add(row);
+        }
+        return result;
+    }
+
     // ─── 전환유형 키워드별 집계 (keywordreport용) ─────────────────────────────
 
     public Map<String, Map<String, Object>> aggregateConvtypeByKeywordId(String advid, String from, String to, String collection) {
