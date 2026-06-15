@@ -1,8 +1,10 @@
 package com.h3.h3_java.api.controller;
 
 import com.h3.h3_java.api.service.analysis.AdReportService;
+import com.h3.h3_java.api.service.analysis.AdgroupKeywordReportService;
 import com.h3.h3_java.api.service.analysis.AdgroupReportService;
 import com.h3.h3_java.api.service.analysis.AdgroupShoppingReportService;
+import com.h3.h3_java.api.service.analysis.CampaignKeywordReportService;
 import com.h3.h3_java.api.service.analysis.CampaignReportService;
 import com.h3.h3_java.api.service.analysis.CampaignShoppingReportService;
 import com.h3.h3_java.api.service.analysis.KeywordReportService;
@@ -26,6 +28,8 @@ public class AnalysisController {
     private final CampaignReportService          campaignReportService;
     private final AdgroupReportService           adgroupReportService;
     private final KeywordReportService           keywordReportService;
+    private final AdgroupKeywordReportService    adgroupKeywordReportService;
+    private final CampaignKeywordReportService   campaignKeywordReportService;
     private final AdReportService                adReportService;
     private final MediaReportService             mediaReportService;
     private final KeywordReReportService         keywordReReportService;
@@ -168,6 +172,36 @@ public class AnalysisController {
             "status", "200",
             "data",   Map.of("expkeywords", java.util.List.of())
         );
+    }
+
+    /** 광고그룹 키워드 리포트 */
+    @GetMapping("/adgroupkeywordreport")
+    public Map<String, Object> adgroupKeywordReport(
+            @RequestParam String userid,
+            @RequestParam String fromdate,
+            @RequestParam String todate,
+            @RequestParam(required = false) String comparefromdate,
+            @RequestParam(required = false) String comparetodate,
+            @RequestParam(required = false, defaultValue = "N") String md,
+            @RequestParam(required = false, defaultValue = "cst") String kpi,
+            @RequestParam(required = false, defaultValue = "") String adgroupid) {
+        return adgroupKeywordReportService.getAdgroupKeywordReport(
+            userid, md, fromdate, todate, comparefromdate, comparetodate, kpi, adgroupid);
+    }
+
+    /** 캠페인 키워드 리포트 */
+    @GetMapping("/campaignkeywordreport")
+    public Map<String, Object> campaignKeywordReport(
+            @RequestParam String userid,
+            @RequestParam String fromdate,
+            @RequestParam String todate,
+            @RequestParam(required = false) String comparefromdate,
+            @RequestParam(required = false) String comparetodate,
+            @RequestParam(required = false, defaultValue = "N") String md,
+            @RequestParam(required = false, defaultValue = "cst") String kpi,
+            @RequestParam(required = false, defaultValue = "") String campaignid) {
+        return campaignKeywordReportService.getCampaignKeywordReport(
+            userid, md, fromdate, todate, comparefromdate, comparetodate, kpi, campaignid);
     }
 
     /** 광고그룹 리포트 */

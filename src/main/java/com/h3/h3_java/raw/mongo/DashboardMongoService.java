@@ -174,6 +174,38 @@ public class DashboardMongoService {
         return result;
     }
 
+    // ─── 키워드별 집계 (필터 포함: adgroupkeyword / campaignkeyword) ─────────
+
+    public List<Map<String, Object>> aggregateByKeywordWithFilter(String advid, String from, String to,
+                                                                    String collection, String advField,
+                                                                    String filterField, String filterValue) {
+        Criteria criteria = Criteria.where(advField).is(advid).and("daily_dt").gte(from).lte(to);
+        if (filterField != null && !filterField.isBlank() && filterValue != null && !filterValue.isBlank()) {
+            criteria = criteria.and(filterField).is(filterValue);
+        }
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(criteria),
+            Aggregation.group("keyword_id")
+                .first("adgroup_id").as("adgroup_id")
+                .first("campaign_id").as("campaign_id")
+                .first("kname").as("kname")
+                .sum("daily_im").as("im").sum("daily_clk").as("clk").sum("daily_cst").as("cst")
+                .sum("daily_cv").as("cv").sum("daily_cr").as("cr")
+        );
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Document d : mongo.aggregate(agg, collection, Document.class).getMappedResults()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("keyword_id",  d.getString("_id"));
+            row.put("adgroup_id",  d.getString("adgroup_id"));
+            row.put("campaign_id", d.getString("campaign_id"));
+            row.put("kname",       d.getString("kname"));
+            row.put("im",  toDouble(d, "im")); row.put("clk", toDouble(d, "clk"));
+            row.put("cst", toDouble(d, "cst")); row.put("cv", toDouble(d, "cv")); row.put("cr", toDouble(d, "cr"));
+            result.add(row);
+        }
+        return result;
+    }
+
     // ─── 광고그룹별 집계 (adgroupreport) ────────────────────────────────────
 
     public List<Map<String, Object>> aggregateByAdgroup(String advid, String from, String to,
