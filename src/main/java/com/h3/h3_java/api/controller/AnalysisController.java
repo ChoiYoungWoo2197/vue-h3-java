@@ -82,9 +82,10 @@ public class AnalysisController {
             @RequestParam(required = false, defaultValue = "") String kpi,
             @RequestParam(required = false, defaultValue = "cstd") String sort,
             @RequestParam(required = false, defaultValue = "0") int start,
-            @RequestParam(required = false, defaultValue = "20") int display) {
+            @RequestParam(required = false, defaultValue = "20") int display,
+            @RequestParam(required = false, defaultValue = "false") String base64) {
         return adReportService.getAdReport(userid, md, fromdate, todate,
-                comparefromdate, comparetodate, kpi, sort, start, display);
+                comparefromdate, comparetodate, kpi, sort, start, display, "true".equals(base64));
     }
 
     /** 키워드 추천 리포트 */

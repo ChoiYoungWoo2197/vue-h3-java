@@ -51,7 +51,7 @@ public class AdReportService {
 
     public Map<String, Object> getAdReport(String userId, String md, String fromdate, String todate,
                                              String cfrom, String cto,
-                                             String kpi, String sort, int start, int display) {
+                                             String kpi, String sort, int start, int display, boolean base64) {
         AccountDto acc = accountMapper.selectByUserId(userId);
         if (acc == null) return fail("1009", "계정을 확인해 주세요.");
 
@@ -59,7 +59,7 @@ public class AdReportService {
         String compareto   = (cto   != null && !cto.isBlank())   ? cto   : todate;
 
         if (kpi != null && !kpi.isBlank()) {
-            return getAdTop(acc, md, fromdate, todate, comparefrom, compareto, kpi);
+            return getAdTop(acc, md, fromdate, todate, comparefrom, compareto, kpi, base64);
         } else {
             return getAd(acc, userId, md, fromdate, todate, comparefrom, compareto, sort, start, display);
         }
@@ -123,7 +123,7 @@ public class AdReportService {
     // ─── KPI별 top 10 ────────────────────────────────────────────────────────
 
     private Map<String, Object> getAdTop(AccountDto acc, String md, String from, String to,
-                                          String cfrom, String cto, String kpi) {
+                                          String cfrom, String cto, String kpi, boolean base64) {
         String[] kpis = kpi.split(",");
 
         Map<String, List<Map<String, Object>>> allStats = new LinkedHashMap<>();
@@ -191,11 +191,49 @@ public class AdReportService {
             topads.put(t, top10);
         }
 
+        // base64=true 일 때 이미지 URL 을 서버에서 fetch 하여 ad_image_pbase64 주입 (PHP getDataUrl 동일)
+        if (base64) {
+            Map<String, String> urlCache = new HashMap<>();
+            for (Object listObj : topads.values()) {
+                if (!(listObj instanceof List<?> rawList)) continue;
+                for (Object item : rawList) {
+                    if (!(item instanceof Map<?, ?> rawRow)) continue;
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> row = (Map<String, Object>) rawRow;
+                    String imgUrl = resolveImageUrl(row);
+                    row.put("ad_image_pbase64",
+                        imgUrl.isEmpty() ? "" : urlCache.computeIfAbsent(imgUrl, this::fetchBase64));
+                }
+            }
+        }
+
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("result", "success"); res.put("status", "200");
         res.put("data",  Map.of("ads", "", "topads", topads, "total", ""));
         res.put("resultcount", 0); res.put("totalcount", 0);
         return res;
+    }
+
+    /** 소재 이미지 URL 해석: 배너(ad_image_url) 우선, 없으면 검색소재(ad_imgurl1) */
+    private String resolveImageUrl(Map<String, Object> row) {
+        Object u = row.get("ad_image_url");
+        if (u instanceof String s && !s.isBlank() && !"null".equals(s)) return s;
+        u = row.get("ad_imgurl1");
+        if (u instanceof String s && !s.isBlank() && !"null".equals(s)) return s;
+        return "";
+    }
+
+    /** URL → data:image/*;base64,... (PHP getDataUrl 동일) */
+    private String fetchBase64(String url) {
+        try {
+            byte[] bytes = new java.net.URI(url).toURL().openStream().readAllBytes();
+            String mime = url.toLowerCase().contains(".png") ? "image/png"
+                        : url.toLowerCase().contains(".gif") ? "image/gif"
+                        : "image/jpeg";
+            return "data:" + mime + ";base64," + java.util.Base64.getEncoder().encodeToString(bytes);
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     // ─── 배너 유저 정보 로드 ──────────────────────────────────────────────────
