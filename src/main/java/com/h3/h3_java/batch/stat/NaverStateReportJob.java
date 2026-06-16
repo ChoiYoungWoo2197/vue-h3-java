@@ -169,31 +169,27 @@ public class NaverStateReportJob {
 
     // =====================================================================
     // 키워드 일별 → naver_keyword_daily (MongoDB)
+    // TSV에 campaignid/adgroupid가 포함되어 있어 마스터 룩업 없이 직접 수집
+    // (마스터 필터링 방식은 마스터 미수집 키워드를 누락시키는 누수 원인)
     // =====================================================================
 
     private int processKeywords(String customerId, String date, Map<String, byte[]> tsvData) {
         if (tsvData.isEmpty()) return 0;
 
-        List<Map<String, Object>> kwList = statMongoService.selectKeywordMapping(customerId);
-        if (kwList.isEmpty()) return 0;
-
-        Map<String, String[]> kwMeta  = new LinkedHashMap<>();
-        Map<String, long[]>   kwStats = new LinkedHashMap<>();
-
-        for (Map<String, Object> kw : kwList) {
-            String kid = str(kw.get("keywordId"));
-            if (kid.isEmpty()) continue;
-            kwMeta.put(kid,  new String[]{str(kw.get("campaignId")), str(kw.get("adgroupId"))});
-            kwStats.put(kid, new long[]{0L, 0L, 0L, 0L, 0L});
-        }
+        Map<String, String>  kwCampaign = new LinkedHashMap<>();
+        Map<String, String>  kwAdgroup  = new LinkedHashMap<>();
+        Map<String, long[]>  kwStats    = new LinkedHashMap<>(); // [im, clk, cst, cv, cr]
 
         byte[] adBytes = tsvData.get("AD_DETAIL");
         if (adBytes != null) {
             for (String[] cols : parseTsv(adBytes)) {
                 if (cols.length < AD_COLS || !isDateCol(cols[0])) continue;
                 String kwId = cols[AD_KWID];
-                if ("-".equals(kwId) || !kwStats.containsKey(kwId)) continue;
-                long[] s = kwStats.get(kwId);
+                if ("-".equals(kwId) || kwId.isEmpty()) continue;
+
+                kwCampaign.putIfAbsent(kwId, cols[AD_CAMPAIGNID]);
+                kwAdgroup.putIfAbsent(kwId,  cols[AD_ADGROUPID]);
+                long[] s = kwStats.computeIfAbsent(kwId, k -> new long[5]);
                 s[0] += toLong(cols[AD_IMPRESSION]);
                 s[1] += toLong(cols[AD_CLICK]);
                 s[2] += (long) Math.floor(toDouble(cols[AD_COST]) * 1.1);
@@ -205,8 +201,11 @@ public class NaverStateReportJob {
             for (String[] cols : parseTsv(cvBytes)) {
                 if (cols.length < CV_COLS || !isDateCol(cols[0])) continue;
                 String kwId = cols[CV_KWID];
-                if ("-".equals(kwId) || !kwStats.containsKey(kwId)) continue;
-                long[] s = kwStats.get(kwId);
+                if ("-".equals(kwId) || kwId.isEmpty()) continue;
+
+                kwCampaign.putIfAbsent(kwId, cols[CV_CAMPAIGNID]);
+                kwAdgroup.putIfAbsent(kwId,  cols[CV_ADGROUPID]);
+                long[] s = kwStats.computeIfAbsent(kwId, k -> new long[5]);
                 s[3] += toLong(cols[CV_CVCOUNT]);
                 s[4] += (long) toDouble(cols[CV_SALESBYCONV]);
             }
@@ -217,12 +216,11 @@ public class NaverStateReportJob {
             long[] s = entry.getValue();
             if (s[0] == 0 && s[1] == 0 && s[2] == 0 && s[3] == 0 && s[4] == 0) continue;
 
-            String[] meta = kwMeta.get(entry.getKey());
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("daily_dt",    date);
             row.put("daily_advid", customerId);
-            row.put("campaign_id", meta[0]);
-            row.put("adgroup_id",  meta[1]);
+            row.put("campaign_id", kwCampaign.getOrDefault(entry.getKey(), ""));
+            row.put("adgroup_id",  kwAdgroup.getOrDefault(entry.getKey(), ""));
             row.put("keyword_id",  entry.getKey());
             row.put("daily_im",    s[0]);
             row.put("daily_clk",   s[1]);
