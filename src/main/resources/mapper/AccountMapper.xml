@@ -30,4 +30,14 @@
         SELECT user_id FROM h3_account WHERE account_google = #{advid} LIMIT 1
     </select>
 
+    <!-- 전체 이관용 -->
+    <select id="selectAll" resultType="map">
+        SELECT user_id, account_naver, account_naver_customer,
+               account_naver_access, account_naver_secret,
+               account_gfa, account_kakaosa, account_kakaomoment,
+               account_google, account_date, account_regdate
+        FROM h3_account
+        ORDER BY user_id
+    </select>
+
 </mapper>
