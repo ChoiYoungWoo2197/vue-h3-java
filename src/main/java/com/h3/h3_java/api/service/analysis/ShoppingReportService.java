@@ -95,7 +95,7 @@ public class ShoppingReportService {
                 g.put("campaign_name",  campaignNameMap.getOrDefault(campaignId, ""));
                 g.put("adgroup_id",     s(adgroupId));
                 g.put("adgroup_name",   adgroupNameMap.getOrDefault(adgroupId, ""));
-                g.put("ad_productname", finalProd != null ? str(finalProd, "pname") : "");
+                g.put("ad_productname", finalProd != null ? str(finalProd, "productname") : "");
                 g.put("ad_pname",       finalProd != null ? str(finalProd, "pname") : "");
                 g.put("ad_pimageurl",   finalProd != null ? str(finalProd, "pimageurl") : "");
                 g.put("ad_imgurl",      finalProd != null ? str(finalProd, "pimageurl") : "");
