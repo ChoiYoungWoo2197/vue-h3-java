@@ -428,12 +428,18 @@ public class NaverMasterReportJob {
             row.put("onoff",    parseInt(r.get("onoff")));
             row.put("usingbid", "true".equals(r.get("usingbid")) ? 1 : 0);
 
-            String pname = "", productname = "", cnameofmall = "", brand = "", maker = "", imgurl = "";
-            int bid = 0, qigrade = 0, deliveryfee = 0;
+            // TSV 값을 기본값으로 사용 — API 주석처리 시에도 TSV의 상품명/가격 등이 보존됨
+            String pname = r.getOrDefault("pname", "");
+            String productname = r.getOrDefault("productname", "");
+            String cnameofmall = r.getOrDefault("cnameofmall", "");
+            String brand = "", maker = "";
+            String imgurl = r.getOrDefault("imageurl", "");
+            int bid = parseInt(r.get("bid")), qigrade = 0;
+            int deliveryfee = parseInt(r.get("deliveryfee"));
 
             if (!detail.isEmpty()) {
                 Map<String, Object> ad   = (Map<String, Object>) detail.get("ad");
-                if (ad != null) pname = String.valueOf(ad.getOrDefault("productName", ""));
+                if (ad != null) pname = String.valueOf(ad.getOrDefault("productName", pname));
                 Map<String, Object> attr = (Map<String, Object>) detail.get("adAttr");
                 if (attr != null) bid = parseInt(attr.get("bidAmt"));
                 Map<String, Object> qi   = (Map<String, Object>) detail.get("nccQi");
@@ -441,11 +447,11 @@ public class NaverMasterReportJob {
                 Map<String, Object> ref  = (Map<String, Object>) detail.get("referenceData");
                 if (ref != null) {
                     deliveryfee  = parseInt(ref.get("dvlryFeeCont"));
-                    cnameofmall  = String.valueOf(ref.getOrDefault("fullMallCatNm", ""));
+                    cnameofmall  = String.valueOf(ref.getOrDefault("fullMallCatNm", cnameofmall));
                     brand        = String.valueOf(ref.getOrDefault("brand", ""));
                     maker        = String.valueOf(ref.getOrDefault("maker", ""));
-                    imgurl       = String.valueOf(ref.getOrDefault("imageUrl", ""));
-                    productname  = String.valueOf(ref.getOrDefault("productName", ""));
+                    imgurl       = String.valueOf(ref.getOrDefault("imageUrl", imgurl));
+                    productname  = String.valueOf(ref.getOrDefault("productName", productname));
                 }
             }
 
