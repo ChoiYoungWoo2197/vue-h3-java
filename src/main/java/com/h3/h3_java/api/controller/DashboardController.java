@@ -41,6 +41,19 @@ public class DashboardController {
         return dashboardService.getSummary(userid, fromdate, todate, comparefromdate, comparetodate, media);
     }
 
+    /** 매체별 비중 */
+    @GetMapping("/summarymediarate")
+    @PostMapping("/summarymediarate")
+    public Map<String, Object> summaryMediaRate(
+            @RequestParam String userid,
+            @RequestParam String fromdate,
+            @RequestParam String todate,
+            @RequestParam(required = false) String comparefromdate,
+            @RequestParam(required = false) String comparetodate,
+            @RequestParam(defaultValue = "1,1,1,1,1") String media) {
+        return dashboardService.getSummaryMediaRate(userid, fromdate, todate, media);
+    }
+
     /** 날짜별 통계 */
     @GetMapping("/period")
     @PostMapping("/period")

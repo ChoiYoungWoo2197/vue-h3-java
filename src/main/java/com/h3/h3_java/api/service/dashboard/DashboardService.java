@@ -118,6 +118,36 @@ public class DashboardService {
         return new LinkedHashMap<>(comp);
     }
 
+    // ─── 매체별 비중 (summarymediarate) ─────────────────────────────────────
+
+    public Map<String, Object> getSummaryMediaRate(String userId, String fromdate, String todate, String media) {
+        if (fromdate == null || fromdate.isBlank() || todate == null || todate.isBlank())
+            return Map.of("result", "success", "status", "1004", "errormessage", "검색 결과가 없습니다.");
+
+        AccountDto acc = accountMapper.selectByUserId(userId);
+        if (acc == null) return Map.of("result", "failed", "status", "1009", "errormessage", "계정 없음");
+
+        boolean[] m = parseMedia(media);
+
+        long naverCst   = m[0] ? toLong(calcMediaStat(acc.getAccountNaverCustomer(), fromdate, todate, "naver_campaign_daily",     true,  "naver_campaign_convtype"), "cst") : 0L;
+        long kakaosaCst = m[1] ? toLong(calcMediaStat(acc.getAccountKakaosa(),       fromdate, todate, "kakao_sa_campaign_daily",  false, null), "cst") : 0L;
+        long kakaomoCst = m[2] ? toLong(calcMediaStat(acc.getAccountKakaomoment(),   fromdate, todate, "kakao_mo_campaign_daily",  false, null), "cst") : 0L;
+        long naverdaCst = m[3] ? toLong(calcMediaStat(acc.getAccountGfa(),           fromdate, todate, "naver_gfa_campaign_daily", true,  "naver_gfa_campaign_convtype"), "cst") : 0L;
+        long googleCst  = m[4] ? toLong(calcMediaStat(acc.getAccountGoogle(),        fromdate, todate, "google_campaign_daily",    false, null), "cst") : 0L;
+
+        long total = naverCst + kakaosaCst + kakaomoCst + naverdaCst + googleCst;
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("N",      Map.of("per", total > 0 ? Math.round(naverCst   * 100.0 / total) : 0));
+        data.put("D",      Map.of("per", total > 0 ? Math.round(kakaosaCst * 100.0 / total) : 0));
+        data.put("K",      Map.of("per", total > 0 ? Math.round(kakaomoCst * 100.0 / total) : 0));
+        data.put("Nda",    Map.of("per", total > 0 ? Math.round(naverdaCst * 100.0 / total) : 0));
+        data.put("google", Map.of("per", total > 0 ? Math.round(googleCst  * 100.0 / total) : 0));
+        data.put("TOTAL",  Map.of("per", 100));
+
+        return Map.of("result", "success", "status", "200", "data", data);
+    }
+
     // ─── 날짜별 통계 (period) ────────────────────────────────────────────────
 
     public Map<String, Object> getPeriod(String userId, String fromdate, String todate, String media) {
