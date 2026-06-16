@@ -121,6 +121,9 @@ public class DashboardService {
     // ─── 날짜별 통계 (period) ────────────────────────────────────────────────
 
     public Map<String, Object> getPeriod(String userId, String fromdate, String todate, String media) {
+        if (fromdate == null || fromdate.isBlank() || todate == null || todate.isBlank())
+            return Map.of("result", "success", "status", "1004", "errormessage", "검색 결과가 없습니다.");
+
         AccountDto acc = accountMapper.selectByUserId(userId);
         if (acc == null) return Map.of("result", "failed", "status", "1009", "errormessage", "계정 없음");
 
