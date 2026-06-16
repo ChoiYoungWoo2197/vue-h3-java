@@ -38,6 +38,19 @@
         SELECT COUNT(*) FROM h3_report WHERE user_id = #{userId}
     </select>
 
+    <!-- 전체 이관용 (user_id 필터 없음) -->
+    <select id="selectAllReports" resultType="map">
+        SELECT daily_seq, user_id, name, period, cperiod,
+               sender, sendate, sendstatus, pdfdate, number, email, recver,
+               naver, kakaosa, kakaomo, naverda, google,
+               dashboard, mediaanalysis, campaignanalysis, periodanalysis,
+               keywordanalysis, adanalysis, shoppinganalysis,
+               im, clk, ctr, cpc, cst, cv, cvr, cr, cpa, roas, purchase_roas,
+               content, daily_regdate
+        FROM h3_report
+        ORDER BY daily_seq
+    </select>
+
     <select id="selectReportExts" resultType="map">
         SELECT seq, b_id, s_1, s_2, s_3
         FROM h3_report_ext

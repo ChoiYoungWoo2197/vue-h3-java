@@ -12,6 +12,7 @@ public interface ReportMapper {
                                              @Param("offset") int offset,
                                              @Param("limit") int limit);
     int countReports(@Param("userId") String userId);
+    List<Map<String, Object>> selectAllReports();
     List<Map<String, Object>> selectReportExts(@Param("bId") long bId);
     int insertReport(Map<String, Object> params);
     int insertReportExt(Map<String, Object> params);
