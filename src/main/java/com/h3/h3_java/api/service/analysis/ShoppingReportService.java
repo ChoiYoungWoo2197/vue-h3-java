@@ -40,7 +40,7 @@ public class ShoppingReportService {
         return getShopping(advkey, fromdate, todate, comparefromdate, comparetodate, sort, start, display);
     }
 
-    // ─── 전체 목록 (pid 기준 그룹핑) ────────────────────────────────────────
+    // ─── 전체 목록 (ad_id 기준) ──────────────────────────────────────────────
 
     private Map<String, Object> getShopping(String advkey, String from, String to,
                                              String cfrom, String cto,
@@ -52,46 +52,32 @@ public class ShoppingReportService {
         Map<String, String>   campaignNameMap = buildCampaignNameMap(advkey);
         Map<String, String>   adgroupNameMap  = buildAdgroupNameMap(advkey);
 
-        Map<String, Map<String, Object>> pidGroupMap = new LinkedHashMap<>();
+        Map<String, Map<String, Object>> adGroupMap = new LinkedHashMap<>();
 
         for (Map<String, Object> stat : stats) {
             String adId  = (String) stat.get("ad_id");
+            if (adId == null || adId.isBlank()) continue;
+
             String adPid = (String) stat.get("ad_pid");
-
-            if (adPid == null || adPid.isBlank()) {
-                Document p = productMap.get(adId);
-                if (p != null) adPid = p.getString("pid");
-            }
-            if (adPid == null || adPid.isBlank()) continue;
-
             Document product   = productMap.get(adId);
+            if (adPid == null || adPid.isBlank()) {
+                if (product != null) adPid = product.getString("pid");
+            }
+            if (adPid == null) adPid = "";
+
             String campaignId  = (String) stat.get("campaign_id");
             String adgroupId   = (String) stat.get("adgroup_id");
             double im  = toDoubleMap(stat,"im"),  clk = toDoubleMap(stat,"clk");
             double cst = toDoubleMap(stat,"cst"), cv  = toDoubleMap(stat,"cv");
             double cr  = toDoubleMap(stat,"cr");
 
-            Map<String, Object> target = new LinkedHashMap<>();
-            target.put("campaign_id",    s(campaignId));
-            target.put("campaign_name",  campaignNameMap.getOrDefault(campaignId, ""));
-            target.put("adgroup_id",     s(adgroupId));
-            target.put("adgroup_name",   adgroupNameMap.getOrDefault(adgroupId, ""));
-            target.put("ad_id",          s(adId));
-            target.put("ad_pid",         adPid);
-            target.put("ad_pidofmall",   product != null ? str(product, "pidofmall") : "");
-            target.put("ad_pimageurl",   product != null ? str(product, "pimageurl") : "");
-            target.put("ad_pname",       product != null ? str(product, "pname") : "");
-            target.put("ad_productname", product != null ? str(product, "productname") : "");
-            target.put("im",  (long) im);  target.put("clk", (long) clk); target.put("cst", (long) cst);
-            target.put("cv",  (long) cv);  target.put("cr",  (long) cr);
-            target.putAll(calcMetrics(im, clk, cst, cv, cr));
-
+            final String finalAdId   = adId;
             final String finalAdPid  = adPid;
             final Document finalProd = product;
-            pidGroupMap.computeIfAbsent(adPid, k -> {
+            adGroupMap.computeIfAbsent(adId, k -> {
                 Map<String, Object> g = new LinkedHashMap<>();
+                g.put("ad_id",          finalAdId);
                 g.put("ad_pid",         finalAdPid);
-                g.put("ad_id",          s(adId));
                 g.put("campaign_id",    s(campaignId));
                 g.put("campaign_name",  campaignNameMap.getOrDefault(campaignId, ""));
                 g.put("adgroup_id",     s(adgroupId));
@@ -114,7 +100,7 @@ public class ShoppingReportService {
                 return g;
             });
 
-            Map<String, Object> group = pidGroupMap.get(adPid);
+            Map<String, Object> group = adGroupMap.get(adId);
             group.put("im",  (long)(toDoubleObj(group.get("im"))  + im));
             group.put("clk", (long)(toDoubleObj(group.get("clk")) + clk));
             group.put("cst", (long)(toDoubleObj(group.get("cst")) + cst));
@@ -122,11 +108,26 @@ public class ShoppingReportService {
             group.put("cr",  (long)(toDoubleObj(group.get("cr"))  + cr));
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> targets = (List<Map<String, Object>>) group.get("targets");
+
+            Map<String, Object> target = new LinkedHashMap<>();
+            target.put("campaign_id",    s(campaignId));
+            target.put("campaign_name",  campaignNameMap.getOrDefault(campaignId, ""));
+            target.put("adgroup_id",     s(adgroupId));
+            target.put("adgroup_name",   adgroupNameMap.getOrDefault(adgroupId, ""));
+            target.put("ad_id",          s(adId));
+            target.put("ad_pid",         adPid);
+            target.put("ad_pidofmall",   product != null ? str(product, "pidofmall") : "");
+            target.put("ad_pimageurl",   product != null ? str(product, "pimageurl") : "");
+            target.put("ad_pname",       product != null ? str(product, "pname") : "");
+            target.put("ad_productname", product != null ? str(product, "productname") : "");
+            target.put("im",  (long) im);  target.put("clk", (long) clk); target.put("cst", (long) cst);
+            target.put("cv",  (long) cv);  target.put("cr",  (long) cr);
+            target.putAll(calcMetrics(im, clk, cst, cv, cr));
             targets.add(target);
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> group : pidGroupMap.values()) {
+        for (Map<String, Object> group : adGroupMap.values()) {
             double gIm  = toDoubleObj(group.get("im")),  gClk = toDoubleObj(group.get("clk"));
             double gCst = toDoubleObj(group.get("cst")), gCv  = toDoubleObj(group.get("cv"));
             double gCr  = toDoubleObj(group.get("cr"));
