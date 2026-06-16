@@ -16,7 +16,7 @@ import java.util.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/v1/h3/app/reportsend")
+@RequestMapping("/api/collector")
 @RequiredArgsConstructor
 public class ReportMigrateController {
 
