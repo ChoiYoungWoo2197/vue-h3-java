@@ -108,7 +108,7 @@ public class ReportSetService {
         doc.put("roas",          get(kpi,  9, "0"));
         doc.put("purchase_roas", get(kpi, 10, "0"));
         doc.put("content", params.getOrDefault("content", ""));
-        doc.put("daily_regdate", java.time.LocalDateTime.now().toString());
+        doc.put("daily_regdate", new java.util.Date());
 
         // s_3: drag 배열 첫 10개 (PHP array_slice($drag, 0, 10) 동일)
         List<String> s3parts = new ArrayList<>();
