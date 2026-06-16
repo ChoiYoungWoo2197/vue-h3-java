@@ -90,7 +90,23 @@ public class ShoppingReportService {
             pidGroupMap.computeIfAbsent(adPid, k -> {
                 Map<String, Object> g = new LinkedHashMap<>();
                 g.put("ad_pid",         finalAdPid);
+                g.put("ad_id",          s(adId));
+                g.put("campaign_id",    s(campaignId));
+                g.put("campaign_name",  campaignNameMap.getOrDefault(campaignId, ""));
+                g.put("adgroup_id",     s(adgroupId));
+                g.put("adgroup_name",   adgroupNameMap.getOrDefault(adgroupId, ""));
                 g.put("ad_productname", finalProd != null ? str(finalProd, "pname") : "");
+                g.put("ad_pname",       finalProd != null ? str(finalProd, "pname") : "");
+                g.put("ad_pimageurl",   finalProd != null ? str(finalProd, "pimageurl") : "");
+                g.put("ad_imgurl",      finalProd != null ? str(finalProd, "pimageurl") : "");
+                g.put("ad_pprice",      finalProd != null ? str(finalProd, "pprice") : "");
+                g.put("ad_mprice",      finalProd != null ? str(finalProd, "mprice") : "");
+                g.put("ad_deliveryfee", finalProd != null ? str(finalProd, "deliveryfee") : "");
+                g.put("ad_cnameofmall", finalProd != null ? str(finalProd, "cnameofmall") : "");
+                g.put("ad_pidofmall",   finalProd != null ? str(finalProd, "pidofmall") : "");
+                g.put("ad_bidamount",   finalProd != null ? str(finalProd, "bid") : "");
+                g.put("ad_plandingurl", finalProd != null ? str(finalProd, "plandingurl") : "");
+                g.put("ad_qigrade",     finalProd != null ? str(finalProd, "qigrade") : "");
                 g.put("im", 0L); g.put("clk", 0L); g.put("cst", 0L);
                 g.put("cv", 0L); g.put("cr",  0L);
                 g.put("targets", new ArrayList<Map<String, Object>>());
