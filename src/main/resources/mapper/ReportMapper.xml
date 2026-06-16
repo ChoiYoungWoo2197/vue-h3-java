@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.h3.h3_java.api.mapper.ReportMapper">
+
+    <select id="selectReports" resultType="map">
+        SELECT
+            daily_seq,
+            user_id,
+            name,
+            period,
+            cperiod,
+            sender,
+            sendate,
+            sendstatus,
+            pdfdate,
+            number,
+            email,
+            recver,
+            naver, kakaosa, kakaomo, naverda, google,
+            dashboard,
+            mediaanalysis    AS mediaAnalysis,
+            campaignanalysis AS campaignAnalysis,
+            periodanalysis   AS periodAnalysis,
+            keywordanalysis  AS keywordAnalysis,
+            adanalysis       AS adAnalysis,
+            shoppinganalysis AS shoppingAnalysis,
+            im, clk, ctr, cpc, cst, cv, cvr, cr, cpa, roas, purchase_roas,
+            content,
+            daily_regdate
+        FROM h3_report
+        WHERE user_id = #{userId}
+        ORDER BY daily_regdate DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countReports" resultType="int">
+        SELECT COUNT(*) FROM h3_report WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectReportExts" resultType="map">
+        SELECT seq, b_id, s_1, s_2, s_3
+        FROM h3_report_ext
+        WHERE b_id = #{bId}
+    </select>
+
+    <insert id="insertReport" parameterType="map" useGeneratedKeys="true" keyProperty="dailySeq">
+        INSERT INTO h3_report (
+            user_id, name, period, cperiod,
+            sender, sendate, sendstatus, pdfdate,
+            number, email, recver,
+            naver, kakaosa, kakaomo, naverda, google,
+            dashboard, mediaanalysis, campaignanalysis, periodanalysis,
+            keywordanalysis, adanalysis, shoppinganalysis,
+            im, clk, ctr, cpc, cst, cv, cvr, cr, cpa, roas, purchase_roas,
+            content, daily_regdate
+        ) VALUES (
+            #{userId}, #{name}, #{period}, #{cperiod},
+            #{sender}, #{sendate}, #{sendstatus}, #{pdfdate},
+            #{number}, #{email}, #{recver},
+            #{naver}, #{kakaosa}, #{kakaomo}, #{naverda}, #{google},
+            #{dashboard}, #{mediaanalysis}, #{campaignanalysis}, #{periodanalysis},
+            #{keywordanalysis}, #{adanalysis}, #{shoppinganalysis},
+            #{im}, #{clk}, #{ctr}, #{cpc}, #{cst}, #{cv}, #{cvr}, #{cr}, #{cpa}, #{roas}, #{purchase_roas},
+            #{content}, NOW()
+        )
+    </insert>
+
+    <insert id="insertReportExt" parameterType="map">
+        INSERT INTO h3_report_ext (b_id, s_1, s_2, s_3)
+        VALUES (#{bId}, #{s1}, #{s2}, #{s3})
+    </insert>
+
+    <update id="updatePdfDate">
+        UPDATE h3_report SET pdfdate = #{pdfdate}
+        WHERE daily_seq = #{id}
+    </update>
+
+</mapper>
