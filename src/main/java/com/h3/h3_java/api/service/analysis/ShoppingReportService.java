@@ -37,12 +37,13 @@ public class ShoppingReportService {
         if (!kpi.isBlank()) {
             return getShoppingTop(advkey, fromdate, todate, comparefromdate, comparetodate, kpi);
         }
-        return getShopping(advkey, fromdate, todate, sort, start, display);
+        return getShopping(advkey, fromdate, todate, comparefromdate, comparetodate, sort, start, display);
     }
 
     // ─── 전체 목록 (pid 기준 그룹핑) ────────────────────────────────────────
 
     private Map<String, Object> getShopping(String advkey, String from, String to,
+                                             String cfrom, String cto,
                                              String sort, int start, int display) {
         List<Map<String, Object>> stats = naverStatMongoService.aggregateShoppingByAdId(advkey, from, to);
         if (stats.isEmpty()) return noData();
@@ -140,9 +141,50 @@ public class ShoppingReportService {
         int toIdx   = Math.min(fromIdx + display, total);
         List<Map<String, Object>> paged = fromIdx < total ? result.subList(fromIdx, toIdx) : Collections.emptyList();
 
+        // ─── 전체 합계 ────────────────────────────────────────────────────────
+        double tIm = 0, tClk = 0, tCst = 0, tCv = 0, tCr = 0;
+        for (Map<String, Object> g : result) {
+            tIm  += toDoubleObj(g.get("im"));  tClk += toDoubleObj(g.get("clk"));
+            tCst += toDoubleObj(g.get("cst")); tCv  += toDoubleObj(g.get("cv"));
+            tCr  += toDoubleObj(g.get("cr"));
+        }
+        Map<String, Object> totalMap = new LinkedHashMap<>();
+        totalMap.put("im",  (long) tIm);  totalMap.put("clk", (long) tClk);
+        totalMap.put("cst", (long) tCst); totalMap.put("cv",  (long) tCv);
+        totalMap.put("cr",  (long) tCr);
+        totalMap.putAll(calcMetrics(tIm, tClk, tCst, tCv, tCr));
+
+        // ─── 비교기간 합계 → cp ───────────────────────────────────────────────
+        Map<String, Object> cpPerMap = new LinkedHashMap<>();
+        if (cfrom != null && !cfrom.isBlank() && cto != null && !cto.isBlank()) {
+            List<Map<String, Object>> cStats = naverStatMongoService.aggregateShoppingByAdId(advkey, cfrom, cto);
+            double cIm = 0, cClk = 0, cCst = 0, cCv = 0, cCr = 0;
+            for (Map<String, Object> cs : cStats) {
+                cIm  += toDoubleMap(cs, "im");  cClk += toDoubleMap(cs, "clk");
+                cCst += toDoubleMap(cs, "cst"); cCv  += toDoubleMap(cs, "cv");
+                cCr  += toDoubleMap(cs, "cr");
+            }
+            Map<String, Object> compTotal = new LinkedHashMap<>();
+            compTotal.put("im",  cIm);  compTotal.put("clk", cClk); compTotal.put("cst", cCst);
+            compTotal.put("cv",  cCv);  compTotal.put("cr",  cCr);
+            compTotal.putAll(calcMetrics(cIm, cClk, cCst, cCv, cCr));
+            for (String mk : new String[]{"im","clk","cst","cv","cr","ctr","cpc","cpa","cvr","roas"}) {
+                double curr = toDoubleObj(totalMap.get(mk)), comp = toDoubleObj(compTotal.get(mk));
+                cpPerMap.put(mk, (curr > 0 && comp > 0) ? Math.round(((curr - comp) / comp * 100) * 10.0) / 10.0 : 0);
+            }
+        }
+        Map<String, Object> cp = new LinkedHashMap<>();
+        cp.put("per", cpPerMap);
+        totalMap.put("cp", cp);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("ads",    paged);
+        data.put("topads", "");
+        data.put("total",  totalMap);
+
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("result", "success"); res.put("status", "200");
-        res.put("data",  Map.of("ads", paged, "topads", ""));
+        res.put("data",   data);
         res.put("resultcount", 0); res.put("totalcount", total);
         return res;
     }
