@@ -25,6 +25,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/v1/h3/auth/**").permitAll()
                 .requestMatchers("/api/collector/**").permitAll()
+                .requestMatchers("/v1/h3/app/reportsend/migrate").permitAll()
                 .requestMatchers("/v1/h3/app/**").authenticated()
                 .anyRequest().permitAll()
             )
