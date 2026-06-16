@@ -58,7 +58,8 @@ public class ReportMigrateController {
                     log.info("[MIGRATE] {} / {} 처리 중...", success, total);
                 }
             } catch (Exception e) {
-                log.error("[MIGRATE] daily_seq={} 실패: {}", row.get("daily_seq"), e.getMessage());
+                log.error("[MIGRATE] daily_seq={} 실패", row.get("daily_seq"), e);
+                if (skip == 0) throw new RuntimeException("첫 번째 실패 — 이관 중단", e);
                 skip++;
             }
         }
