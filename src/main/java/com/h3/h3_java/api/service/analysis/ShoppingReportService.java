@@ -338,5 +338,10 @@ public class ShoppingReportService {
     private double toDoubleObj(Object v)                  { return v instanceof Number n ? n.doubleValue() : 0.0; }
     private double fmt(double v)                          { return Math.round(v * 100.0) / 100.0; }
     private Map<String, Object> fail(String status, String msg) { return Map.of("result","failed","status",status,"errormessage",msg); }
-    private Map<String, Object> noData()                  { return Map.of("result","success","status","1004","errormessage","검색 결과가 없습니다."); }
+    private Map<String, Object> noData() {
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("result", "success"); res.put("status", "1004"); res.put("errormessage", "검색 결과가 없습니다.");
+        res.put("data", Map.of("ads", Collections.emptyList(), "topads", "")); res.put("totalcount", 0);
+        return res;
+    }
 }
