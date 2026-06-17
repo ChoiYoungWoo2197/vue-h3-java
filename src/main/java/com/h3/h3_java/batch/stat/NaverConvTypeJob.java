@@ -163,32 +163,33 @@ public class NaverConvTypeJob {
             return null;
         }
 
-        Map<String, Object> lastRes = res;
-        int polls = 0;
-        while (isRunning(status) && polls < MAX_POLLS) {
-            sleep(5000);
-            lastRes = client.get("/stat-reports/" + jobId);
-            status  = lastRes != null ? str(lastRes.get("status")) : "ERROR";
-            polls++;
-        }
-
-        if (!"BUILT".equals(status)) {
-            log.warn("[CONVTYPE] BUILT 아님 customerId={} date={} status={}", customerId, date, status);
-            client.delete("/stat-reports/" + jobId);
-            return null;
-        }
-
-        String downloadUrl = lastRes != null ? str(lastRes.get("downloadUrl")) : "";
-        byte[] data = null;
-        if (!downloadUrl.isEmpty()) {
-            data = client.download(downloadUrl);
-            if (data != null) {
-                log.info("[CONVTYPE] TSV 다운로드 완료 customerId={} date={} bytes={}", customerId, date, data.length);
+        try {
+            Map<String, Object> lastRes = res;
+            int polls = 0;
+            while (isRunning(status) && polls < MAX_POLLS) {
+                sleep(5000);
+                lastRes = client.get("/stat-reports/" + jobId);
+                status  = lastRes != null ? str(lastRes.get("status")) : "ERROR";
+                polls++;
             }
-        }
 
-        client.delete("/stat-reports/" + jobId);
-        return data;
+            if (!"BUILT".equals(status)) {
+                log.warn("[CONVTYPE] BUILT 아님 customerId={} date={} status={}", customerId, date, status);
+                return null;
+            }
+
+            String downloadUrl = lastRes != null ? str(lastRes.get("downloadUrl")) : "";
+            byte[] data = null;
+            if (!downloadUrl.isEmpty()) {
+                data = client.download(downloadUrl);
+                if (data != null) {
+                    log.info("[CONVTYPE] TSV 다운로드 완료 customerId={} date={} bytes={}", customerId, date, data.length);
+                }
+            }
+            return data;
+        } finally {
+            client.delete("/stat-reports/" + jobId);
+        }
     }
 
     // =====================================================================
