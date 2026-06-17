@@ -15,8 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
@@ -126,18 +124,11 @@ public class NaverStateReportJob {
 
     private Map<String, byte[]> createAndDownloadReports(NaverApiClient client, String customerId, String date) {
         String statDt = date.replace("-", "");
-        Map<String, byte[]> tsvData = new ConcurrentHashMap<>();
+        Map<String, byte[]> tsvData = new LinkedHashMap<>();
 
-        CompletableFuture<Void> f1 = CompletableFuture.runAsync(
-            () -> fetchSpec(client, customerId, statDt, "AD_DETAIL", tsvData));
-        CompletableFuture<Void> f2 = CompletableFuture.runAsync(
-            () -> fetchSpec(client, customerId, statDt, "AD_CONVERSION_DETAIL", tsvData));
+        fetchSpec(client, customerId, statDt, "AD_DETAIL", tsvData);
+        fetchSpec(client, customerId, statDt, "AD_CONVERSION_DETAIL", tsvData);
 
-        try {
-            CompletableFuture.allOf(f1, f2).join();
-        } catch (Exception e) {
-            log.error("[NaverStateReport] 병렬 처리 오류 customerId={} date={} error={}", customerId, date, e.getMessage());
-        }
         return tsvData;
     }
 
