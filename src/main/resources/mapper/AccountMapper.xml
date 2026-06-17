@@ -40,4 +40,91 @@
         ORDER BY user_id
     </select>
 
+    <!-- 광고계정 관리용 전체 조회 (PHP 응답 필드명 alias) -->
+    <select id="selectFullByUserId" resultType="map">
+        SELECT
+            account_naver           AS naverid,
+            account_naver_customer  AS navercustomer,
+            account_naver_access    AS naveraccess,
+            account_naver_secret    AS naversecret,
+            account_kakaosa         AS kakaosaid,
+            account_gfa             AS naverdaid,
+            account_kakaomoment     AS kakaomomentid,
+            account_google          AS googleid
+        FROM h3_account
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 네이버 SA -->
+    <insert id="upsertNaver">
+        INSERT INTO h3_account (user_id, account_naver, account_naver_customer, account_naver_access, account_naver_secret, account_date, account_regdate)
+        VALUES (#{userId}, #{naverid}, #{navercustomer}, #{naveraccess}, #{naversecret}, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            account_naver          = #{naverid},
+            account_naver_customer = #{navercustomer},
+            account_naver_access   = #{naveraccess},
+            account_naver_secret   = #{naversecret},
+            account_date           = NOW()
+    </insert>
+
+    <update id="clearNaver">
+        UPDATE h3_account
+        SET account_naver = NULL, account_naver_customer = NULL,
+            account_naver_access = NULL, account_naver_secret = NULL,
+            account_date = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- 카카오 SA -->
+    <insert id="upsertKakaoSa">
+        INSERT INTO h3_account (user_id, account_kakaosa, account_date, account_regdate)
+        VALUES (#{userId}, #{kakaosaid}, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            account_kakaosa = #{kakaosaid},
+            account_date    = NOW()
+    </insert>
+
+    <update id="clearKakaoSa">
+        UPDATE h3_account SET account_kakaosa = NULL, account_date = NOW() WHERE user_id = #{userId}
+    </update>
+
+    <!-- 네이버 GFA (naverda) -->
+    <insert id="upsertNaverDa">
+        INSERT INTO h3_account (user_id, account_gfa, account_date, account_regdate)
+        VALUES (#{userId}, #{naverdaid}, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            account_gfa  = #{naverdaid},
+            account_date = NOW()
+    </insert>
+
+    <update id="clearNaverDa">
+        UPDATE h3_account SET account_gfa = NULL, account_date = NOW() WHERE user_id = #{userId}
+    </update>
+
+    <!-- 카카오 MO -->
+    <insert id="upsertKakaoMo">
+        INSERT INTO h3_account (user_id, account_kakaomoment, account_date, account_regdate)
+        VALUES (#{userId}, #{kakaomomentid}, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            account_kakaomoment = #{kakaomomentid},
+            account_date        = NOW()
+    </insert>
+
+    <update id="clearKakaoMo">
+        UPDATE h3_account SET account_kakaomoment = NULL, account_date = NOW() WHERE user_id = #{userId}
+    </update>
+
+    <!-- 구글 -->
+    <insert id="upsertGoogle">
+        INSERT INTO h3_account (user_id, account_google, account_date, account_regdate)
+        VALUES (#{userId}, #{googleid}, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            account_google = #{googleid},
+            account_date   = NOW()
+    </insert>
+
+    <update id="clearGoogle">
+        UPDATE h3_account SET account_google = NULL, account_date = NOW() WHERE user_id = #{userId}
+    </update>
+
 </mapper>
