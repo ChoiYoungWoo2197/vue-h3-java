@@ -79,13 +79,6 @@ public class NaverCampaignDayCollectionJob {
             String campaignId = campaign.getString("campaignid");
             if (campaignId == null) continue;
 
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            }
-
             Map<String, Object> res = getStats(client, campaignId, date);
             if (res == null || !res.containsKey("data")) continue;
 

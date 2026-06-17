@@ -132,12 +132,6 @@ public class NaverAdDayCollectionJob {
 
     @SuppressWarnings("unchecked")
     private void fetchStats(NaverApiClient client, List<String> ids, Map<String, long[]> resultMap, String date) {
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return;
-        }
 
         Map<String, String> params = new LinkedHashMap<>();
         params.put("ids",       String.join(",", ids));
