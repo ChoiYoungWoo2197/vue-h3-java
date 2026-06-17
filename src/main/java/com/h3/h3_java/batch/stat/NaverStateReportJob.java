@@ -15,6 +15,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
@@ -123,23 +125,37 @@ public class NaverStateReportJob {
     // =====================================================================
 
     private Map<String, byte[]> createAndDownloadReports(NaverApiClient client, String customerId, String date) {
-        Map<String, byte[]> tsvData = new LinkedHashMap<>();
         String statDt = date.replace("-", "");
+        Map<String, byte[]> tsvData = new ConcurrentHashMap<>();
 
-        for (String spec : new String[]{"AD_DETAIL", "AD_CONVERSION_DETAIL"}) {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("reportTp", spec);
-            body.put("statDt",   statDt);
+        CompletableFuture<Void> f1 = CompletableFuture.runAsync(
+            () -> fetchSpec(client, customerId, statDt, "AD_DETAIL", tsvData));
+        CompletableFuture<Void> f2 = CompletableFuture.runAsync(
+            () -> fetchSpec(client, customerId, statDt, "AD_CONVERSION_DETAIL", tsvData));
 
-            Map<String, Object> res = client.post("/stat-reports", body);
-            String jobId  = str(res != null ? res.get("reportJobId") : null);
-            String status = str(res != null ? res.get("status") : null);
+        try {
+            CompletableFuture.allOf(f1, f2).join();
+        } catch (Exception e) {
+            log.error("[NaverStateReport] 병렬 처리 오류 customerId={} date={} error={}", customerId, date, e.getMessage());
+        }
+        return tsvData;
+    }
 
-            if (jobId.isEmpty() || status.isEmpty()) {
-                log.warn("[NaverStateReport] 리포트 생성 실패 customerId={} spec={}", customerId, spec);
-                continue;
-            }
+    private void fetchSpec(NaverApiClient client, String customerId, String statDt, String spec, Map<String, byte[]> tsvData) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("reportTp", spec);
+        body.put("statDt",   statDt);
 
+        Map<String, Object> res = client.post("/stat-reports", body);
+        String jobId  = str(res != null ? res.get("reportJobId") : null);
+        String status = str(res != null ? res.get("status") : null);
+
+        if (jobId.isEmpty() || status.isEmpty()) {
+            log.warn("[NaverStateReport] 리포트 생성 실패 customerId={} spec={}", customerId, spec);
+            return;
+        }
+
+        try {
             Map<String, Object> lastRes = res;
             int maxPolls = 60, polls = 0;
             while (isRunning(status) && polls < maxPolls) {
@@ -161,10 +177,9 @@ public class NaverStateReportJob {
             } else {
                 log.warn("[NaverStateReport] BUILT 아님 customerId={} spec={} status={}", customerId, spec, status);
             }
-
+        } finally {
             client.delete("/stat-reports/" + jobId);
         }
-        return tsvData;
     }
 
     // =====================================================================
