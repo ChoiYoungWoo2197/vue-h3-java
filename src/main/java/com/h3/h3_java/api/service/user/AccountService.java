@@ -1,9 +1,10 @@
 package com.h3.h3_java.api.service.user;
 
-import com.h3.h3_java.api.mapper.AccountMapper;
 import com.h3.h3_java.media.naver.NaverApiClient;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
@@ -14,37 +15,37 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AccountService {
 
-    private final AccountMapper accountMapper;
+    private final AccountMongoService accountMongo;
 
     // =========================================================================
     // L — 계정 조회
     // =========================================================================
 
     public Map<String, Object> getAccount(String userId, String media) {
-        Map<String, Object> full = accountMapper.selectFullByUserId(userId);
+        Document doc = accountMongo.findByUserId(userId);
 
         Map<String, Object> account = new LinkedHashMap<>();
-        if (full == null) {
+        if (doc == null) {
             account = emptyAccount(media);
         } else {
             switch (media) {
                 case "naver":
-                    account.put("naverid",      full.get("naverid"));
-                    account.put("navercustomer", full.get("navercustomer"));
-                    account.put("naveraccess",   full.get("naveraccess"));
-                    account.put("naversecret",   full.get("naversecret"));
+                    account.put("naverid",       doc.get("account_naver"));
+                    account.put("navercustomer",  doc.get("account_naver_customer"));
+                    account.put("naveraccess",    doc.get("account_naver_access"));
+                    account.put("naversecret",    doc.get("account_naver_secret"));
                     break;
                 case "kakaosa":
-                    account.put("kakaosaid", full.get("kakaosaid"));
+                    account.put("kakaosaid",     doc.get("account_kakaosa"));
                     break;
                 case "naverda":
-                    account.put("naverdaid", full.get("naverdaid"));
+                    account.put("naverdaid",     doc.get("account_gfa"));
                     break;
                 case "kakaomo":
-                    account.put("kakaomomentid", full.get("kakaomomentid"));
+                    account.put("kakaomomentid", doc.get("account_kakaomoment"));
                     break;
                 case "google":
-                    account.put("googleid", full.get("googleid"));
+                    account.put("googleid",      doc.get("account_google"));
                     break;
                 default:
                     return fail("400", "지원하지 않는 media입니다.");
@@ -52,8 +53,8 @@ public class AccountService {
         }
 
         Map<String, Object> res = new LinkedHashMap<>();
-        res.put("result", "success");
-        res.put("status", "200");
+        res.put("result",  "success");
+        res.put("status",  "200");
         res.put("account", account);
         return res;
     }
@@ -70,48 +71,48 @@ public class AccountService {
         try {
             switch (media) {
                 case "naver":
-                    accountMapper.upsertNaver(userId, naverid, navercustomer, naveraccess, naversecret);
+                    accountMongo.upsertNaver(userId, naverid, navercustomer, naveraccess, naversecret);
                     break;
                 case "kakaosa":
-                    accountMapper.upsertKakaoSa(userId, kakaosaid);
+                    accountMongo.upsertKakaoSa(userId, kakaosaid);
                     break;
                 case "naverda":
-                    accountMapper.upsertNaverDa(userId, naverdaid);
+                    accountMongo.upsertNaverDa(userId, naverdaid);
                     break;
                 case "kakaomo":
-                    accountMapper.upsertKakaoMo(userId, kakaomomentid);
+                    accountMongo.upsertKakaoMo(userId, kakaomomentid);
                     break;
                 case "google":
-                    accountMapper.upsertGoogle(userId, googleid);
+                    accountMongo.upsertGoogle(userId, googleid);
                     break;
                 default:
                     return fail("400", "지원하지 않는 media입니다.");
             }
             return ok();
         } catch (Exception e) {
-            log.error("[AccountService] saveAccount 오류 userId={} media={} error={}", userId, media, e.getMessage(), e);
+            log.error("[AccountService] saveAccount 오류 userId={} media={}", userId, media, e);
             return fail("500", "저장 중 오류가 발생했습니다.");
         }
     }
 
     // =========================================================================
-    // D — 계정 삭제 (해당 매체 필드 null)
+    // D — 계정 삭제 (해당 매체 필드 제거)
     // =========================================================================
 
     public Map<String, Object> deleteAccount(String userId, String media) {
         try {
             switch (media) {
-                case "naver":   accountMapper.clearNaver(userId);   break;
-                case "kakaosa": accountMapper.clearKakaoSa(userId); break;
-                case "naverda": accountMapper.clearNaverDa(userId); break;
-                case "kakaomo": accountMapper.clearKakaoMo(userId); break;
-                case "google":  accountMapper.clearGoogle(userId);  break;
+                case "naver":   accountMongo.clearNaver(userId);   break;
+                case "kakaosa": accountMongo.clearKakaoSa(userId); break;
+                case "naverda": accountMongo.clearNaverDa(userId); break;
+                case "kakaomo": accountMongo.clearKakaoMo(userId); break;
+                case "google":  accountMongo.clearGoogle(userId);  break;
                 default:
                     return fail("400", "지원하지 않는 media입니다.");
             }
             return ok();
         } catch (Exception e) {
-            log.error("[AccountService] deleteAccount 오류 userId={} media={} error={}", userId, media, e.getMessage(), e);
+            log.error("[AccountService] deleteAccount 오류 userId={} media={}", userId, media, e);
             return fail("500", "삭제 중 오류가 발생했습니다.");
         }
     }
@@ -125,18 +126,12 @@ public class AccountService {
                                                String kakaosaid, String naverdaid,
                                                String kakaomomentid, String googleid) {
         switch (media) {
-            case "naver":
-                return validateNaver(navercustomer, naveraccess, naversecret);
-            case "kakaosa":
-                return validateAcNo("kakaosa", kakaosaid);
-            case "naverda":
-                return validateAcNo("naverda", naverdaid);
-            case "kakaomo":
-                return validateAcNo("kakaomo", kakaomomentid);
-            case "google":
-                return validateAcNo("google", googleid);
-            default:
-                return fail("400", "지원하지 않는 media입니다.");
+            case "naver":   return validateNaver(navercustomer, naveraccess, naversecret);
+            case "kakaosa": return validateAcNo("kakaosa", kakaosaid);
+            case "naverda": return validateAcNo("naverda", naverdaid);
+            case "kakaomo": return validateAcNo("kakaomo", kakaomomentid);
+            case "google":  return validateAcNo("google",  googleid);
+            default:        return fail("400", "지원하지 않는 media입니다.");
         }
     }
 
@@ -155,7 +150,9 @@ public class AccountService {
             }
             Object status = res.get("status");
             if (status != null && Integer.parseInt(String.valueOf(status)) >= 400) {
-                String detail = res.containsKey("detail") ? String.valueOf(res.get("detail")) : "네이버 API 인증에 실패했습니다.";
+                String detail = res.containsKey("detail")
+                        ? String.valueOf(res.get("detail"))
+                        : "네이버 API 인증에 실패했습니다.";
                 return validateFail(detail, "naver");
             }
             if (res.containsKey("customerId")) {
@@ -193,8 +190,8 @@ public class AccountService {
 
     private Map<String, Object> fail(String status, String message) {
         Map<String, Object> res = new LinkedHashMap<>();
-        res.put("result", "failed");
-        res.put("status", status);
+        res.put("result",       "failed");
+        res.put("status",       status);
         res.put("errormessage", message);
         return res;
     }
@@ -203,7 +200,7 @@ public class AccountService {
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("result", "success");
         res.put("status", "200");
-        res.put("data", Map.of("message", message, "media", media));
+        res.put("data",   Map.of("message", message, "media", media));
         return res;
     }
 
@@ -211,7 +208,7 @@ public class AccountService {
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("result", "fail");
         res.put("status", "400");
-        res.put("data", Map.of("message", message, "media", media));
+        res.put("data",   Map.of("message", message, "media", media));
         return res;
     }
 
@@ -219,13 +216,15 @@ public class AccountService {
         Map<String, Object> m = new LinkedHashMap<>();
         switch (media) {
             case "naver":
-                m.put("naverid", null); m.put("navercustomer", null);
-                m.put("naveraccess", null); m.put("naversecret", null);
+                m.put("naverid",       null);
+                m.put("navercustomer", null);
+                m.put("naveraccess",   null);
+                m.put("naversecret",   null);
                 break;
-            case "kakaosa":  m.put("kakaosaid", null);      break;
-            case "naverda":  m.put("naverdaid", null);       break;
-            case "kakaomo":  m.put("kakaomomentid", null);   break;
-            case "google":   m.put("googleid", null);        break;
+            case "kakaosa":  m.put("kakaosaid",     null); break;
+            case "naverda":  m.put("naverdaid",      null); break;
+            case "kakaomo":  m.put("kakaomomentid",  null); break;
+            case "google":   m.put("googleid",       null); break;
         }
         return m;
     }
