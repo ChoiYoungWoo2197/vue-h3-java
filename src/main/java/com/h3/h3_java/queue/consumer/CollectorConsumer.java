@@ -101,7 +101,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_CAMPAIGN_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_CAMPAIGN_DAILY, concurrency = "3")
     public void consumeNaverCampaignDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER CAMPAIGN DAILY userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
@@ -115,7 +115,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_CAMPAIGN_HOUR)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_CAMPAIGN_HOUR, concurrency = "3")
     public void consumeNaverCampaignHour(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER CAMPAIGN HOUR userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
@@ -129,7 +129,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_ADGROUP_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_ADGROUP_DAILY, concurrency = "3")
     public void consumeNaverAdGroupDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER ADGROUP DAILY userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
@@ -143,7 +143,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_STATE_REPORT)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_STATE_REPORT, concurrency = "3")
     public void consumeNaverStateReport(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER STATE REPORT userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
@@ -157,7 +157,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_AD_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_AD_DAILY, concurrency = "3")
     public void consumeNaverAdDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER AD DAILY userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
@@ -171,7 +171,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_SHOPPING_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_SHOPPING_DAILY, concurrency = "3")
     public void consumeNaverShoppingDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER SHOPPING DAILY userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
@@ -185,7 +185,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_CONV_TYPE)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_CONV_TYPE, concurrency = "3")
     public void consumeNaverConvType(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER CONV TYPE userId={} customerId={}", msg.getUserId(), msg.getCustomerId());
         try {
@@ -199,7 +199,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_CAMPAIGN_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_CAMPAIGN_DAILY, concurrency = "3")
     public void consumeNaverGfaCampaignDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER GFA CAMPAIGN DAILY userId={}", msg.getUserId());
         try {
@@ -223,7 +223,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_AD_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_AD_DAILY, concurrency = "3")
     public void consumeNaverGfaAdDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER GFA AD DAILY userId={}", msg.getUserId());
         try {
@@ -237,7 +237,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_ADGROUP_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_ADGROUP_DAILY, concurrency = "3")
     public void consumeNaverGfaAdgroupDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER GFA ADGROUP DAILY userId={}", msg.getUserId());
         try {
@@ -251,7 +251,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_BUDGET_ALARM)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_BUDGET_ALARM, concurrency = "3")
     public void consumeNaverGfaBudgetAlarm(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER GFA BUDGET ALARM userId={}", msg.getUserId());
         try {
@@ -261,7 +261,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_CONV_TYPE)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_GFA_CONV_TYPE, concurrency = "3")
     public void consumeNaverGfaConvType(CollectorMessage msg) {
         log.info("[MQ][RECV] NAVER GFA CONV TYPE userId={}", msg.getUserId());
         try {
@@ -287,7 +287,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_CAMPAIGN_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_CAMPAIGN_DAILY, concurrency = "3")
     public void consumeKakaoSaCampaignDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO SA CAMPAIGN DAILY userId={}", msg.getUserId());
         try {
@@ -301,7 +301,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_CAMPAIGN_HOUR)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_CAMPAIGN_HOUR, concurrency = "3")
     public void consumeKakaoSaCampaignHour(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO SA CAMPAIGN HOUR userId={}", msg.getUserId());
         try {
@@ -315,7 +315,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_ADGROUP_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_ADGROUP_DAILY, concurrency = "3")
     public void consumeKakaoSaAdGroupDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO SA ADGROUP DAILY userId={}", msg.getUserId());
         try {
@@ -329,7 +329,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_KEYWORD_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_KEYWORD_DAILY, concurrency = "3")
     public void consumeKakaoSaKeywordDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO SA KEYWORD DAILY userId={}", msg.getUserId());
         try {
@@ -343,7 +343,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_AD_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_AD_DAILY, concurrency = "3")
     public void consumeKakaoSaAdDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO SA AD DAILY userId={}", msg.getUserId());
         try {
@@ -357,7 +357,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_BUDGET_ALARM)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_BUDGET_ALARM, concurrency = "3")
     public void consumeKakaoSaBudgetAlarm(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO SA BUDGET ALARM userId={}", msg.getUserId());
         try {
@@ -379,7 +379,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_CAMPAIGN_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_CAMPAIGN_DAILY, concurrency = "3")
     public void consumeKakaoMoCampaignDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO MO CAMPAIGN DAILY userId={}", msg.getUserId());
         try {
@@ -393,7 +393,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_CAMPAIGN_HOUR)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_CAMPAIGN_HOUR, concurrency = "3")
     public void consumeKakaoMoCampaignHour(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO MO CAMPAIGN HOUR userId={}", msg.getUserId());
         try {
@@ -407,7 +407,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_ADGROUP_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_ADGROUP_DAILY, concurrency = "3")
     public void consumeKakaoMoAdGroupDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO MO ADGROUP DAILY userId={}", msg.getUserId());
         try {
@@ -421,7 +421,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_AD_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_AD_DAILY, concurrency = "3")
     public void consumeKakaoMoAdDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO MO AD DAILY userId={}", msg.getUserId());
         try {
@@ -435,7 +435,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_BUDGET_ALARM)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_BUDGET_ALARM, concurrency = "3")
     public void consumeKakaoMoBudgetAlarm(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO MO BUDGET ALARM userId={}", msg.getUserId());
         try {
@@ -457,7 +457,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_CAMPAIGN_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_CAMPAIGN_DAILY, concurrency = "3")
     public void consumeGoogleCampaignDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] GOOGLE CAMPAIGN DAILY userId={}", msg.getUserId());
         try {
@@ -471,7 +471,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_CAMPAIGN_HOUR)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_CAMPAIGN_HOUR, concurrency = "3")
     public void consumeGoogleCampaignHour(CollectorMessage msg) {
         log.info("[MQ][RECV] GOOGLE CAMPAIGN HOUR userId={}", msg.getUserId());
         try {
@@ -485,7 +485,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_ADGROUP_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_ADGROUP_DAILY, concurrency = "3")
     public void consumeGoogleAdGroupDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] GOOGLE ADGROUP DAILY userId={}", msg.getUserId());
         try {
@@ -499,7 +499,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_AD_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_AD_DAILY, concurrency = "3")
     public void consumeGoogleAdDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] GOOGLE AD DAILY userId={}", msg.getUserId());
         try {
@@ -513,7 +513,7 @@ public class CollectorConsumer {
         }
     }
 
-    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_KEYWORD_DAILY)
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_GOOGLE_KEYWORD_DAILY, concurrency = "3")
     public void consumeGoogleKeywordDaily(CollectorMessage msg) {
         log.info("[MQ][RECV] GOOGLE KEYWORD DAILY userId={}", msg.getUserId());
         try {
