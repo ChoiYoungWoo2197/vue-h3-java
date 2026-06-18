@@ -1,6 +1,8 @@
 package com.h3.h3_java.auth;
 
+import com.h3.h3_java.raw.mongo.UserMongoService;
 import lombok.RequiredArgsConstructor;
+import org.bson.Document;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,8 +19,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final UserMapper userMapper;
-    private final JwtUtil    jwtUtil;
+    private final UserMongoService userMongo;
+    private final JwtUtil          jwtUtil;
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody LoginRequestDto req) {
@@ -31,9 +33,9 @@ public class AuthController {
             return ResponseEntity.badRequest().body(res);
         }
 
-        UserDto user = userMapper.selectByUserId(req.getUserid());
+        Document user = userMongo.findByUserId(req.getUserid());
 
-        if (user == null || user.getUserPass() == null) {
+        if (user == null || user.getString("user_pass") == null) {
             res.put("result", "failed");
             res.put("status", "1005");
             res.put("errormessage", "아이디 또는 비밀번호를 확인하고 입력해주세요.");
@@ -41,23 +43,25 @@ public class AuthController {
         }
 
         String hashedPass = sha256(req.getUserpass());
-        if (!hashedPass.equals(user.getUserPass())) {
+        if (!hashedPass.equals(user.getString("user_pass"))) {
             res.put("result", "failed");
             res.put("status", "1005");
             res.put("errormessage", "아이디 또는 비밀번호를 확인하고 입력해주세요.");
             return ResponseEntity.status(401).body(res);
         }
 
-        String token = jwtUtil.generateToken(user.getUserId(), user.getUserLevel());
+        String  userId    = user.getString("user_id");
+        Integer userLevel = user.getInteger("user_level", 1);
+        String  token     = jwtUtil.generateToken(userId, userLevel);
 
         Map<String, Object> userInfo = new LinkedHashMap<>();
-        userInfo.put("userid",      user.getUserId());
-        userInfo.put("username",    user.getUserName());
-        userInfo.put("useremail",   user.getUserEmail());
-        userInfo.put("usercompany", user.getUserCompany());
-        userInfo.put("userphone",   user.getUserPhone());
-        userInfo.put("userlevel",   user.getUserLevel());
-        userInfo.put("userstatus",  user.getUserStatus());
+        userInfo.put("userid",      userId);
+        userInfo.put("username",    user.getString("user_name"));
+        userInfo.put("useremail",   user.getString("user_email"));
+        userInfo.put("usercompany", user.getString("user_company"));
+        userInfo.put("userphone",   user.getString("user_phone"));
+        userInfo.put("userlevel",   userLevel);
+        userInfo.put("userstatus",  user.getInteger("user_status", 0));
 
         res.put("result",      "success");
         res.put("status",      "200");
