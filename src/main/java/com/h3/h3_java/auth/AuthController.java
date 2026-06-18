@@ -61,13 +61,19 @@ public class AuthController {
         userInfo.put("usercompany", user.getString("user_company"));
         userInfo.put("userphone",   user.getString("user_phone"));
         userInfo.put("userlevel",   userLevel);
-        userInfo.put("userstatus",  user.getInteger("user_status", 0));
+        userInfo.put("userstatus",  parseIntSafe(user.get("user_status"), 0));
 
         res.put("result",      "success");
         res.put("status",      "200");
         res.put("accessToken", token);
         res.put("userinfo",    userInfo);
         return ResponseEntity.ok(res);
+    }
+
+    private int parseIntSafe(Object val, int def) {
+        if (val == null) return def;
+        if (val instanceof Number) return ((Number) val).intValue();
+        try { return Integer.parseInt(val.toString()); } catch (Exception e) { return def; }
     }
 
     private String sha256(String input) {

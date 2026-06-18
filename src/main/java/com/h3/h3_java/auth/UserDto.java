@@ -11,7 +11,7 @@ public class UserDto {
     private String userCompany;
     private String userPhone;
     private Integer userLevel;
-    private String userStatus;
+    private Integer userStatus;
     private String userManager;
     private String userPassupdate;
     private String userRegdate;
