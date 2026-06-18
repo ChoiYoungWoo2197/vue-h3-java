@@ -43,9 +43,4 @@ public class UserController {
         return userService.checkEmail(currentemail, useremail);
     }
 
-    /** h3_users MySQL → MongoDB 일회성 이관 */
-    @PostMapping("/migrate-users")
-    public Map<String, Object> migrateUsers() {
-        return userService.migrateUsers();
-    }
 }
