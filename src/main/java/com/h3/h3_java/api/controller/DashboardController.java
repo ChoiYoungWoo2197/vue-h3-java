@@ -1,5 +1,6 @@
 package com.h3.h3_java.api.controller;
 
+import com.h3.h3_java.api.service.dashboard.BalanceService;
 import com.h3.h3_java.api.service.dashboard.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +17,14 @@ import java.util.Map;
 public class DashboardController {
 
     private final DashboardService dashboardService;
+    private final BalanceService   balanceService;
+
+    /** 5개 매체 잔액 조회 (balance.vue) */
+    @GetMapping("/balance")
+    @PostMapping("/balance")
+    public Map<String, Object> balance(@RequestParam String userid) {
+        return balanceService.getBalance(userid);
+    }
 
     /** 매체별 요약 */
     @GetMapping("/summarymedia")
