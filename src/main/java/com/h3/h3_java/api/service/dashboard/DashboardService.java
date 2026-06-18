@@ -1,12 +1,16 @@
 package com.h3.h3_java.api.service.dashboard;
 
 import com.h3.h3_java.api.dto.AccountDto;
+import com.h3.h3_java.api.mapper.AccountLogMapper;
 import com.h3.h3_java.api.mapper.AccountMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
 import lombok.RequiredArgsConstructor;
+import org.bson.Document;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -14,10 +18,13 @@ import java.util.*;
 @RequiredArgsConstructor
 public class DashboardService {
 
-    private final AccountMapper accountMapper;
+    private final AccountMapper         accountMapper;
+    private final AccountLogMapper      accountLogMapper;
+    private final AccountMongoService   accountMongo;
     private final DashboardMongoService mongoService;
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter FMT     = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter LOG_FMT  = DateTimeFormatter.ofPattern("yyyy.MM.dd. HH:mm");
 
     // ─── 매체별 요약 (summarymedia) ──────────────────────────────────────────
 
@@ -382,6 +389,60 @@ public class DashboardService {
     private long toLong(Map<String, Object> m, String key) {
         Object v = m.get(key);
         return (v instanceof Number) ? ((Number) v).longValue() : 0L;
+    }
+
+    // ─── 계정별 최근 수집일 (accountlog) ────────────────────────────────────────
+
+    public Map<String, Object> getAccountLog(String userId) {
+        Document acc = accountMongo.findByUserId(userId);
+        if (acc == null) {
+            return Map.of("result", "failed", "status", "1009", "errormessage", "계정 없음");
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        result.add(buildEntry(acc.getString("account_naver_customer"), "naver"));
+        result.add(buildEntry(acc.getString("account_gfa"),            "naverda"));
+        result.add(buildEntry(acc.getString("account_kakaosa"),        "kakaosa"));
+        result.add(buildEntry(acc.getString("account_kakaomoment"),    "kakaomo"));
+        result.add(buildEntry(acc.getString("account_google"),         "google"));
+
+        for (Map<String, Object> entry : result) {
+            String advkey = (String) entry.get("advkey");
+            if (advkey == null || advkey.isBlank()) continue;
+            Map<String, Object> log = accountLogMapper.findByAdvkey(advkey);
+            if (log == null) continue;
+            entry.put("campaign",      fmtLog(log.get("campaign")));
+            entry.put("campaign_hour", fmtLog(log.get("campaign_hour")));
+            entry.put("adgroup",       fmtLog(log.get("adgroup")));
+            entry.put("keyword",       fmtLog(log.get("keyword")));
+            entry.put("ad",            fmtLog(log.get("ad")));
+            entry.put("shopping",      fmtLog(log.get("shopping")));
+        }
+
+        return Map.of("result", "success", "status", "200", "data", result);
+    }
+
+    private Map<String, Object> buildEntry(String advkey, String media) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("advkey",        advkey != null ? advkey : "");
+        m.put("media",         media);
+        m.put("campaign",      "");
+        m.put("campaign_hour", "");
+        m.put("adgroup",       "");
+        m.put("keyword",       "");
+        m.put("ad",            "");
+        m.put("shopping",      "");
+        return m;
+    }
+
+    private String fmtLog(Object val) {
+        if (val == null) return "";
+        try {
+            return LocalDateTime.parse(val.toString(),
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")).format(LOG_FMT);
+        } catch (Exception e) {
+            return val.toString();
+        }
     }
 
     private Map<String, Object> emptyMediaStat() {

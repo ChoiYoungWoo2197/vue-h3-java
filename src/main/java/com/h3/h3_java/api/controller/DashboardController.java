@@ -63,6 +63,12 @@ public class DashboardController {
         return dashboardService.getSummaryMediaRate(userid, fromdate, todate, media);
     }
 
+    /** 계정별 최근 수집일 */
+    @GetMapping("/accountlog")
+    public Map<String, Object> accountlog(@RequestParam String userid) {
+        return dashboardService.getAccountLog(userid);
+    }
+
     /** 날짜별 통계 */
     @GetMapping("/period")
     @PostMapping("/period")
