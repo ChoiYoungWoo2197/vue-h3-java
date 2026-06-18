@@ -4,6 +4,7 @@ import com.h3.h3_java.batch.scheduler.GoogleTokenManager;
 import com.h3.h3_java.media.google.GoogleApiClient;
 import com.h3.h3_java.media.google.dto.GoogleAccountDto;
 import com.h3.h3_java.media.google.mapper.GoogleMapper;
+import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.GoogleMasterMongoService;
 import com.h3.h3_java.raw.mongo.GoogleStatMongoService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class GoogleAdGroupDayJob {
     private final GoogleTokenManager       tokenManager;
     private final GoogleMasterMongoService masterMongoService;
     private final GoogleStatMongoService   statMongoService;
+    private final AccountLogMongoService   accountLogMongo;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final long MICROS = 1_000_000L;
@@ -119,6 +121,7 @@ public class GoogleAdGroupDayJob {
             log.debug("[GOOGLE][ADGROUP-DAY] advkey={} date={} saved={}", advkey, date, saved);
         }
         log.info("[GOOGLE][ADGROUP-DAY] 완료 advkey={} dates={}", advkey, dates.size());
+        accountLogMongo.updateField(advkey, "google", "adgroup");
     }
 
     private List<String> buildAutoDates(String advkey) {

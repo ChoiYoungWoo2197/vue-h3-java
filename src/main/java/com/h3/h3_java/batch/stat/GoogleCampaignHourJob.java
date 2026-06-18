@@ -4,6 +4,7 @@ import com.h3.h3_java.batch.scheduler.GoogleTokenManager;
 import com.h3.h3_java.media.google.GoogleApiClient;
 import com.h3.h3_java.media.google.dto.GoogleAccountDto;
 import com.h3.h3_java.media.google.mapper.GoogleMapper;
+import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.GoogleStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class GoogleCampaignHourJob {
     private final GoogleMapper           mapper;
     private final GoogleTokenManager     tokenManager;
     private final GoogleStatMongoService statMongoService;
+    private final AccountLogMongoService accountLogMongo;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final long MICROS = 1_000_000L;
@@ -120,6 +122,7 @@ public class GoogleCampaignHourJob {
             log.debug("[GOOGLE][CAMPAIGN-HOUR] advkey={} date={} saved=1", advkey, date);
         }
         log.info("[GOOGLE][CAMPAIGN-HOUR] 완료 advkey={} dates={}", advkey, dates.size());
+        accountLogMongo.updateField(advkey, "google", "campaign_hour");
     }
 
     private List<String> buildAutoDates(String advkey) {

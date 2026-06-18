@@ -4,6 +4,7 @@ import com.h3.h3_java.batch.scheduler.KakaoMoTokenManager;
 import com.h3.h3_java.media.kakao.KakaoMoApiClient;
 import com.h3.h3_java.media.kakao.dto.KakaoMoAccountDto;
 import com.h3.h3_java.media.kakao.mapper.KakaoMoMapper;
+import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.KakaoMoMasterMongoService;
 import com.h3.h3_java.raw.mongo.KakaoMoStatMongoService;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class KakaoMoCampaignDayJob {
     private final KakaoMoMasterMongoService masterMongo;
     private final KakaoMoStatMongoService   statMongo;
     private final KakaoMoTokenManager       tokenManager;
+    private final AccountLogMongoService    accountLogMongo;
 
     private static final DateTimeFormatter FMT    = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter APIFMT = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -76,6 +78,7 @@ public class KakaoMoCampaignDayJob {
         }
 
         log.info("[KAKAO-MO][CAMPAIGN-DAY] 완료 advkey={} dates={}", advkey, dates.size());
+        accountLogMongo.updateField(advkey, "kakaomo", "campaign");
     }
 
     @SuppressWarnings("unchecked")

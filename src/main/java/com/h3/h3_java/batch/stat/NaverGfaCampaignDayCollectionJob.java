@@ -3,6 +3,7 @@ package com.h3.h3_java.batch.stat;
 import com.h3.h3_java.batch.scheduler.NaverGfaTokenManager;
 import com.h3.h3_java.media.naver.dto.NaverGfaAccountDto;
 import com.h3.h3_java.media.naver.mapper.NaverGfaMapper;
+import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.NaverGfaMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +25,8 @@ public class NaverGfaCampaignDayCollectionJob {
 
     private final NaverGfaMapper gfaMapper;
     private final NaverGfaMasterMongoService mongoService;
-    private final NaverGfaTokenManager tokenManager;
+    private final NaverGfaTokenManager       tokenManager;
+    private final AccountLogMongoService     accountLogMongo;
 
     private static final String GFA_DAILY_BASE = "https://openapi.naver.com/v1/ad-api/1.0";
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -82,6 +84,7 @@ public class NaverGfaCampaignDayCollectionJob {
                 return;
             }
         }
+        accountLogMongo.updateField(advkey, "naverda", "campaign");
     }
 
     @SuppressWarnings("unchecked")
