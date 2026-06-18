@@ -4,10 +4,10 @@
 
 <mapper namespace="com.h3.h3_java.api.mapper.AccountLogMapper">
 
-    <select id="findByAdvkey" resultType="map">
-        SELECT advkey, campaign, campaign_hour, adgroup, keyword, ad, shopping
+    <select id="selectAll" resultType="map">
+        SELECT advkey, media, campaign, campaign_hour, adgroup, keyword, ad, shopping
         FROM h3_account_log
-        WHERE advkey = #{advkey}
+        ORDER BY advkey
     </select>
 
 </mapper>

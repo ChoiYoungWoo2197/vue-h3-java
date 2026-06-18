@@ -1,8 +1,8 @@
 package com.h3.h3_java.api.service.dashboard;
 
 import com.h3.h3_java.api.dto.AccountDto;
-import com.h3.h3_java.api.mapper.AccountLogMapper;
 import com.h3.h3_java.api.mapper.AccountMapper;
+import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
 import lombok.RequiredArgsConstructor;
@@ -18,10 +18,10 @@ import java.util.*;
 @RequiredArgsConstructor
 public class DashboardService {
 
-    private final AccountMapper         accountMapper;
-    private final AccountLogMapper      accountLogMapper;
-    private final AccountMongoService   accountMongo;
-    private final DashboardMongoService mongoService;
+    private final AccountMapper          accountMapper;
+    private final AccountLogMongoService accountLogMongo;
+    private final AccountMongoService    accountMongo;
+    private final DashboardMongoService  mongoService;
 
     private static final DateTimeFormatter FMT     = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter LOG_FMT  = DateTimeFormatter.ofPattern("yyyy.MM.dd. HH:mm");
@@ -409,7 +409,7 @@ public class DashboardService {
         for (Map<String, Object> entry : result) {
             String advkey = (String) entry.get("advkey");
             if (advkey == null || advkey.isBlank()) continue;
-            Map<String, Object> log = accountLogMapper.findByAdvkey(advkey);
+            org.bson.Document log = accountLogMongo.findByAdvkey(advkey);
             if (log == null) continue;
             entry.put("campaign",      fmtLog(log.get("campaign")));
             entry.put("campaign_hour", fmtLog(log.get("campaign_hour")));

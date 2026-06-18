@@ -3,6 +3,7 @@ package com.h3.h3_java.batch.stat;
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,8 @@ import java.util.*;
 public class NaverCampaignHourCollectionJob {
 
     private final NaverMasterReportMapper mapper;
-    private final NaverStatMongoService statMongoService;
+    private final NaverStatMongoService   statMongoService;
+    private final AccountLogMongoService  accountLogMongo;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -86,6 +88,7 @@ public class NaverCampaignHourCollectionJob {
             int saved = collectDay(client, customerId, campaigns, date);
             log.info("[NaverCampaignHour] customerId={} date={} saved={}", customerId, date, saved);
         }
+        accountLogMongo.updateField(customerId, "naver", "campaign_hour");
     }
 
     @SuppressWarnings("unchecked")
