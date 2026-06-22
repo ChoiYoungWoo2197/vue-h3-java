@@ -187,6 +187,11 @@ public class AdgroupReportService {
     }
 
     private Map<String, Object> noData() {
-        return Map.of("result", "success", "status", "1004", "errormessage", "검색 결과가 없습니다.");
+        Map<String, Object> r = new java.util.LinkedHashMap<>();
+        r.put("result", "success"); r.put("status", "1004");
+        r.put("errormessage", "검색 결과가 없습니다.");
+        r.put("data", Map.of("groups", Collections.emptyList()));
+        r.put("totalcount", 0);
+        return r;
     }
 }
