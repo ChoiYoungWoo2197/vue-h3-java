@@ -322,8 +322,13 @@ public class AdReportService {
         row.put("campaignid",    cid != null ? cid : "");
 
         if (cfg.isBanner()) {
-            Map<Integer, String> typeMap = cfg.campMasterCol().startsWith("google") ? GOOGLE_CAMP_TYPE : GFA_TYPE;
-            row.put("campaign_type", reverseCode(campM, "type", typeMap));
+            if (cfg.campMasterCol().startsWith("kakao_mo")) {
+                // kakao_mo_campaign.type은 문자열("display", "talk_biz_board" 등)로 저장
+                row.put("campaign_type", notNull(str(campM, "type")));
+            } else {
+                Map<Integer, String> typeMap = cfg.campMasterCol().startsWith("google") ? GOOGLE_CAMP_TYPE : GFA_TYPE;
+                row.put("campaign_type", reverseCode(campM, "type", typeMap));
+            }
         }
 
         row.put("campaign_name", str(campM, cfg.campNameField()));
