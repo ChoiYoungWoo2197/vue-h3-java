@@ -157,9 +157,8 @@ public class CampaignReportService {
             String cid    = (String) cs.get("campaign_id");
             Document master = masterMap.get(cid);
             if (master == null) continue;
-            int typeCode  = getInt(master, "type", -1);
-            String typeName = typeCodeToName(typeCode, KAKAOMO_CAMP_TYPE);
-            if (typeName == null) continue;
+            String typeName = master.getString("type");
+            if (typeName == null || !groups.containsKey(typeName)) continue;
             String name = master.getString("cname");
             int onoff   = getInt(master, "onoff", 0);
             groups.get(typeName).add(buildCampaignRow(cid, name, typeName, onoff,
