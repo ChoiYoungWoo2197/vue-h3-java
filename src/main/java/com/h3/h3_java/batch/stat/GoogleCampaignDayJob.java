@@ -146,12 +146,16 @@ public class GoogleCampaignDayJob {
 
     private long longVal(Map<String, Object> m, String key) {
         Object v = m.get(key);
-        return v instanceof Number ? ((Number) v).longValue() : 0L;
+        if (v instanceof Number) return ((Number) v).longValue();
+        if (v instanceof String) try { return Long.parseLong((String) v); } catch (Exception e) { return 0L; }
+        return 0L;
     }
 
     private double doubleVal(Map<String, Object> m, String key) {
         Object v = m.get(key);
-        return v instanceof Number ? ((Number) v).doubleValue() : 0.0;
+        if (v instanceof Number) return ((Number) v).doubleValue();
+        if (v instanceof String) try { return Double.parseDouble((String) v); } catch (Exception e) { return 0.0; }
+        return 0.0;
     }
 
     private String str(Map<String, Object> m, String key) {

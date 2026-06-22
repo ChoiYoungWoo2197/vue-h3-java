@@ -162,7 +162,9 @@ public class GoogleKeywordDayJob {
 
     private double doubleVal(Map<String, Object> m, String key) {
         Object v = m.get(key);
-        return v instanceof Number ? ((Number) v).doubleValue() : 0.0;
+        if (v instanceof Number) return ((Number) v).doubleValue();
+        if (v instanceof String) try { return Double.parseDouble((String) v); } catch (Exception e) { return 0.0; }
+        return 0.0;
     }
 
     private String str(Map<String, Object> m, String key) {
