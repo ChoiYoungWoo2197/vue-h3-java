@@ -4,6 +4,7 @@ import com.h3.h3_java.batch.scheduler.KakaoSaTokenManager;
 import com.h3.h3_java.media.kakao.KakaoSaApiClient;
 import com.h3.h3_java.media.kakao.dto.KakaoSaAccountDto;
 import com.h3.h3_java.media.kakao.mapper.KakaoSaMapper;
+import com.h3.h3_java.queue.producer.CollectorProducer;
 import com.h3.h3_java.raw.mongo.KakaoSaMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class KakaoSaMasterJob {
     private final KakaoSaMapper            mapper;
     private final KakaoSaMasterMongoService mongoService;
     private final KakaoSaTokenManager       tokenManager;
+    private final CollectorProducer         producer;
 
     private static final Map<String, Integer> ONOFF = Map.of("ON", 1, "OFF", 0);
 
@@ -46,6 +48,7 @@ public class KakaoSaMasterJob {
 
     private void collectForAccount(KakaoSaAccountDto account) {
         String advkey = account.getAccountKakaosa();
+        String userId  = account.getUserId();
         String token  = tokenManager.getAccessToken();
 
         if (token == null) {
@@ -84,10 +87,11 @@ public class KakaoSaMasterJob {
             collectAdGroups(api, advkey, cid);
         }
 
-        log.info("[KAKAO-SA][MASTER] 완료 advkey={}", advkey);
+        log.info("[KAKAO-SA][MASTER] 완료 advkey={} → ad-detail MQ 발행", advkey);
+        // 마스터 완료 후 ad-detail 비동기 수집 트리거
+        producer.sendKakaoSaAdDetail(userId);
     }
 
-    @SuppressWarnings("unchecked")
     private void collectAdGroups(KakaoSaApiClient api, String advkey, String cid) {
         List<Map<String, Object>> groups = api.getList(
             "/openapi/v1/adGroups",
@@ -111,15 +115,14 @@ public class KakaoSaMasterJob {
             groupDoc.put("status", 0);
             mongoService.upsertAdGroup(groupDoc);
 
-            // 3. 소재 수집
+            // 3. 소재 기본 정보만 수집 (상세/이미지는 ad-detail job에서)
             collectAds(api, advkey, gid);
 
-            // 4. 키워드 수집
+            // 4. 키워드 기본 정보만 수집 (품질지수는 ad-detail job에서)
             collectKeywords(api, advkey, gid);
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void collectAds(KakaoSaApiClient api, String advkey, String gid) {
         List<Map<String, Object>> links = api.getList(
             "/openapi/v1/creativeLinks",
@@ -134,54 +137,26 @@ public class KakaoSaMasterJob {
 
             if (creativeId == null) continue;
 
-            // 소재 상세 조회
-            Map<String, Object> creative = api.get("/openapi/v1/creatives/basic/" + creativeId);
-            if (creative == null) continue;
-
-            String headline    = str(creative, "title");
-            String description = str(creative, "description");
-            String rspvUrl     = "";
-            Object landing = creative.get("landingInfo");
-            if (landing instanceof Map) {
-                Map<String, Object> li = (Map<String, Object>) landing;
-                rspvUrl = str(li, "rspvLandingUrl", "");
-            }
-
-            // 썸네일 이미지 조회
-            String imgurl1 = "";
-            Object assets = creative.get("assets");
-            if (assets instanceof Map) {
-                Object thumbnail = ((Map<String, Object>) assets).get("thumbnail");
-                if (thumbnail instanceof Map) {
-                    String imageId = str((Map<String, Object>) thumbnail, "imageId");
-                    if (imageId != null && !imageId.isEmpty()) {
-                        Map<String, Object> img = api.get("/openapi/v1/images/" + imageId);
-                        if (img != null) imgurl1 = str(img, "url", "");
-                    }
-                }
-            }
-
             Map<String, Object> adDoc = new HashMap<>();
             adDoc.put("advkey",      advkey);
             adDoc.put("gid",         gid);
             adDoc.put("type",        1);
             adDoc.put("aid",         creativeId);
             adDoc.put("lid",         lid);
-            adDoc.put("headline",    headline);
-            adDoc.put("description", description);
-            adDoc.put("purl",        rspvUrl);
-            adDoc.put("purlf",       rspvUrl);
-            adDoc.put("murl",        rspvUrl);
-            adDoc.put("murlf",       rspvUrl);
+            adDoc.put("headline",    "");
+            adDoc.put("description", "");
+            adDoc.put("purl",        "");
+            adDoc.put("purlf",       "");
+            adDoc.put("murl",        "");
+            adDoc.put("murlf",       "");
             adDoc.put("onoff",       ONOFF.getOrDefault(onoffStr, 0));
-            adDoc.put("imgurl1",     imgurl1);
+            adDoc.put("imgurl1",     "");
             adDoc.put("imgurl2",     "");
             adDoc.put("imgurl3",     "");
             mongoService.upsertAd(adDoc);
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void collectKeywords(KakaoSaApiClient api, String advkey, String gid) {
         List<Map<String, Object>> keywords = api.getList(
             "/openapi/v1/keywords",
@@ -196,19 +171,11 @@ public class KakaoSaMasterJob {
             int bidamount = 0;
             Object bidStrategy = kw.get("bidStrategy");
             if (bidStrategy instanceof Map) {
-                Object ba = ((Map<String, Object>) bidStrategy).get("bidAmount");
+                Object ba = ((Map<?, ?>) bidStrategy).get("bidAmount");
                 if (ba instanceof Number) bidamount = ((Number) ba).intValue();
             }
 
             if (kid == null) continue;
-
-            // 품질지수 조회
-            int qigrade = 0;
-            Map<String, Object> quality = api.get("/openapi/v1/keywords/" + kid + "/quality");
-            if (quality != null) {
-                Object q = quality.get("quality");
-                if (q instanceof Number) qigrade = ((Number) q).intValue();
-            }
 
             Map<String, Object> kwDoc = new HashMap<>();
             kwDoc.put("advkey",    advkey);
@@ -217,7 +184,7 @@ public class KakaoSaMasterJob {
             kwDoc.put("kname",     kname);
             kwDoc.put("onoff",     ONOFF.getOrDefault(onoff, 0));
             kwDoc.put("status",    0);
-            kwDoc.put("qigrade",   qigrade);
+            kwDoc.put("qigrade",   0);
             kwDoc.put("bidamount", bidamount);
             mongoService.upsertKeyword(kwDoc);
         }
@@ -226,10 +193,5 @@ public class KakaoSaMasterJob {
     private String str(Map<String, Object> map, String key) {
         Object v = map.get(key);
         return v != null ? String.valueOf(v) : null;
-    }
-
-    private String str(Map<String, Object> map, String key, String defaultVal) {
-        Object v = map.get(key);
-        return v != null ? String.valueOf(v) : defaultVal;
     }
 }

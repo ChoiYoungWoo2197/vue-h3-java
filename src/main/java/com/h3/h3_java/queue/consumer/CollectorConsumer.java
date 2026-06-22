@@ -6,7 +6,9 @@ import com.h3.h3_java.batch.stat.GoogleCampaignHourJob;
 import com.h3.h3_java.batch.stat.GoogleAdGroupDayJob;
 import com.h3.h3_java.batch.stat.GoogleAdDayJob;
 import com.h3.h3_java.batch.stat.GoogleKeywordDayJob;
+import com.h3.h3_java.batch.master.KakaoMoAdDetailJob;
 import com.h3.h3_java.batch.master.KakaoMoMasterJob;
+import com.h3.h3_java.batch.master.KakaoSaAdDetailJob;
 import com.h3.h3_java.batch.master.KakaoSaMasterJob;
 import com.h3.h3_java.batch.stat.KakaoMoCampaignDayJob;
 import com.h3.h3_java.batch.stat.KakaoMoCampaignHourJob;
@@ -61,6 +63,8 @@ public class CollectorConsumer {
     private final NaverGfaAdgroupDayCollectionJob naverGfaAdgroupDayCollectionJob;
     private final NaverGfaBudgetAlarmJob naverGfaBudgetAlarmJob;
     private final NaverGfaConvTypeJob naverGfaConvTypeJob;
+    private final KakaoSaAdDetailJob     kakaoSaAdDetailJob;
+    private final KakaoMoAdDetailJob     kakaoMoAdDetailJob;
     private final KakaoMoMasterJob       kakaoMoMasterJob;
     private final KakaoMoCampaignDayJob  kakaoMoCampaignDayJob;
     private final KakaoMoCampaignHourJob kakaoMoCampaignHourJob;
@@ -277,6 +281,16 @@ public class CollectorConsumer {
 
     // ── Kakao SA ──────────────────────────────────────────────────────────────
 
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_AD_DETAIL, concurrency = "3")
+    public void consumeKakaoSaAdDetail(CollectorMessage msg) {
+        log.info("[MQ][RECV] KAKAO SA AD DETAIL userId={}", msg.getUserId());
+        try {
+            kakaoSaAdDetailJob.collectForUserId(msg.getUserId());
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] KAKAO SA AD DETAIL userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
     @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_SA_MASTER, concurrency = "3")
     public void consumeKakaoSaMaster(CollectorMessage msg) {
         log.info("[MQ][RECV] KAKAO SA MASTER userId={}", msg.getUserId());
@@ -368,6 +382,16 @@ public class CollectorConsumer {
     }
 
     // ── Kakao MO ──────────────────────────────────────────────────────────────
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_AD_DETAIL, concurrency = "3")
+    public void consumeKakaoMoAdDetail(CollectorMessage msg) {
+        log.info("[MQ][RECV] KAKAO MO AD DETAIL userId={}", msg.getUserId());
+        try {
+            kakaoMoAdDetailJob.collectForUserId(msg.getUserId());
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] KAKAO MO AD DETAIL userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE_KAKAO_MO_MASTER, concurrency = "3")
     public void consumeKakaoMoMaster(CollectorMessage msg) {

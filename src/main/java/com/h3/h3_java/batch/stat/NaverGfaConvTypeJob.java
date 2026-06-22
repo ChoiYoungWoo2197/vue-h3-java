@@ -80,15 +80,15 @@ public class NaverGfaConvTypeJob {
         for (String date : dates) {
             int cpSaved = collectCampaignConvType(advkey, token, managerNo, date);
             log.info("[GFA][CONV-TYPE-CAMPAIGN] advkey={} date={} saved={}", advkey, date, cpSaved);
-            randomSleep(900, 1400);
+            randomSleep(200, 400);
 
             int agSaved = collectAdgroupConvType(advkey, token, managerNo, date);
             log.info("[GFA][CONV-TYPE-ADGROUP] advkey={} date={} saved={}", advkey, date, agSaved);
-            randomSleep(1100, 1700);
+            randomSleep(200, 400);
 
             int adSaved = collectAdConvType(advkey, token, managerNo, date);
             log.info("[GFA][CONV-TYPE-AD] advkey={} date={} saved={}", advkey, date, adSaved);
-            randomSleep(1300, 2000);
+            randomSleep(200, 400);
         }
     }
 
@@ -286,7 +286,7 @@ public class NaverGfaConvTypeJob {
             String next = body.get("next") != null ? String.valueOf(body.get("next")) : null;
             if (next == null || next.equals("null")) break;
 
-            randomSleep(900, 1600);
+            randomSleep(200, 400);
             url = baseUrl + "&next=" + next;
 
         } while (true);

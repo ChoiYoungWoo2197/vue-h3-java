@@ -4,6 +4,7 @@ import com.h3.h3_java.batch.scheduler.KakaoMoTokenManager;
 import com.h3.h3_java.media.kakao.KakaoMoApiClient;
 import com.h3.h3_java.media.kakao.dto.KakaoMoAccountDto;
 import com.h3.h3_java.media.kakao.mapper.KakaoMoMapper;
+import com.h3.h3_java.queue.producer.CollectorProducer;
 import com.h3.h3_java.raw.mongo.KakaoMoMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class KakaoMoMasterJob {
     private final KakaoMoMapper             mapper;
     private final KakaoMoMasterMongoService mongoService;
     private final KakaoMoTokenManager       tokenManager;
+    private final CollectorProducer         producer;
 
     private static final Map<String, Integer> ONOFF = Map.of("ON", 1, "OFF", 0);
 
@@ -46,6 +48,7 @@ public class KakaoMoMasterJob {
 
     private void collectForAccount(KakaoMoAccountDto account) {
         String advkey = account.getAccountKakaomoment();
+        String userId  = account.getUserId();
         String token  = tokenManager.getAccessToken();
 
         if (token == null) {
@@ -95,7 +98,9 @@ public class KakaoMoMasterJob {
             collectAdGroups(api, advkey, cid);
         }
 
-        log.info("[KAKAO-MO][MASTER] 완료 advkey={}", advkey);
+        log.info("[KAKAO-MO][MASTER] 완료 advkey={} → ad-detail MQ 발행", advkey);
+        // 마스터 완료 후 ad-detail 비동기 수집 트리거
+        producer.sendKakaoMoAdDetail(userId);
     }
 
     private void collectAdGroups(KakaoMoApiClient api, String advkey, String cid) {
@@ -121,12 +126,11 @@ public class KakaoMoMasterJob {
             groupDoc.put("status", 0);
             mongoService.upsertAdGroup(groupDoc);
 
-            // 3. 소재 수집
+            // 3. 소재 기본 정보만 수집 (상세/이미지는 ad-detail job에서)
             collectAds(api, advkey, gid);
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void collectAds(KakaoMoApiClient api, String advkey, String gid) {
         List<Map<String, Object>> creatives = api.getContent(
             "/openapi/v4/creatives",
@@ -135,47 +139,22 @@ public class KakaoMoMasterJob {
         if (creatives == null) return;
 
         for (Map<String, Object> c : creatives) {
-            String aid = str(c, "id");
+            String aid  = str(c, "id");
             String onoff = str(c, "config");
             if (aid == null) continue;
-
-            // 소재 상세 조회
-            Map<String, Object> detail = api.get("/openapi/v4/creatives/" + aid);
-            if (detail == null) continue;
-
-            String headline   = str(detail, "name", "");
-            String desc       = str(detail, "description", "");
-            String rspvUrl    = str(detail, "rspvLandingUrl", "");
-            String format     = str(detail, "format", "");
-
-            String imageUrl = "";
-            String imageName = "";
-            if (format.contains("MESSAGE")) {
-                Object msgEl = detail.get("messageElement");
-                if (msgEl instanceof Map) {
-                    imageUrl = str((Map<String, Object>) msgEl, "thumbnailUrl", "");
-                }
-            } else {
-                Object img = detail.get("image");
-                if (img instanceof Map) {
-                    Map<String, Object> imgMap = (Map<String, Object>) img;
-                    imageUrl  = str(imgMap, "url", "");
-                    imageName = str(imgMap, "fileName", "");
-                }
-            }
 
             Map<String, Object> adDoc = new HashMap<>();
             adDoc.put("advkey",      advkey);
             adDoc.put("gid",         gid);
             adDoc.put("aid",         aid);
-            adDoc.put("headline",    headline);
-            adDoc.put("description", desc);
-            adDoc.put("purl",        rspvUrl);
-            adDoc.put("purlf",       rspvUrl);
-            adDoc.put("murl",        rspvUrl);
-            adDoc.put("murlf",       rspvUrl);
-            adDoc.put("image_name",  imageName);
-            adDoc.put("image_url",   imageUrl);
+            adDoc.put("headline",    "");
+            adDoc.put("description", "");
+            adDoc.put("purl",        "");
+            adDoc.put("purlf",       "");
+            adDoc.put("murl",        "");
+            adDoc.put("murlf",       "");
+            adDoc.put("image_name",  "");
+            adDoc.put("image_url",   "");
             adDoc.put("onoff",       ONOFF.getOrDefault(onoff, 0));
             mongoService.upsertAd(adDoc);
         }
@@ -184,10 +163,5 @@ public class KakaoMoMasterJob {
     private String str(Map<String, Object> map, String key) {
         Object v = map.get(key);
         return v != null ? String.valueOf(v) : null;
-    }
-
-    private String str(Map<String, Object> map, String key, String defaultVal) {
-        Object v = map.get(key);
-        return v != null ? String.valueOf(v) : defaultVal;
     }
 }

@@ -247,6 +247,16 @@ public class CollectorProducer {
     }
 
     // =====================================================================
+    // KAKAO SA AD DETAIL
+    // =====================================================================
+
+    public void sendKakaoSaAdDetail(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "AD_DETAIL", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_AD_DETAIL, msg);
+        log.info("[MQ][SEND] KAKAO SA AD DETAIL userId={}", userId);
+    }
+
+    // =====================================================================
     // KAKAO SA CAMPAIGN DAILY
     // =====================================================================
 
@@ -350,6 +360,16 @@ public class CollectorProducer {
         CollectorMessage msg = new CollectorMessage("KAKAO_MO", "MASTER", userId, null, false);
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_MASTER, msg);
         log.info("[MQ][SEND] KAKAO MO MASTER userId={}", userId);
+    }
+
+    // =====================================================================
+    // KAKAO MO AD DETAIL
+    // =====================================================================
+
+    public void sendKakaoMoAdDetail(String userId) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "AD_DETAIL", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_AD_DETAIL, msg);
+        log.info("[MQ][SEND] KAKAO MO AD DETAIL userId={}", userId);
     }
 
     // =====================================================================

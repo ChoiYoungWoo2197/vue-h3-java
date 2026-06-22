@@ -83,6 +83,36 @@ public class KakaoSaMasterMongoService {
             .collect(Collectors.toList());
     }
 
+    public List<String> selectAdIds(String advkey) {
+        Query q = Query.query(Criteria.where("advkey").is(advkey));
+        q.fields().include("aid");
+        return mongoTemplate.find(q, Document.class, "kakao_sa_ad")
+            .stream().map(d -> d.getString("aid")).filter(s -> s != null && !s.isBlank())
+            .collect(Collectors.toList());
+    }
+
+    public List<String> selectKeywordIds(String advkey) {
+        Query q = Query.query(Criteria.where("advkey").is(advkey));
+        q.fields().include("kid");
+        return mongoTemplate.find(q, Document.class, "kakao_sa_keyword")
+            .stream().map(d -> d.getString("kid")).filter(s -> s != null && !s.isBlank())
+            .collect(Collectors.toList());
+    }
+
+    public void updateAdDetail(String aid, Map<String, Object> updates) {
+        Query q = Query.query(Criteria.where("aid").is(aid));
+        Update u = new Update();
+        updates.forEach(u::set);
+        mongoTemplate.updateFirst(q, u, "kakao_sa_ad");
+    }
+
+    public void updateKeywordDetail(String kid, Map<String, Object> updates) {
+        Query q = Query.query(Criteria.where("kid").is(kid));
+        Update u = new Update();
+        updates.forEach(u::set);
+        mongoTemplate.updateFirst(q, u, "kakao_sa_keyword");
+    }
+
     public boolean hasCampaignData(String advkey) {
         return mongoTemplate.exists(Query.query(Criteria.where("advkey").is(advkey)), "kakao_sa_campaign");
     }

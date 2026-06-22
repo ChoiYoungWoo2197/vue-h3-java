@@ -73,6 +73,21 @@ public class KakaoMoMasterMongoService {
             .collect(Collectors.toList());
     }
 
+    public List<String> selectAdIds(String advkey) {
+        Query q = Query.query(Criteria.where("advkey").is(advkey));
+        q.fields().include("aid");
+        return mongoTemplate.find(q, Document.class, "kakao_mo_ad")
+            .stream().map(d -> d.getString("aid")).filter(s -> s != null && !s.isBlank())
+            .collect(Collectors.toList());
+    }
+
+    public void updateAdDetail(String aid, Map<String, Object> updates) {
+        Query q = Query.query(Criteria.where("aid").is(aid));
+        Update u = new Update();
+        updates.forEach(u::set);
+        mongoTemplate.updateFirst(q, u, "kakao_mo_ad");
+    }
+
     public boolean hasCampaignData(String advkey) {
         return mongoTemplate.exists(Query.query(Criteria.where("advkey").is(advkey)), "kakao_mo_campaign");
     }

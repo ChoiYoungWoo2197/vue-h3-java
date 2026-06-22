@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -108,6 +109,39 @@ public class AccountMongoService {
     public void clearGoogle(String userId) {
         mongo.updateFirst(Query.query(Criteria.where("user_id").is(userId)),
                 new Update().unset("account_google").set("account_date", now()), COL);
+    }
+
+    public List<Document> findAll() {
+        return mongo.findAll(Document.class, COL);
+    }
+
+    // ── 매체별 계정 목록 조회 ─────────────────────────────────────────────────
+
+    public List<Document> findNaverAccounts() {
+        Query q = Query.query(Criteria.where("account_naver_access").exists(true)
+            .and("account_naver_secret").exists(true)
+            .and("account_naver_customer").exists(true));
+        return mongo.find(q, Document.class, COL);
+    }
+
+    public List<Document> findGfaAccounts() {
+        Query q = Query.query(Criteria.where("account_gfa").exists(true).ne(null).ne(""));
+        return mongo.find(q, Document.class, COL);
+    }
+
+    public List<Document> findKakaoSaAccounts() {
+        Query q = Query.query(Criteria.where("account_kakaosa").exists(true).ne(null).ne(""));
+        return mongo.find(q, Document.class, COL);
+    }
+
+    public List<Document> findKakaoMoAccounts() {
+        Query q = Query.query(Criteria.where("account_kakaomoment").exists(true).ne(null).ne(""));
+        return mongo.find(q, Document.class, COL);
+    }
+
+    public List<Document> findGoogleAccounts() {
+        Query q = Query.query(Criteria.where("account_google").exists(true).ne(null).ne(""));
+        return mongo.find(q, Document.class, COL);
     }
 
     private String now() {

@@ -1,5 +1,6 @@
 package com.h3.h3_java.api.collector;
 
+import com.h3.h3_java.batch.master.KakaoSaAdDetailJob;
 import com.h3.h3_java.batch.master.KakaoSaMasterJob;
 import com.h3.h3_java.batch.stat.KakaoSaAdDayJob;
 import com.h3.h3_java.batch.stat.KakaoSaAdGroupDayJob;
@@ -25,6 +26,7 @@ import java.util.Map;
 public class KakaoCollectorController {
 
     private final KakaoSaMasterJob       masterJob;
+    private final KakaoSaAdDetailJob     adDetailJob;
     private final KakaoSaCampaignDayJob  campaignDayJob;
     private final KakaoSaCampaignHourJob campaignHourJob;
     private final KakaoSaAdGroupDayJob   adGroupDayJob;
@@ -55,6 +57,23 @@ public class KakaoCollectorController {
         if (findAccount(userId) == null) return notFound(userId);
         producer.sendKakaoSaMaster(userId);
         return ok("카카오SA 마스터 수집 요청 완료 userId=" + userId);
+    }
+
+    // =====================================================================
+    // AD DETAIL
+    // =====================================================================
+
+    @PostMapping("/ad-detail")
+    public ResponseEntity<Map<String, String>> collectAdDetail() {
+        adDetailJob.collect();
+        return ok("카카오SA 소재상세 전체 수집 완료");
+    }
+
+    @PostMapping("/ad-detail/{userId}")
+    public ResponseEntity<Map<String, String>> collectAdDetailByUser(@PathVariable String userId) {
+        if (findAccount(userId) == null) return notFound(userId);
+        producer.sendKakaoSaAdDetail(userId);
+        return ok("카카오SA 소재상세 수집 요청 완료 userId=" + userId);
     }
 
     // =====================================================================

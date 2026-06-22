@@ -80,6 +80,9 @@ public class RabbitMQConfig {
     public static final String QUEUE_KAKAO_SA_BUDGET_ALARM       = "h3.collector.kakao.sa.budget.alarm";
     public static final String ROUTING_KAKAO_SA_BUDGET_ALARM     = "kakao.sa.budget.alarm";
 
+    public static final String QUEUE_KAKAO_SA_AD_DETAIL          = "h3.collector.kakao.sa.ad.detail";
+    public static final String ROUTING_KAKAO_SA_AD_DETAIL        = "kakao.sa.ad.detail";
+
     // ── Google ────────────────────────────────────────────────────────────────
 
     public static final String QUEUE_GOOGLE_MASTER               = "h3.collector.google.master";
@@ -119,6 +122,9 @@ public class RabbitMQConfig {
 
     public static final String QUEUE_KAKAO_MO_BUDGET_ALARM       = "h3.collector.kakao.mo.budget.alarm";
     public static final String ROUTING_KAKAO_MO_BUDGET_ALARM     = "kakao.mo.budget.alarm";
+
+    public static final String QUEUE_KAKAO_MO_AD_DETAIL          = "h3.collector.kakao.mo.ad.detail";
+    public static final String ROUTING_KAKAO_MO_AD_DETAIL        = "kakao.mo.ad.detail";
 
     @Bean
     public DirectExchange collectorExchange() {
@@ -298,6 +304,9 @@ public class RabbitMQConfig {
     @Bean public Queue kakaoSaBudgetAlarmQueue() { return QueueBuilder.durable(QUEUE_KAKAO_SA_BUDGET_ALARM).build(); }
     @Bean public Binding kakaoSaBudgetAlarmBinding(Queue kakaoSaBudgetAlarmQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoSaBudgetAlarmQueue).to(collectorExchange).with(ROUTING_KAKAO_SA_BUDGET_ALARM); }
 
+    @Bean public Queue kakaoSaAdDetailQueue() { return QueueBuilder.durable(QUEUE_KAKAO_SA_AD_DETAIL).build(); }
+    @Bean public Binding kakaoSaAdDetailBinding(Queue kakaoSaAdDetailQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoSaAdDetailQueue).to(collectorExchange).with(ROUTING_KAKAO_SA_AD_DETAIL); }
+
     // ── Kakao MO Beans ────────────────────────────────────────────────────────
 
     @Bean public Queue kakaoMoMasterQueue() { return QueueBuilder.durable(QUEUE_KAKAO_MO_MASTER).build(); }
@@ -317,6 +326,9 @@ public class RabbitMQConfig {
 
     @Bean public Queue kakaoMoBudgetAlarmQueue() { return QueueBuilder.durable(QUEUE_KAKAO_MO_BUDGET_ALARM).build(); }
     @Bean public Binding kakaoMoBudgetAlarmBinding(Queue kakaoMoBudgetAlarmQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoMoBudgetAlarmQueue).to(collectorExchange).with(ROUTING_KAKAO_MO_BUDGET_ALARM); }
+
+    @Bean public Queue kakaoMoAdDetailQueue() { return QueueBuilder.durable(QUEUE_KAKAO_MO_AD_DETAIL).build(); }
+    @Bean public Binding kakaoMoAdDetailBinding(Queue kakaoMoAdDetailQueue, DirectExchange collectorExchange) { return BindingBuilder.bind(kakaoMoAdDetailQueue).to(collectorExchange).with(ROUTING_KAKAO_MO_AD_DETAIL); }
 
     // ── Google Beans ──────────────────────────────────────────────────────────
 
