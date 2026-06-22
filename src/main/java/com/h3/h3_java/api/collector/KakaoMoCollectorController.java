@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -64,6 +65,19 @@ public class KakaoMoCollectorController {
         return ok("카카오MO 캠페인 일별 전체 수집 완료");
     }
 
+    @PostMapping("/campaign-daily/range")
+    public ResponseEntity<Map<String, String>> collectCampaignDailyAllRange(
+        @RequestParam String from, @RequestParam String to) {
+        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        int count = 0;
+        for (KakaoMoAccountDto a : accounts) {
+            if ("admin".equals(a.getUserId())) continue;
+            producer.sendKakaoMoCampaignDailyRange(a.getUserId(), from, to);
+            count++;
+        }
+        return ok(from + "~" + to + " 카카오MO 캠페인 일별 전체 수집 MQ 발행 완료 " + count + "건");
+    }
+
     @PostMapping("/campaign-daily/{userId}")
     public ResponseEntity<Map<String, String>> collectCampaignDailyByUser(@PathVariable String userId) {
         if (findAccount(userId) == null) return notFound(userId);
@@ -89,6 +103,19 @@ public class KakaoMoCollectorController {
     public ResponseEntity<Map<String, String>> collectCampaignHour() {
         campaignHourJob.collect();
         return ok("카카오MO 캠페인 시간별 전체 수집 완료");
+    }
+
+    @PostMapping("/campaign-hour/range")
+    public ResponseEntity<Map<String, String>> collectCampaignHourAllRange(
+        @RequestParam String from, @RequestParam String to) {
+        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        int count = 0;
+        for (KakaoMoAccountDto a : accounts) {
+            if ("admin".equals(a.getUserId())) continue;
+            producer.sendKakaoMoCampaignHourRange(a.getUserId(), from, to);
+            count++;
+        }
+        return ok(from + "~" + to + " 카카오MO 캠페인 시간별 전체 수집 MQ 발행 완료 " + count + "건");
     }
 
     @PostMapping("/campaign-hour/{userId}")
@@ -118,6 +145,19 @@ public class KakaoMoCollectorController {
         return ok("카카오MO 광고그룹 일별 전체 수집 완료");
     }
 
+    @PostMapping("/adgroup-daily/range")
+    public ResponseEntity<Map<String, String>> collectAdGroupDailyAllRange(
+        @RequestParam String from, @RequestParam String to) {
+        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        int count = 0;
+        for (KakaoMoAccountDto a : accounts) {
+            if ("admin".equals(a.getUserId())) continue;
+            producer.sendKakaoMoAdGroupDailyRange(a.getUserId(), from, to);
+            count++;
+        }
+        return ok(from + "~" + to + " 카카오MO 광고그룹 일별 전체 수집 MQ 발행 완료 " + count + "건");
+    }
+
     @PostMapping("/adgroup-daily/{userId}")
     public ResponseEntity<Map<String, String>> collectAdGroupDailyByUser(@PathVariable String userId) {
         if (findAccount(userId) == null) return notFound(userId);
@@ -143,6 +183,19 @@ public class KakaoMoCollectorController {
     public ResponseEntity<Map<String, String>> collectAdDaily() {
         adDayJob.collect();
         return ok("카카오MO 소재 일별 전체 수집 완료");
+    }
+
+    @PostMapping("/ad-daily/range")
+    public ResponseEntity<Map<String, String>> collectAdDailyAllRange(
+        @RequestParam String from, @RequestParam String to) {
+        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        int count = 0;
+        for (KakaoMoAccountDto a : accounts) {
+            if ("admin".equals(a.getUserId())) continue;
+            producer.sendKakaoMoAdDailyRange(a.getUserId(), from, to);
+            count++;
+        }
+        return ok(from + "~" + to + " 카카오MO 소재 일별 전체 수집 MQ 발행 완료 " + count + "건");
     }
 
     @PostMapping("/ad-daily/{userId}")
@@ -172,11 +225,34 @@ public class KakaoMoCollectorController {
         return ok("카카오MO 예산 알람 전체 수집 완료");
     }
 
+    @PostMapping("/budget-alarm/range")
+    public ResponseEntity<Map<String, String>> collectBudgetAlarmAllRange(
+        @RequestParam String from, @RequestParam String to) {
+        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        int count = 0;
+        for (KakaoMoAccountDto a : accounts) {
+            if ("admin".equals(a.getUserId())) continue;
+            producer.sendKakaoMoBudgetAlarmRange(a.getUserId(), from, to);
+            count++;
+        }
+        return ok(from + "~" + to + " 카카오MO 예산 알람 전체 수집 MQ 발행 완료 " + count + "건");
+    }
+
     @PostMapping("/budget-alarm/{userId}")
     public ResponseEntity<Map<String, String>> collectBudgetAlarmByUser(@PathVariable String userId) {
         if (findAccount(userId) == null) return notFound(userId);
         producer.sendKakaoMoBudgetAlarm(userId);
         return ok("카카오MO 예산 알람 수집 요청 완료 userId=" + userId);
+    }
+
+    @PostMapping("/budget-alarm/{userId}/range")
+    public ResponseEntity<Map<String, String>> collectBudgetAlarmRange(
+        @PathVariable String userId,
+        @RequestParam String from,
+        @RequestParam String to) {
+        if (findAccount(userId) == null) return notFound(userId);
+        producer.sendKakaoMoBudgetAlarmRange(userId, from, to);
+        return ok("카카오MO 예산 알람 기간 수집 요청 완료 userId=" + userId + " from=" + from + " to=" + to);
     }
 
     // =====================================================================

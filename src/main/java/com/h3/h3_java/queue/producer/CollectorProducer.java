@@ -336,6 +336,12 @@ public class CollectorProducer {
         log.info("[MQ][SEND] KAKAO SA BUDGET ALARM userId={}", userId);
     }
 
+    public void sendKakaoSaBudgetAlarmRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_SA", "BUDGET_ALARM", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_SA_BUDGET_ALARM, msg);
+        log.info("[MQ][SEND] KAKAO SA BUDGET ALARM RANGE userId={} from={} to={}", userId, from, to);
+    }
+
     // =====================================================================
     // KAKAO MO MASTER
     // =====================================================================
@@ -418,6 +424,12 @@ public class CollectorProducer {
         CollectorMessage msg = new CollectorMessage("KAKAO_MO", "BUDGET_ALARM", userId, null, false);
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_BUDGET_ALARM, msg);
         log.info("[MQ][SEND] KAKAO MO BUDGET ALARM userId={}", userId);
+    }
+
+    public void sendKakaoMoBudgetAlarmRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("KAKAO_MO", "BUDGET_ALARM", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KAKAO_MO_BUDGET_ALARM, msg);
+        log.info("[MQ][SEND] KAKAO MO BUDGET ALARM RANGE userId={} from={} to={}", userId, from, to);
     }
 
     // =====================================================================

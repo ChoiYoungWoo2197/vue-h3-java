@@ -2,40 +2,17 @@ package com.h3.h3_java.api.collector;
 
 import com.h3.h3_java.batch.master.GoogleMasterJob;
 import com.h3.h3_java.batch.stat.*;
+import com.h3.h3_java.media.google.dto.GoogleAccountDto;
+import com.h3.h3_java.media.google.mapper.GoogleMapper;
 import com.h3.h3_java.queue.producer.CollectorProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
-/**
- * 구글 수집 REST API.
- *
- * POST /api/collector/google/master               전체 수집
- * POST /api/collector/google/master/{userId}      단일 → MQ
- *
- * POST /api/collector/google/campaign-daily
- * POST /api/collector/google/campaign-daily/{userId}
- * POST /api/collector/google/campaign-daily/{userId}/range?from=&to=
- *
- * POST /api/collector/google/campaign-hour
- * POST /api/collector/google/campaign-hour/{userId}
- * POST /api/collector/google/campaign-hour/{userId}/range?from=&to=
- *
- * POST /api/collector/google/adgroup-daily
- * POST /api/collector/google/adgroup-daily/{userId}
- * POST /api/collector/google/adgroup-daily/{userId}/range?from=&to=
- *
- * POST /api/collector/google/ad-daily
- * POST /api/collector/google/ad-daily/{userId}
- * POST /api/collector/google/ad-daily/{userId}/range?from=&to=
- *
- * POST /api/collector/google/keyword-daily
- * POST /api/collector/google/keyword-daily/{userId}
- * POST /api/collector/google/keyword-daily/{userId}/range?from=&to=
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/collector/google")
@@ -43,6 +20,7 @@ import java.util.Map;
 public class GoogleCollectorController {
 
     private final CollectorProducer     producer;
+    private final GoogleMapper          mapper;
     private final GoogleMasterJob       masterJob;
     private final GoogleCampaignDayJob  campaignDayJob;
     private final GoogleCampaignHourJob campaignHourJob;
@@ -72,6 +50,18 @@ public class GoogleCollectorController {
         return ok("google campaign-daily 전체 수집 완료");
     }
 
+    @PostMapping("/campaign-daily/range")
+    public ResponseEntity<?> campaignDailyAllRange(@RequestParam String from, @RequestParam String to) {
+        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        int count = 0;
+        for (GoogleAccountDto a : accounts) {
+            if ("admin".equals(a.getUserId())) continue;
+            producer.sendGoogleCampaignDailyRange(a.getUserId(), from, to);
+            count++;
+        }
+        return ok(from + "~" + to + " google campaign-daily 전체 수집 MQ 발행 완료 " + count + "건");
+    }
+
     @PostMapping("/campaign-daily/{userId}")
     public ResponseEntity<?> campaignDailyUser(@PathVariable String userId) {
         producer.sendGoogleCampaignDaily(userId);
@@ -92,6 +82,18 @@ public class GoogleCollectorController {
     public ResponseEntity<?> campaignHourAll() {
         campaignHourJob.collect();
         return ok("google campaign-hour 전체 수집 완료");
+    }
+
+    @PostMapping("/campaign-hour/range")
+    public ResponseEntity<?> campaignHourAllRange(@RequestParam String from, @RequestParam String to) {
+        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        int count = 0;
+        for (GoogleAccountDto a : accounts) {
+            if ("admin".equals(a.getUserId())) continue;
+            producer.sendGoogleCampaignHourRange(a.getUserId(), from, to);
+            count++;
+        }
+        return ok(from + "~" + to + " google campaign-hour 전체 수집 MQ 발행 완료 " + count + "건");
     }
 
     @PostMapping("/campaign-hour/{userId}")
@@ -116,6 +118,18 @@ public class GoogleCollectorController {
         return ok("google adgroup-daily 전체 수집 완료");
     }
 
+    @PostMapping("/adgroup-daily/range")
+    public ResponseEntity<?> adGroupDailyAllRange(@RequestParam String from, @RequestParam String to) {
+        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        int count = 0;
+        for (GoogleAccountDto a : accounts) {
+            if ("admin".equals(a.getUserId())) continue;
+            producer.sendGoogleAdGroupDailyRange(a.getUserId(), from, to);
+            count++;
+        }
+        return ok(from + "~" + to + " google adgroup-daily 전체 수집 MQ 발행 완료 " + count + "건");
+    }
+
     @PostMapping("/adgroup-daily/{userId}")
     public ResponseEntity<?> adGroupDailyUser(@PathVariable String userId) {
         producer.sendGoogleAdGroupDaily(userId);
@@ -138,6 +152,18 @@ public class GoogleCollectorController {
         return ok("google ad-daily 전체 수집 완료");
     }
 
+    @PostMapping("/ad-daily/range")
+    public ResponseEntity<?> adDailyAllRange(@RequestParam String from, @RequestParam String to) {
+        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        int count = 0;
+        for (GoogleAccountDto a : accounts) {
+            if ("admin".equals(a.getUserId())) continue;
+            producer.sendGoogleAdDailyRange(a.getUserId(), from, to);
+            count++;
+        }
+        return ok(from + "~" + to + " google ad-daily 전체 수집 MQ 발행 완료 " + count + "건");
+    }
+
     @PostMapping("/ad-daily/{userId}")
     public ResponseEntity<?> adDailyUser(@PathVariable String userId) {
         producer.sendGoogleAdDaily(userId);
@@ -158,6 +184,18 @@ public class GoogleCollectorController {
     public ResponseEntity<?> keywordDailyAll() {
         keywordDayJob.collect();
         return ok("google keyword-daily 전체 수집 완료");
+    }
+
+    @PostMapping("/keyword-daily/range")
+    public ResponseEntity<?> keywordDailyAllRange(@RequestParam String from, @RequestParam String to) {
+        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        int count = 0;
+        for (GoogleAccountDto a : accounts) {
+            if ("admin".equals(a.getUserId())) continue;
+            producer.sendGoogleKeywordDailyRange(a.getUserId(), from, to);
+            count++;
+        }
+        return ok(from + "~" + to + " google keyword-daily 전체 수집 MQ 발행 완료 " + count + "건");
     }
 
     @PostMapping("/keyword-daily/{userId}")
