@@ -11,7 +11,7 @@
     WHERE account_google IS NOT NULL AND account_google != ''
   </select>
 
-  <!-- ── Token ─────────────────────────────────────────────────────────────── -->
+  <!-- ── Token (migration only) ───────────────────────────────────────────── -->
 
   <select id="selectGoogleAccessToken" resultType="String">
     SELECT access_token FROM h3_google_auth ORDER BY daily_regdate DESC LIMIT 1
@@ -20,9 +20,5 @@
   <select id="selectGoogleRefreshToken" resultType="String">
     SELECT refresh_token FROM h3_google_auth ORDER BY daily_regdate DESC LIMIT 1
   </select>
-
-  <update id="updateGoogleAccessToken">
-    UPDATE h3_google_auth SET access_token = #{accessToken} ORDER BY daily_regdate DESC LIMIT 1
-  </update>
 
 </mapper>
