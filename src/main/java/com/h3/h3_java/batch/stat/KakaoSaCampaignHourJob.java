@@ -92,10 +92,10 @@ public class KakaoSaCampaignHourJob {
         params.put("timeUnit",  "DAY");
 
         Map<String, Object> res = api.get("/openapi/v1/campaigns/report", params);
-        if (res == null) return;
+        if (res == null) return 0;
 
         Object dataObj = res.get("data");
-        if (!(dataObj instanceof List)) return;
+        if (!(dataObj instanceof List)) return 0;
         List<Map<String, Object>> dataList = (List<Map<String, Object>>) dataObj;
 
         // 시간별 집계 (24시간 합산)
