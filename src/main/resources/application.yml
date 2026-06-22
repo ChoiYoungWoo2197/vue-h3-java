@@ -44,7 +44,7 @@ google:
 
 # OpenAI
 openai:
-  api-key: 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
+  api-key: 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
   model: gpt-4.1-mini
   temperature: 0.2
 
