@@ -133,7 +133,7 @@ public class GoogleAdDayJob {
                 statMongoService.upsertAdDaily(p);
                 saved++;
             }
-            log.debug("[GOOGLE][AD-DAY] advkey={} date={} saved={}", advkey, date, saved);
+            log.info("[GOOGLE][AD-DAY] date={} saved={} advkey={}", date, saved, advkey);
         }
         log.info("[GOOGLE][AD-DAY] 완료 advkey={} dates={}", advkey, dates.size());
         accountLogMongo.updateField(advkey, "google", "ad");

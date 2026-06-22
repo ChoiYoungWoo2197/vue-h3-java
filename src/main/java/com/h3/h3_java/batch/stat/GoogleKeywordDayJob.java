@@ -136,7 +136,7 @@ public class GoogleKeywordDayJob {
                 statMongoService.upsertKeywordDaily(p);
                 saved++;
             }
-            log.debug("[GOOGLE][KEYWORD-DAY] advkey={} date={} saved={}", advkey, date, saved);
+            log.info("[GOOGLE][KEYWORD-DAY] date={} saved={} advkey={}", date, saved, advkey);
         }
         log.info("[GOOGLE][KEYWORD-DAY] 완료 advkey={} dates={}", advkey, dates.size());
         accountLogMongo.updateField(advkey, "google", "keyword");

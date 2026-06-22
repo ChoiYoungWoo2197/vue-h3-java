@@ -69,7 +69,8 @@ public class KakaoSaCampaignHourJob {
         KakaoSaApiClient api = new KakaoSaApiClient(token, advkey);
 
         for (String date : dates) {
-            collectDate(api, advkey, date);
+            int saved = collectDate(api, advkey, date);
+            log.info("[KAKAO-SA][CAMPAIGN-HOUR] date={} saved={} advkey={}", date, saved, advkey);
         }
 
         log.info("[KAKAO-SA][CAMPAIGN-HOUR] 완료 advkey={} dates={}", advkey, dates.size());
@@ -77,9 +78,9 @@ public class KakaoSaCampaignHourJob {
     }
 
     @SuppressWarnings("unchecked")
-    private void collectDate(KakaoSaApiClient api, String advkey, String date) {
-        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return;
-        if (statMongo.existsCampaignHour(advkey, date)) return;
+    private int collectDate(KakaoSaApiClient api, String advkey, String date) {
+        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return 0;
+        if (statMongo.existsCampaignHour(advkey, date)) return 0;
 
         String apiDate = LocalDate.parse(date, FMT).format(APIFMT);
 
@@ -140,7 +141,7 @@ public class KakaoSaCampaignHourJob {
         doc.put("hours",   hours);
         statMongo.insertCampaignHour(doc);
 
-        log.debug("[KAKAO-SA][CAMPAIGN-HOUR] 저장 advkey={} date={}", advkey, date);
+        return 1;
     }
 
     private List<String> buildAutoDates() {

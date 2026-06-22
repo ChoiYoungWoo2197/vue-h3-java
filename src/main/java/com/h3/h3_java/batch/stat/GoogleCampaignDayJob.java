@@ -82,7 +82,7 @@ public class GoogleCampaignDayJob {
         for (String date : dates) {
             if (LocalDate.parse(date, FMT).compareTo(LocalDate.now()) >= 0) continue;
             int saved = collectDate(api, advkey, date, cidSet);
-            log.debug("[GOOGLE][CAMPAIGN-DAY] advkey={} date={} saved={}", advkey, date, saved);
+            log.info("[GOOGLE][CAMPAIGN-DAY] date={} saved={} advkey={}", date, saved, advkey);
         }
         log.info("[GOOGLE][CAMPAIGN-DAY] 완료 advkey={} dates={}", advkey, dates.size());
         accountLogMongo.updateField(advkey, "google", "campaign");

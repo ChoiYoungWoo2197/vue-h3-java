@@ -74,7 +74,8 @@ public class KakaoMoCampaignDayJob {
         List<Map<String, Object>> campaigns = masterMongo.findCampaigns(advkey);
 
         for (String date : dates) {
-            collectDate(api, advkey, date, campaigns);
+            int saved = collectDate(api, advkey, date, campaigns);
+            log.info("[KAKAO-MO][CAMPAIGN-DAY] date={} saved={} advkey={}", date, saved, advkey);
         }
 
         log.info("[KAKAO-MO][CAMPAIGN-DAY] 완료 advkey={} dates={}", advkey, dates.size());
@@ -82,9 +83,9 @@ public class KakaoMoCampaignDayJob {
     }
 
     @SuppressWarnings("unchecked")
-    private void collectDate(KakaoMoApiClient api, String advkey, String date,
+    private int collectDate(KakaoMoApiClient api, String advkey, String date,
                               List<Map<String, Object>> campaigns) {
-        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return;
+        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return 0;
 
         String apiDate = LocalDate.parse(date, FMT).format(APIFMT);
         List<String> campaignIds = new ArrayList<>();
@@ -92,6 +93,8 @@ public class KakaoMoCampaignDayJob {
             String cid = str(c, "cid");
             if (cid != null) campaignIds.add(cid);
         }
+
+        int saved = 0;
 
         // 5개씩 배치 처리
         for (int i = 0; i < campaignIds.size(); i += BATCH_SIZE) {
@@ -153,6 +156,7 @@ public class KakaoMoCampaignDayJob {
                 doc.put("daily_cv",    s[3]);
                 doc.put("daily_cr",    s[4]);
                 statMongo.insertCampaignDaily(doc);
+                saved++;
             }
 
             // OFF 캠페인 0으로 채우기
@@ -174,10 +178,13 @@ public class KakaoMoCampaignDayJob {
                 doc.put("daily_cv",    0L);
                 doc.put("daily_cr",    0L);
                 statMongo.insertCampaignDaily(doc);
+                saved++;
             }
 
             sleep(5_000);
         }
+
+        return saved;
     }
 
     private List<String> buildAutoDates() {

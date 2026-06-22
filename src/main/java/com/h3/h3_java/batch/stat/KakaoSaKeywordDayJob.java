@@ -67,7 +67,8 @@ public class KakaoSaKeywordDayJob {
         List<Map<String, Object>> adgroups = masterMongo.findAdGroups(advkey);
 
         for (String date : dates) {
-            collectDate(api, advkey, date, adgroups);
+            int saved = collectDate(api, advkey, date, adgroups);
+            log.info("[KAKAO-SA][KEYWORD-DAY] date={} saved={} advkey={}", date, saved, advkey);
         }
 
         log.info("[KAKAO-SA][KEYWORD-DAY] 완료 advkey={} dates={}", advkey, dates.size());
@@ -75,9 +76,9 @@ public class KakaoSaKeywordDayJob {
     }
 
     @SuppressWarnings("unchecked")
-    private void collectDate(KakaoSaApiClient api, String advkey, String date,
+    private int collectDate(KakaoSaApiClient api, String advkey, String date,
                               List<Map<String, Object>> adgroups) {
-        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return;
+        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return 0;
 
         String apiDate = LocalDate.parse(date, FMT).format(APIFMT);
 
@@ -180,7 +181,7 @@ public class KakaoSaKeywordDayJob {
             saved++;
         }
 
-        log.debug("[KAKAO-SA][KEYWORD-DAY] 저장 advkey={} date={} saved={}", advkey, date, saved);
+        return saved;
     }
 
     private List<String> buildAutoDates() {

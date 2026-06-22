@@ -118,7 +118,7 @@ public class GoogleAdGroupDayJob {
                 statMongoService.upsertAdGroupDaily(p);
                 saved++;
             }
-            log.debug("[GOOGLE][ADGROUP-DAY] advkey={} date={} saved={}", advkey, date, saved);
+            log.info("[GOOGLE][ADGROUP-DAY] date={} saved={} advkey={}", date, saved, advkey);
         }
         log.info("[GOOGLE][ADGROUP-DAY] 완료 advkey={} dates={}", advkey, dates.size());
         accountLogMongo.updateField(advkey, "google", "adgroup");

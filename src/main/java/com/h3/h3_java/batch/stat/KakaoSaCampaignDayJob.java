@@ -82,7 +82,8 @@ public class KakaoSaCampaignDayJob {
         List<Map<String, Object>> campaigns = masterMongo.findCampaigns(advkey);
 
         for (String date : dates) {
-            collectDate(api, advkey, date, campaigns);
+            int saved = collectDate(api, advkey, date, campaigns);
+            log.info("[KAKAO-SA][CAMPAIGN-DAY] date={} saved={} advkey={}", date, saved, advkey);
         }
 
         log.info("[KAKAO-SA][CAMPAIGN-DAY] 완료 advkey={} dates={}", advkey, dates.size());
@@ -90,10 +91,10 @@ public class KakaoSaCampaignDayJob {
     }
 
     @SuppressWarnings("unchecked")
-    private void collectDate(KakaoSaApiClient api, String advkey, String date,
+    private int collectDate(KakaoSaApiClient api, String advkey, String date,
                               List<Map<String, Object>> campaigns) {
         // 오늘 이후는 skip
-        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return;
+        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return 0;
 
         String apiDate = LocalDate.parse(date, FMT).format(APIFMT);
 
@@ -104,11 +105,13 @@ public class KakaoSaCampaignDayJob {
         params.put("timeUnit", "DAY");
 
         Map<String, Object> res = api.get("/openapi/v1/campaigns/report", params);
-        if (res == null) return;
+        if (res == null) return 0;
 
         Object dataObj = res.get("data");
-        if (!(dataObj instanceof List)) return;
+        if (!(dataObj instanceof List)) return 0;
         List<Map<String, Object>> dataList = (List<Map<String, Object>>) dataObj;
+
+        int saved = 0;
 
         // API 응답 처리
         for (Map<String, Object> row : dataList) {
@@ -139,6 +142,7 @@ public class KakaoSaCampaignDayJob {
             doc.put("daily_cv",    cv);
             doc.put("daily_cr",    cr);
             statMongo.insertCampaignDaily(doc);
+            saved++;
         }
 
         // OFF 캠페인도 0으로 채우기 (아직 해당 날짜 데이터 없는 경우만)
@@ -159,7 +163,10 @@ public class KakaoSaCampaignDayJob {
             doc.put("daily_cv",    0L);
             doc.put("daily_cr",    0L);
             statMongo.insertCampaignDaily(doc);
+            saved++;
         }
+
+        return saved;
     }
 
     // ── 날짜 생성 ─────────────────────────────────────────────────────────────

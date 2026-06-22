@@ -119,7 +119,7 @@ public class GoogleCampaignHourJob {
                 p.put("hour_" + hh + "_cr",  cr[h]);
             }
             statMongoService.upsertCampaignHour(p);
-            log.debug("[GOOGLE][CAMPAIGN-HOUR] advkey={} date={} saved=1", advkey, date);
+            log.info("[GOOGLE][CAMPAIGN-HOUR] date={} saved={} advkey={}", date, 1, advkey);
         }
         log.info("[GOOGLE][CAMPAIGN-HOUR] 완료 advkey={} dates={}", advkey, dates.size());
         accountLogMongo.updateField(advkey, "google", "campaign_hour");

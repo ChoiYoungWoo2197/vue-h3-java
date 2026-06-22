@@ -75,7 +75,8 @@ public class KakaoMoAdGroupDayJob {
         List<Map<String, Object>> adgroups  = masterMongo.findAdGroups(advkey);
 
         for (String date : dates) {
-            collectDate(api, advkey, date, campaigns, adgroups);
+            int saved = collectDate(api, advkey, date, campaigns, adgroups);
+            log.info("[KAKAO-MO][ADGROUP-DAY] date={} saved={} advkey={}", date, saved, advkey);
         }
 
         log.info("[KAKAO-MO][ADGROUP-DAY] 완료 advkey={} dates={}", advkey, dates.size());
@@ -83,12 +84,14 @@ public class KakaoMoAdGroupDayJob {
     }
 
     @SuppressWarnings("unchecked")
-    private void collectDate(KakaoMoApiClient api, String advkey, String date,
+    private int collectDate(KakaoMoApiClient api, String advkey, String date,
                               List<Map<String, Object>> campaigns,
                               List<Map<String, Object>> adgroups) {
-        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return;
+        if (date.compareTo(LocalDate.now().format(FMT)) >= 0) return 0;
 
         String apiDate = LocalDate.parse(date, FMT).format(APIFMT);
+
+        int saved = 0;
 
         // gid → cid 역매핑
         Map<String, String> gidToCid = new HashMap<>();
@@ -162,6 +165,7 @@ public class KakaoMoAdGroupDayJob {
                 doc.put("daily_cv",   s[3]);
                 doc.put("daily_cr",   s[4]);
                 statMongo.insertAdGroupDaily(doc);
+                saved++;
             }
 
             // OFF 그룹 0으로 채우기
@@ -184,10 +188,13 @@ public class KakaoMoAdGroupDayJob {
                 doc.put("daily_cv",   0L);
                 doc.put("daily_cr",   0L);
                 statMongo.insertAdGroupDaily(doc);
+                saved++;
             }
 
             sleep(10_000);
         }
+
+        return saved;
     }
 
     private List<String> buildAutoDates() {
