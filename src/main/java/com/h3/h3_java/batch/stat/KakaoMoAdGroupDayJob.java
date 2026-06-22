@@ -118,10 +118,10 @@ public class KakaoMoAdGroupDayJob {
             params.put("dimension",    "CREATIVE_FORMAT");
 
             Map<String, Object> res = api.get("/openapi/v4/adGroups/report", params);
-            if (res == null) { sleep(10_000); continue; }
+            if (res == null) { sleep(2_000); continue; }
 
             Object dataObj = res.get("data");
-            if (!(dataObj instanceof List)) { sleep(10_000); continue; }
+            if (!(dataObj instanceof List)) { sleep(2_000); continue; }
 
             // ad_group_id 기준 집계
             Map<String, long[]> agg = new LinkedHashMap<>();
@@ -191,7 +191,7 @@ public class KakaoMoAdGroupDayJob {
                 saved++;
             }
 
-            sleep(10_000);
+            sleep(2_000);
         }
 
         return saved;

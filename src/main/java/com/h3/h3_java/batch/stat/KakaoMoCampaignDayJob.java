@@ -181,7 +181,7 @@ public class KakaoMoCampaignDayJob {
                 saved++;
             }
 
-            sleep(5_000);
+            sleep(1_000);
         }
 
         return saved;

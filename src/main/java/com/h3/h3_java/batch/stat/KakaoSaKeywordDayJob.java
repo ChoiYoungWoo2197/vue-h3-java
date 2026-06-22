@@ -125,8 +125,6 @@ public class KakaoSaKeywordDayJob {
             String cid = str(ag, "cid");
             if (cid == null || !calledCids.add(cid)) continue;
 
-            sleep(3_000);
-
             Map<String, String> params = new LinkedHashMap<>();
             params.put("campaignId",    cid);
             params.put("metricsGroups", "BASIC,ADDITION,PIXEL_SDK_CONVERSION");

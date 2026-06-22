@@ -131,7 +131,7 @@ public class KakaoMoAdDayJob {
             params.put("timeUnit",     "DAY");
             params.put("dimension",    "CREATIVE_FORMAT");
 
-            sleep(5_000);
+            sleep(1_000);
             Map<String, Object> res = api.get("/openapi/v4/creatives/report", params);
             if (res == null) continue;
 
