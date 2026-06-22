@@ -20,7 +20,7 @@ import java.util.Map;
 @Slf4j
 public class GoogleApiClient {
 
-    private static final String BASE_URL    = "https://googleads.googleapis.com/v20";
+    private static final String BASE_URL    = "https://googleads.googleapis.com/v21";
     private static final int    MAX_RETRY   = 3;
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
