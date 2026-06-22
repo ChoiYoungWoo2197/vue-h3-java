@@ -71,6 +71,7 @@ public class GoogleCampaignDayJob {
     @SuppressWarnings("unchecked")
     private void collectForAccount(GoogleAccountDto account, List<String> dates, String token) {
         String advkey = account.getAccountGoogle();
+        log.info("[GOOGLE][CAMPAIGN-DAY] 계정 시작 userId={} advkey={} dates={}", account.getUserId(), advkey, dates);
         GoogleApiClient api = new GoogleApiClient(token, tokenManager.getDeveloperToken(), tokenManager.getManagerId());
 
         List<Map<String, Object>> campaigns = masterMongoService.findCampaigns(advkey);

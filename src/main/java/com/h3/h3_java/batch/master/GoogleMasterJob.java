@@ -92,6 +92,7 @@ public class GoogleMasterJob {
     private void collectForAccount(GoogleAccountDto account, String token) {
         String advkey = account.getAccountGoogle();
         if (advkey == null || advkey.isBlank()) return;
+        log.info("[GOOGLE][MASTER] 계정 시작 userId={} advkey={}", account.getUserId(), advkey);
 
         GoogleApiClient api = new GoogleApiClient(token, tokenManager.getDeveloperToken(), tokenManager.getManagerId());
 

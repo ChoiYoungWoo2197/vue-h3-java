@@ -21,10 +21,12 @@ public class KeywordReportService {
                     boolean kwordInDaily, String convtypeCol) {}
 
     private static final Map<String, KwConfig> MD_MAP = Map.of(
-        "N", new KwConfig("naver_keyword_daily",    "naver_keyword",    "naver_adgroup",    "naver_campaign",
-                          "daily_advid", "campaignid", "campaignname", false, "naver_keyword_convtype"),
-        "D", new KwConfig("kakao_sa_keyword_daily", "kakao_sa_keyword", "kakao_sa_adgroup", "kakao_sa_campaign",
-                          "advkey",      "cid",        "cname",         true,  null)
+        "N",      new KwConfig("naver_keyword_daily",    "naver_keyword",    "naver_adgroup",    "naver_campaign",
+                               "daily_advid", "campaignid", "campaignname", false, "naver_keyword_convtype"),
+        "D",      new KwConfig("kakao_sa_keyword_daily", "kakao_sa_keyword", "kakao_sa_adgroup", "kakao_sa_campaign",
+                               "advkey",      "cid",        "cname",         true,  null),
+        "google", new KwConfig("google_keyword_daily",   "google_keyword",   "google_adgroup",   "google_campaign",
+                               "daily_advid", "cid",        "cname",         false, null)
     );
 
     public Map<String, Object> getKeywordReport(String userId, String md, String fromdate, String todate,
@@ -311,9 +313,13 @@ public class KeywordReportService {
             }
         } else {
             for (Document d : mongoService.findCampaigns(advid, cfg.kwMasterCol())) {
+                // Naver: kwid/kword, Google: kid/kname
                 String kwid = d.getString("kwid");
+                if (kwid == null) kwid = d.getString("kid");
+                String kword = d.getString("kword");
+                if (kword == null) kword = d.getString("kname");
                 if (kwid != null) map.put(kwid, Map.of(
-                    "kword",     d.getString("kword")   != null ? d.getString("kword") : "",
+                    "kword",     kword != null ? kword : "",
                     "bidamount", d.getInteger("bidamount", 0),
                     "qigrade",   d.getInteger("qigrade",   0)
                 ));
@@ -334,13 +340,17 @@ public class KeywordReportService {
     // ─── 공통 헬퍼 ───────────────────────────────────────────────────────────
 
     private List<String> getMdList(String md) {
-        if ("TOTAL".equals(md)) return List.of("N", "D");
+        if ("TOTAL".equals(md)) return List.of("N", "D", "google");
         if (MD_MAP.containsKey(md)) return List.of(md);
         return List.of("N");
     }
 
     private String getAdvid(AccountDto acc, String md) {
-        return "D".equals(md) ? acc.getAccountKakaosa() : acc.getAccountNaverCustomer();
+        return switch (md) {
+            case "D"      -> acc.getAccountKakaosa();
+            case "google" -> acc.getAccountGoogle();
+            default       -> acc.getAccountNaverCustomer();
+        };
     }
 
     private double ctCnt(Map<String, Map<String, Object>> ct, String kwid, String code) {

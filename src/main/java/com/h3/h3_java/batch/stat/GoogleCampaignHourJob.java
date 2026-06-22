@@ -71,6 +71,7 @@ public class GoogleCampaignHourJob {
     private void collectForAccount(GoogleAccountDto account, List<String> dates, String token) {
         String advkey  = account.getAccountGoogle();
         String userId  = account.getUserId();
+        log.info("[GOOGLE][CAMPAIGN-HOUR] 계정 시작 userId={} advkey={} dates={}", userId, advkey, dates);
         GoogleApiClient api = new GoogleApiClient(token, tokenManager.getDeveloperToken(), tokenManager.getManagerId());
 
         for (String date : dates) {
