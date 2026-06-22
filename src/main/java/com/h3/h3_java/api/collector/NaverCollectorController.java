@@ -737,6 +737,26 @@ public class NaverCollectorController {
         }
     }
 
+    @PostMapping("/gfa-campaign-daily/range")
+    public ResponseEntity<Map<String, String>> collectGfaCampaignDailyAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] GFA 캠페인 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+            int count = 0;
+            for (NaverGfaAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                producer.sendNaverGfaCampaignDailyRange(account.getUserId(), from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " GFA 캠페인 일별 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 캠페인 일별 전체 기간 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/gfa-campaign-daily/{userId}")
     public ResponseEntity<Map<String, String>> collectGfaCampaignDailyByUser(@PathVariable String userId) {
         log.info("[NaverCollector] GFA 캠페인 일별 단일 수집 MQ 발행 userId={}", userId);
@@ -788,6 +808,26 @@ public class NaverCollectorController {
             log.error("[NaverCollector] GFA 소재 일별 수집 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-ad-daily/range")
+    public ResponseEntity<Map<String, String>> collectGfaAdDailyAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] GFA 소재 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+            int count = 0;
+            for (NaverGfaAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                producer.sendNaverGfaAdDailyRange(account.getUserId(), from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " GFA 소재 일별 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 소재 일별 전체 기간 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
         }
     }
 
@@ -845,6 +885,26 @@ public class NaverCollectorController {
         }
     }
 
+    @PostMapping("/gfa-adgroup-daily/range")
+    public ResponseEntity<Map<String, String>> collectGfaAdgroupDailyAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] GFA 광고그룹 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+            int count = 0;
+            for (NaverGfaAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                producer.sendNaverGfaAdgroupDailyRange(account.getUserId(), from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " GFA 광고그룹 일별 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 광고그룹 일별 전체 기간 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/gfa-adgroup-daily/{userId}")
     public ResponseEntity<Map<String, String>> collectGfaAdgroupDailyByUser(@PathVariable String userId) {
         log.info("[NaverCollector] GFA 광고그룹 일별 단일 수집 MQ 발행 userId={}", userId);
@@ -899,6 +959,26 @@ public class NaverCollectorController {
         }
     }
 
+    @PostMapping("/gfa-budget-alarm/range")
+    public ResponseEntity<Map<String, String>> collectGfaBudgetAlarmAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] GFA 예산 알람 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+            int count = 0;
+            for (NaverGfaAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                producer.sendNaverGfaBudgetAlarmRange(account.getUserId(), from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " GFA 예산 알람 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 예산 알람 전체 기간 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/gfa-budget-alarm/{userId}")
     public ResponseEntity<Map<String, String>> collectGfaBudgetAlarmByUser(@PathVariable String userId) {
         log.info("[NaverCollector] GFA 예산 알람 단일 수집 MQ 발행 userId={}", userId);
@@ -911,6 +991,26 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " GFA 예산 알람 MQ 발행 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] GFA 예산 알람 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-budget-alarm/{userId}/range")
+    public ResponseEntity<Map<String, String>> collectGfaBudgetAlarmRange(
+            @PathVariable String userId,
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] GFA 예산 알람 기간 수집 MQ 발행 userId={} from={} to={}", userId, from, to);
+        try {
+            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverGfaBudgetAlarmRange(userId, from, to);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " GFA 예산 알람 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 예산 알람 기간 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }
@@ -930,6 +1030,26 @@ public class NaverCollectorController {
             log.error("[NaverCollector] GFA 전환유형 수집 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/gfa-conv-type/range")
+    public ResponseEntity<Map<String, String>> collectGfaConvTypeAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] GFA 전환유형 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+            int count = 0;
+            for (NaverGfaAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                producer.sendNaverGfaConvTypeRange(account.getUserId(), from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " GFA 전환유형 전체 수집 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] GFA 전환유형 전체 기간 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
         }
     }
 

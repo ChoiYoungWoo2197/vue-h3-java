@@ -214,6 +214,12 @@ public class CollectorProducer {
         log.info("[MQ][SEND] NAVER GFA BUDGET ALARM userId={}", userId);
     }
 
+    public void sendNaverGfaBudgetAlarmRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "GFA_BUDGET_ALARM", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_GFA_BUDGET_ALARM, msg);
+        log.info("[MQ][SEND] NAVER GFA BUDGET ALARM RANGE userId={} from={} to={}", userId, from, to);
+    }
+
     // =====================================================================
     // GFA CONV TYPE
     // =====================================================================
