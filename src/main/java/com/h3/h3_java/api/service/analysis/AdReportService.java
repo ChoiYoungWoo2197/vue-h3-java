@@ -39,6 +39,13 @@ public class AdReportService {
     // GFA 코드 역매핑 (정수 → 문자열)
     private static final Map<Integer, String> GFA_TYPE    = Map.of(
         0,"conversion",1,"web_site_traffic",2,"install_app",3,"watch_video",4,"catalog",5,"shopping",6,"lead",7,"pmax");
+    // Google 캠페인 타입 역매핑 (GoogleMasterJob.CAMP_TYPE 역방향)
+    private static final Map<Integer, String> GOOGLE_CAMP_TYPE = Map.ofEntries(
+        Map.entry(1,"demand_gen"), Map.entry(2,"display"), Map.entry(3,"hotel"),
+        Map.entry(4,"local"), Map.entry(5,"local_services"), Map.entry(6,"multi_channel"),
+        Map.entry(7,"performance_max"), Map.entry(8,"search"), Map.entry(9,"shopping"),
+        Map.entry(10,"smart"), Map.entry(11,"travel"), Map.entry(12,"video")
+    );
     private static final Map<Integer, String> GFA_BIDGOAL = Map.of(0,"max_click",1,"max_conv",2,"none");
     private static final Map<Integer, String> GFA_BIDTYPE = Map.of(0,"cpc",1,"cpm",2,"cpv");
     private static final Map<Integer, String> GFA_BUDGETTYPE = Map.of(0,"daily",1,"total");
@@ -315,7 +322,8 @@ public class AdReportService {
         row.put("campaignid",    cid != null ? cid : "");
 
         if (cfg.isBanner()) {
-            row.put("campaign_type", reverseCode(campM, "type", GFA_TYPE));
+            Map<Integer, String> typeMap = cfg.campMasterCol().startsWith("google") ? GOOGLE_CAMP_TYPE : GFA_TYPE;
+            row.put("campaign_type", reverseCode(campM, "type", typeMap));
         }
 
         row.put("campaign_name", str(campM, cfg.campNameField()));
