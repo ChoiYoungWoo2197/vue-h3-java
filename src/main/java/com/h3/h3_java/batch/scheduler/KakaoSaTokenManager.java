@@ -1,11 +1,9 @@
 package com.h3.h3_java.batch.scheduler;
 
 import com.h3.h3_java.media.kakao.mapper.KakaoSaMapper;
-import com.h3.h3_java.raw.mongo.KakaoSaTokenMongoService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.bson.Document;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -25,8 +23,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class KakaoSaTokenManager {
 
-    private final KakaoSaMapper            mapper;
-    private final KakaoSaTokenMongoService mongoService;
+    private final KakaoSaMapper mapper;
 
     @Value("${kakao.sa.client-id}")
     private String clientId;
@@ -39,22 +36,16 @@ public class KakaoSaTokenManager {
 
     private volatile String accessToken;
 
-    // ── 초기화 ────────────────────────────────────────────────────────────────
-
     @PostConstruct
     public void init() {
-        Document token = mongoService.findToken();
-
-        if (token == null) {
-            log.info("[KAKAO-SA TOKEN] MongoDB 토큰 없음 → MySQL 마이그레이션 시도");
-            migrateFromMySQL();
-        } else {
-            accessToken = token.getString("access_token");
-            log.info("[KAKAO-SA TOKEN] MongoDB 토큰 로드 완료");
+        Map<String, Object> row = mapper.selectLatestKakaoSaToken();
+        if (row == null || row.get("access_token") == null) {
+            log.warn("[KAKAO-SA TOKEN] MySQL 토큰 없음 - 수동 등록 필요");
+            return;
         }
+        accessToken = String.valueOf(row.get("access_token"));
+        log.info("[KAKAO-SA TOKEN] MySQL 토큰 로드 완료");
     }
-
-    // ── 30분 주기 자동 갱신 ────────────────────────────────────────────────────
 
     @Scheduled(fixedDelay = 1_800_000, initialDelay = 60_000)
     public void autoRefresh() {
@@ -66,29 +57,8 @@ public class KakaoSaTokenManager {
         }
     }
 
-    // ── 외부 접근 ─────────────────────────────────────────────────────────────
-
     public String getAccessToken() {
         return accessToken;
-    }
-
-    // ── Private ───────────────────────────────────────────────────────────────
-
-    private void migrateFromMySQL() {
-        try {
-            Map<String, Object> row = mapper.selectLatestKakaoSaToken();
-            if (row == null || row.get("access_token") == null) {
-                log.warn("[KAKAO-SA TOKEN] MySQL에도 토큰 없음 - 수동 등록 필요");
-                return;
-            }
-            String at = String.valueOf(row.get("access_token"));
-            String rt = String.valueOf(row.get("refresh_token"));
-            mongoService.saveToken(at, rt);
-            accessToken = at;
-            log.info("[KAKAO-SA TOKEN] MySQL → MongoDB 마이그레이션 완료");
-        } catch (Exception e) {
-            log.error("[KAKAO-SA TOKEN] 마이그레이션 실패: {}", e.getMessage());
-        }
     }
 
     private boolean isTokenValid() {
@@ -113,10 +83,10 @@ public class KakaoSaTokenManager {
     @SuppressWarnings("unchecked")
     private void doRefresh() {
         try {
-            Document current = mongoService.findToken();
-            if (current == null) return;
+            Map<String, Object> row = mapper.selectLatestKakaoSaToken();
+            if (row == null) return;
 
-            String refreshToken = current.getString("refresh_token");
+            String refreshToken = String.valueOf(row.get("refresh_token"));
 
             RestTemplate rt = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
@@ -145,7 +115,7 @@ public class KakaoSaTokenManager {
                 ? String.valueOf(resBody.get("refresh_token"))
                 : refreshToken;
 
-            mongoService.saveToken(newAt, newRt);
+            mapper.updateKakaoSaToken(newAt, newRt);
             accessToken = newAt;
             log.info("[KAKAO-SA TOKEN] 갱신 완료");
 

@@ -15,13 +15,20 @@
         LIMIT 1
     </select>
 
-    <!-- MySQL h3_naver_token 최신 토큰 (초기 마이그레이션용) -->
     <select id="selectLatestNaverToken" resultType="map">
         SELECT access_token, refresh_token
         FROM h3_naver_token
         ORDER BY daily_regdate DESC
         LIMIT 1
     </select>
+
+    <update id="updateNaverToken">
+        UPDATE h3_naver_token
+        SET access_token  = #{accessToken},
+            refresh_token = #{refreshToken}
+        ORDER BY daily_regdate DESC
+        LIMIT 1
+    </update>
 
     <!-- GFA 수집 대상 계정 (account_gfa = adAccount 번호) -->
     <select id="selectGfaAccounts" resultType="com.h3.h3_java.media.naver.dto.NaverGfaAccountDto">

@@ -2,11 +2,9 @@ package com.h3.h3_java.batch.scheduler;
 
 import com.h3.h3_java.media.naver.dto.NaverGfaAdminDto;
 import com.h3.h3_java.media.naver.mapper.NaverGfaMapper;
-import com.h3.h3_java.raw.mongo.NaverGfaTokenMongoService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.bson.Document;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -19,16 +17,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NaverGfaTokenManager {
 
-    private final NaverGfaMapper            mapper;
-    private final NaverGfaTokenMongoService mongoService;
+    private final NaverGfaMapper mapper;
 
     private static final String VERIFY_URL  = "https://openapi.naver.com/v1/nid/verify";
     private static final String REFRESH_URL = "https://nid.naver.com/oauth2.0/token";
 
-    private volatile String       accessToken;
-    private          NaverGfaAdminDto adminAccount;
-
-    // ── 초기화 ────────────────────────────────────────────────────────────────
+    private volatile String   accessToken;
+    private NaverGfaAdminDto  adminAccount;
 
     @PostConstruct
     public void init() {
@@ -38,18 +33,14 @@ public class NaverGfaTokenManager {
             return;
         }
 
-        Document token = mongoService.findToken();
-
-        if (token == null) {
-            log.info("[GFA TOKEN] MongoDB 토큰 없음 → MySQL 마이그레이션 시도");
-            migrateFromMySQL();
-        } else {
-            accessToken = token.getString("access_token");
-            log.info("[GFA TOKEN] MongoDB 토큰 로드 완료");
+        Map<String, Object> row = mapper.selectLatestNaverToken();
+        if (row == null || row.get("access_token") == null) {
+            log.warn("[GFA TOKEN] MySQL 토큰 없음 - 수동 등록 필요");
+            return;
         }
+        accessToken = String.valueOf(row.get("access_token"));
+        log.info("[GFA TOKEN] MySQL 토큰 로드 완료");
     }
-
-    // ── 30분 주기 자동 갱신 ────────────────────────────────────────────────────
 
     @Scheduled(fixedDelay = 1_800_000, initialDelay = 60_000)
     public void autoRefresh() {
@@ -61,33 +52,12 @@ public class NaverGfaTokenManager {
         }
     }
 
-    // ── 외부 접근 메서드 ───────────────────────────────────────────────────────
-
     public String getAccessToken() {
         return accessToken;
     }
 
     public String getAccessManagerAccountNo() {
         return adminAccount != null ? adminAccount.getAccountNaverCustomer() : null;
-    }
-
-    // ── Private ───────────────────────────────────────────────────────────────
-
-    private void migrateFromMySQL() {
-        try {
-            Map<String, Object> row = mapper.selectLatestNaverToken();
-            if (row == null || row.get("access_token") == null) {
-                log.warn("[GFA TOKEN] MySQL에도 토큰 없음 - 수동 등록 필요");
-                return;
-            }
-            String at = String.valueOf(row.get("access_token"));
-            String rt = String.valueOf(row.get("refresh_token"));
-            mongoService.saveToken(at, rt);
-            accessToken = at;
-            log.info("[GFA TOKEN] MySQL → MongoDB 마이그레이션 완료");
-        } catch (Exception e) {
-            log.error("[GFA TOKEN] 마이그레이션 실패: {}", e.getMessage());
-        }
     }
 
     @SuppressWarnings("unchecked")
@@ -113,10 +83,10 @@ public class NaverGfaTokenManager {
     @SuppressWarnings("unchecked")
     private void doRefresh() {
         try {
-            Document current = mongoService.findToken();
-            if (current == null) return;
+            Map<String, Object> row = mapper.selectLatestNaverToken();
+            if (row == null) return;
 
-            String refreshToken = current.getString("refresh_token");
+            String refreshToken = String.valueOf(row.get("refresh_token"));
             String url = REFRESH_URL
                 + "?grant_type=refresh_token"
                 + "&client_id="     + adminAccount.getAccountGfa()
@@ -137,7 +107,7 @@ public class NaverGfaTokenManager {
                 ? String.valueOf(body.get("refresh_token"))
                 : refreshToken;
 
-            mongoService.saveToken(newAt, newRt);
+            mapper.updateNaverToken(newAt, newRt);
             accessToken = newAt;
             log.info("[GFA TOKEN] 갱신 완료");
 

@@ -2,6 +2,7 @@ package com.h3.h3_java.media.kakao.mapper;
 
 import com.h3.h3_java.media.kakao.dto.KakaoMoAccountDto;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 import java.util.Map;
@@ -12,4 +13,7 @@ public interface KakaoMoMapper {
     List<KakaoMoAccountDto> selectKakaoMoAccounts();
 
     Map<String, Object> selectLatestKakaoMoToken();
+
+    void updateKakaoMoToken(@Param("accessToken") String accessToken,
+                            @Param("refreshToken") String refreshToken);
 }

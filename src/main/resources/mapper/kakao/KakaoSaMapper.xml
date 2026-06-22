@@ -12,7 +12,6 @@
           AND user_id NOT IN ('admin', 'dydrp123')
     </select>
 
-    <!-- h3_kakao_auth MySQL → MongoDB 초기 마이그레이션용 -->
     <select id="selectLatestKakaoSaToken" resultType="map">
         SELECT accesstoken AS access_token, refreshtoken AS refresh_token
         FROM h3_kakao_auth
@@ -20,5 +19,14 @@
         ORDER BY daily_regdate DESC
         LIMIT 1
     </select>
+
+    <update id="updateKakaoSaToken">
+        UPDATE h3_kakao_auth
+        SET accesstoken  = #{accessToken},
+            refreshtoken = #{refreshToken}
+        WHERE type = 'kakaosa'
+        ORDER BY daily_regdate DESC
+        LIMIT 1
+    </update>
 
 </mapper>

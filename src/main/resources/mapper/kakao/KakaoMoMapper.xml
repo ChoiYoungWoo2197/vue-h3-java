@@ -20,4 +20,13 @@
         LIMIT 1
     </select>
 
+    <update id="updateKakaoMoToken">
+        UPDATE h3_kakao_auth
+        SET accesstoken  = #{accessToken},
+            refreshtoken = #{refreshToken}
+        WHERE type = 'kakaomo'
+        ORDER BY daily_regdate DESC
+        LIMIT 1
+    </update>
+
 </mapper>
