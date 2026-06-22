@@ -156,11 +156,32 @@ public class GoogleMasterJob {
             masterMongoService.upsertKeyword(p);
         }
 
-        // 4. 소재 (RESPONSIVE_DISPLAY_AD)
+        // 4. 이미지 asset URL 캐시 (assetId → imageUrl)
+        Map<String, String> assetUrlMap = new HashMap<>();
+        try {
+            List<Map<String, Object>> assets = api.searchStream(advkey,
+                "SELECT asset.id, asset.image_asset.full_size.url FROM asset WHERE asset.type = 'IMAGE'");
+            for (Map<String, Object> row : assets) {
+                Map<String, Object> ast = (Map<String, Object>) row.get("asset");
+                if (ast == null) continue;
+                String assetId = str(ast, "id");
+                Map<String, Object> imageAsset = (Map<String, Object>) ast.get("imageAsset");
+                if (imageAsset == null) continue;
+                Map<String, Object> fullSize = (Map<String, Object>) imageAsset.get("fullSize");
+                if (fullSize == null) continue;
+                String imgUrl = str(fullSize, "url");
+                if (assetId != null && imgUrl != null) assetUrlMap.put(assetId, imgUrl);
+            }
+        } catch (Exception e) {
+            log.warn("[GOOGLE][MASTER] asset 이미지 조회 실패 advkey={} error={}", advkey, e.getMessage());
+        }
+
+        // 5. 소재 (RESPONSIVE_DISPLAY_AD)
         List<Map<String, Object>> ads = api.searchStream(advkey,
             "SELECT ad_group.id, ad_group_ad.status, ad_group_ad.ad.id, ad_group_ad.ad.type, " +
             "ad_group_ad.ad.final_urls, ad_group_ad.ad.responsive_display_ad.headlines, " +
-            "ad_group_ad.ad.responsive_display_ad.descriptions " +
+            "ad_group_ad.ad.responsive_display_ad.descriptions, " +
+            "ad_group_ad.ad.responsive_display_ad.marketing_images " +
             "FROM ad_group_ad WHERE ad_group_ad.ad.type = 'RESPONSIVE_DISPLAY_AD'");
         for (Map<String, Object> row : ads) {
             Map<String, Object> g   = (Map<String, Object>) row.get("adGroup");
@@ -172,12 +193,23 @@ public class GoogleMasterJob {
             String aid = str(ad, "id");
             if (aid == null) continue;
             Map<String, Object> rda = (Map<String, Object>) ad.get("responsiveDisplayAd");
-            String headline = "", description = "";
+            String headline = "", description = "", imageUrl = "";
             if (rda != null) {
                 List<?> hl = (List<?>) rda.get("headlines");
                 if (hl != null && !hl.isEmpty()) { Map<?,?> h0 = (Map<?,?>) hl.get(0); if (h0 != null) { Object v = h0.get("text"); headline = v != null ? String.valueOf(v) : ""; } }
                 List<?> dl = (List<?>) rda.get("descriptions");
                 if (dl != null && !dl.isEmpty()) { Map<?,?> d0 = (Map<?,?>) dl.get(0); if (d0 != null) { Object v = d0.get("text"); description = v != null ? String.valueOf(v) : ""; } }
+                // marketing_images[0].asset = "customers/xxx/assets/{assetId}"
+                List<?> mktImages = (List<?>) rda.get("marketingImages");
+                if (mktImages != null && !mktImages.isEmpty()) {
+                    Map<?,?> img0 = (Map<?,?>) mktImages.get(0);
+                    if (img0 != null) {
+                        String assetName = String.valueOf(img0.getOrDefault("asset", ""));
+                        String[] parts = assetName.split("/");
+                        String assetId = parts.length > 0 ? parts[parts.length - 1] : "";
+                        imageUrl = assetUrlMap.getOrDefault(assetId, "");
+                    }
+                }
             }
             List<?> urls = (List<?>) ad.get("finalUrls");
             String purl = (urls != null && !urls.isEmpty()) ? String.valueOf(urls.get(0)) : "";
@@ -186,13 +218,13 @@ public class GoogleMasterJob {
             p.put("type", AD_TYPE.getOrDefault(str(ad, "type"), 99));
             p.put("headline", headline); p.put("description", description);
             p.put("purl", purl); p.put("purlf", purl); p.put("murl", purl); p.put("murlf", purl);
-            p.put("image_name", ""); p.put("image_url", "");
+            p.put("image_name", ""); p.put("image_url", imageUrl);
             p.put("onoff", ONOFF.getOrDefault(str(aga, "status"), 0));
             masterMongoService.upsertAd(p);
         }
 
-        log.info("[GOOGLE][MASTER] 완료 advkey={} campaign={} adgroup={} keyword={} ad={}",
-            advkey, campaigns.size(), adgroups.size(), keywords.size(), ads.size());
+        log.info("[GOOGLE][MASTER] 완료 advkey={} campaign={} adgroup={} keyword={} ad={} asset={}",
+            advkey, campaigns.size(), adgroups.size(), keywords.size(), ads.size(), assetUrlMap.size());
     }
 
     private String str(Map<String, Object> m, String key) {

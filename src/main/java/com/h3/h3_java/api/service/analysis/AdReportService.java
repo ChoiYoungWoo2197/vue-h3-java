@@ -336,7 +336,9 @@ public class AdReportService {
             row.put("adgroup_budgettype",   reverseCode(agM, "budgettype", GFA_BUDGETTYPE));
             row.put("adgroup_budgetamount", agM != null ? agM.getInteger("budgetamount", 0) : 0);
             row.put("adgroup_bidprice",     agM != null ? agM.getInteger("bidprice",     0) : 0);
-            row.put("adgroup_pgroups",      reverseCode(agM, "pgroups",    GFA_PGROUPS));
+            // Google은 GFA 게재위치 개념 없음 → 빈값(프론트에서 "-" 표시)
+            boolean isGoogle = cfg.campMasterCol().startsWith("google");
+            row.put("adgroup_pgroups", isGoogle ? "" : reverseCode(agM, "pgroups", GFA_PGROUPS));
         }
 
         row.put("ad_id",          adid != null ? adid : "");
@@ -352,7 +354,10 @@ public class AdReportService {
             row.put("ad_mo_display",   landingUrl);
             row.put("ad_mo_final",     landingUrl);
             row.put("ad_image_name",   "");
-            row.put("ad_image_url",    str(adM, "purl"));
+            // image_url 우선(Google 마스터에서 수집), 없으면 purl(GFA: imageUrl)
+            String imgUrl = str(adM, "image_url");
+            if (imgUrl.isBlank() || "null".equals(imgUrl)) imgUrl = str(adM, "purl");
+            row.put("ad_image_url",    notNull(imgUrl));
             row.put("ad_image_pbase64", "");
         } else {
             // 검색 타입: imgurl1/2/3 포함
