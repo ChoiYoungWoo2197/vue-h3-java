@@ -204,7 +204,8 @@ public class GoogleMasterJob {
                 if (mktImages != null && !mktImages.isEmpty()) {
                     Map<?,?> img0 = (Map<?,?>) mktImages.get(0);
                     if (img0 != null) {
-                        String assetName = String.valueOf(img0.getOrDefault("asset", ""));
+                        Object assetObj = img0.get("asset");
+                    String assetName = assetObj != null ? String.valueOf(assetObj) : "";
                         String[] parts = assetName.split("/");
                         String assetId = parts.length > 0 ? parts[parts.length - 1] : "";
                         imageUrl = assetUrlMap.getOrDefault(assetId, "");
