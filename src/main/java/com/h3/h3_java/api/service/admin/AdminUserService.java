@@ -606,6 +606,271 @@ public class AdminUserService {
         return res;
     }
 
+    // ── 에이전시 광고주 목록 (내 광고주 + 일별 비용) ───────────────────────────
+
+    private static final Map<String, String> COST_TABLES = Map.of(
+        "N",      "h3_campaign_daily_naver",
+        "NDA",    "h3_campaign_daily_navergfa",
+        "D",      "h3_campaign_daily_kakaokeyword",
+        "K",      "h3_campaign_daily_kakaomoment",
+        "google", "h3_campaign_daily_google"
+    );
+
+    private Map<String, Long> buildCostMap(String tableKey, String fromDate, String toDate) {
+        String table = COST_TABLES.get(tableKey);
+        if (table == null || fromDate == null || toDate == null) return Map.of();
+        List<Map<String, Object>> rows = adminMapper.selectDailyCstByTable(table, fromDate, toDate);
+        Map<String, Long> map = new HashMap<>();
+        for (Map<String, Object> row : rows) {
+            String advId = objStr(row.get("daily_advid"));
+            if (advId != null) map.put(advId, parseIntSafe(row.get("cst"), 0));
+        }
+        return map;
+    }
+
+    private String toSortField(String sort) {
+        return switch (sort != null ? sort : "nd") {
+            case "nd", "na"           -> "naver";
+            case "ndad", "ndaa"       -> "naverda";
+            case "ksd", "ksa"         -> "kakaosa";
+            case "kmd", "kma"         -> "kakaomo";
+            case "googled", "googlea" -> "google";
+            default                   -> "naver";
+        };
+    }
+
+    private List<Map<String, Object>> buildAgencyUserList(List<Document> allDocs,
+                                                           Map<String, Long> naverMap,
+                                                           Map<String, Long> naverDaMap,
+                                                           Map<String, Long> kakaoSaMap,
+                                                           Map<String, Long> kakaoMoMap,
+                                                           Map<String, Long> googleMap,
+                                                           Map<String, Document> accountMap) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Document d : allDocs) {
+            String userId = d.getString("user_id");
+            Document acct = accountMap.get(userId);
+            long naver   = acct != null ? naverMap.getOrDefault(  nvl(acct.getString("account_naver_customer")), 0L) : 0L;
+            long naverda = acct != null ? naverDaMap.getOrDefault(nvl(acct.getString("account_gfa")),            0L) : 0L;
+            long kakaosa = acct != null ? kakaoSaMap.getOrDefault(nvl(acct.getString("account_kakaosa")),        0L) : 0L;
+            long kakaomo = acct != null ? kakaoMoMap.getOrDefault(nvl(acct.getString("account_kakaomoment")),    0L) : 0L;
+            long google  = acct != null ? googleMap.getOrDefault( nvl(acct.getString("account_google")),         0L) : 0L;
+            Map<String, Object> u = new LinkedHashMap<>();
+            u.put("userid",      userId);
+            u.put("usercompany", d.getString("user_company"));
+            u.put("username",    d.getString("user_name"));
+            u.put("naver",       naver);
+            u.put("naverda",     naverda);
+            u.put("kakaosa",     kakaosa);
+            u.put("kakaomo",     kakaomo);
+            u.put("google",      google);
+            list.add(u);
+        }
+        return list;
+    }
+
+    private String nvl(String s) { return s != null ? s : ""; }
+
+    public Map<String, Object> getAgencyUsers(String callerId, int callerLevel,
+                                               String query, String field, String sort,
+                                               int start, int display,
+                                               String fromDate, String toDate) {
+        List<Document> allDocs = userMongo.findMyUsers(callerLevel, callerId, field, query, 0, 10000);
+        long total = allDocs.size();
+
+        List<String> allIds = allDocs.stream()
+            .map(d -> d.getString("user_id")).filter(Objects::nonNull).collect(Collectors.toList());
+        Map<String, Document> accountMap = accountMongo.findByUserIds(allIds).stream()
+            .collect(Collectors.toMap(d -> d.getString("user_id"), d -> d, (a, b) -> a));
+
+        Map<String, Long> naverMap   = buildCostMap("N",      fromDate, toDate);
+        Map<String, Long> naverDaMap = buildCostMap("NDA",    fromDate, toDate);
+        Map<String, Long> kakaoSaMap = buildCostMap("D",      fromDate, toDate);
+        Map<String, Long> kakaoMoMap = buildCostMap("K",      fromDate, toDate);
+        Map<String, Long> googleMap  = buildCostMap("google", fromDate, toDate);
+
+        List<Map<String, Object>> all = buildAgencyUserList(
+            allDocs, naverMap, naverDaMap, kakaoSaMap, kakaoMoMap, googleMap, accountMap);
+
+        String sortField = toSortField(sort);
+        boolean desc = sort == null || !sort.endsWith("a");
+        all.sort(Comparator.comparingLong((Map<String, Object> m) ->
+            ((Number) m.get(sortField)).longValue()).reversed());
+        if (!desc) all.sort(Comparator.comparingLong(m -> ((Number) m.get(sortField)).longValue()));
+
+        List<Map<String, Object>> page = all.stream()
+            .skip((long) start * display).limit(display).collect(Collectors.toList());
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("result",      "success");
+        res.put("status",      "200");
+        res.put("totalcount",  total);
+        res.put("resultcount", page.size());
+        res.put("data",        Map.of("users", page));
+        return res;
+    }
+
+    public Map<String, Object> getAgencyBeSharedUsers(String callerId, int callerLevel,
+                                                        String query, String field, String sort,
+                                                        int start, int display,
+                                                        String fromDate, String toDate) {
+        List<String> sharedIds = shareMongo.findUserIdsByShareManager(callerId);
+        if (sharedIds.isEmpty()) {
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("result", "success"); res.put("status", "200");
+            res.put("totalcount", 0L); res.put("resultcount", 0);
+            res.put("data", Map.of("users", List.of()));
+            return res;
+        }
+
+        List<Document> allDocs = userMongo.findUsersByIds(sharedIds, field, query, 0, 10000);
+        long total = allDocs.size();
+
+        List<String> allIds = allDocs.stream()
+            .map(d -> d.getString("user_id")).filter(Objects::nonNull).collect(Collectors.toList());
+        Map<String, Document> accountMap = accountMongo.findByUserIds(allIds).stream()
+            .collect(Collectors.toMap(d -> d.getString("user_id"), d -> d, (a, b) -> a));
+
+        Map<String, Long> naverMap   = buildCostMap("N",      fromDate, toDate);
+        Map<String, Long> naverDaMap = buildCostMap("NDA",    fromDate, toDate);
+        Map<String, Long> kakaoSaMap = buildCostMap("D",      fromDate, toDate);
+        Map<String, Long> kakaoMoMap = buildCostMap("K",      fromDate, toDate);
+        Map<String, Long> googleMap  = buildCostMap("google", fromDate, toDate);
+
+        List<Map<String, Object>> all = buildAgencyUserList(
+            allDocs, naverMap, naverDaMap, kakaoSaMap, kakaoMoMap, googleMap, accountMap);
+
+        String sortField = toSortField(sort);
+        boolean desc = sort == null || !sort.endsWith("a");
+        all.sort(Comparator.comparingLong((Map<String, Object> m) ->
+            ((Number) m.get(sortField)).longValue()).reversed());
+        if (!desc) all.sort(Comparator.comparingLong(m -> ((Number) m.get(sortField)).longValue()));
+
+        List<Map<String, Object>> page = all.stream()
+            .skip((long) start * display).limit(display).collect(Collectors.toList());
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("result",      "success");
+        res.put("status",      "200");
+        res.put("totalcount",  total);
+        res.put("resultcount", page.size());
+        res.put("data",        Map.of("users", page));
+        return res;
+    }
+
+    // ── 통합 알림 ─────────────────────────────────────────────────────────────
+
+    private static final Map<String, String> MEDIA_SET = Map.of(
+        "naver",   "네이버검색광고",
+        "kakaosa", "카카오검색광고",
+        "naverda", "네이버디스플레이",
+        "kakaomo", "카카오모먼트"
+    );
+    private static final Map<String, String> TYPE_SET = Map.of(
+        "bizmoney_locked_by_budget",        "계정 비즈머니 중단",
+        "campaign_limited_by_budget",       "캠페인 하루예산 중단",
+        "adgroup_limited_by_budget",        "광고그룹 하루예산 중단",
+        "account_rate_updown_by_clk",       "계정 클릭수 증감률",
+        "account_rate_updown_by_im",        "계정 노출수 증감률",
+        "account_rate_updown_by_cv",        "계정 전환수 증감률",
+        "account_rate_updown_by_cr",        "계정 전환매출 증감률",
+        "campaign_rate_updown_by_clk",      "캠페인 클릭수 증감률",
+        "campaign_rate_updown_by_im",       "캠페인 노출수 증감률"
+    );
+
+    public Map<String, Object> getAgencyAlarms(String callerId, int callerLevel,
+                                                int start, int display) {
+        List<Map<String, Object>> rows;
+        long total;
+
+        if (callerLevel == 99) {
+            // admin: 전체 알림
+            rows  = adminMapper.selectAlarmForAdmin(start * display, display);
+            total = adminMapper.countAlarmForAdmin();
+
+            // MongoDB에서 manager 정보 조회 (share → users)
+            List<String> userIds = rows.stream()
+                .map(r -> objStr(r.get("user_id"))).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+            Map<String, Document> shareMap = shareMongo.findByUserIds(userIds).stream()
+                .collect(Collectors.toMap(d -> d.getString("user_id"), d -> d, (a, b) -> a));
+            Map<String, String> managerNameCache = new HashMap<>();
+
+            List<Map<String, Object>> alarms = new ArrayList<>();
+            for (Map<String, Object> r : rows) {
+                String userId    = objStr(r.get("user_id"));
+                Document share   = shareMap.get(userId);
+                String managerId = share != null ? share.getString("user_manager") : null;
+                String mName     = "";
+                if (managerId != null && !managerId.isBlank()) {
+                    mName = managerNameCache.computeIfAbsent(managerId, id -> {
+                        Document u = userMongo.findByUserId(id);
+                        return u != null && u.getString("user_name") != null ? u.getString("user_name") : id;
+                    });
+                }
+                alarms.add(buildAlarmRow(r, managerId, mName));
+            }
+            return alarmResponse(alarms, total);
+
+        } else {
+            // marketer: adv_marketer 기준으로 advIds 조회
+            List<Document> advDocs = advMongo.findByMarketer(callerId);
+            if (advDocs.isEmpty()) return alarmResponse(List.of(), 0L);
+
+            List<String> userIds = advDocs.stream()
+                .map(d -> d.getString("user_id")).filter(Objects::nonNull).collect(Collectors.toList());
+            List<Document> accounts = accountMongo.findByUserIds(userIds);
+
+            List<String> advIds = new ArrayList<>();
+            String[] fields = {"account_naver_customer", "account_kakaosa", "account_gfa", "account_kakaomoment"};
+            for (Document a : accounts) {
+                for (String f : fields) {
+                    String v = a.getString(f);
+                    if (v != null && !v.isBlank()) advIds.add(v);
+                }
+            }
+            if (advIds.isEmpty()) return alarmResponse(List.of(), 0L);
+
+            rows  = adminMapper.selectAlarmForMarketer(advIds, start * display, display);
+            total = adminMapper.countAlarmForMarketer(advIds);
+
+            List<Map<String, Object>> alarms = new ArrayList<>();
+            for (Map<String, Object> r : rows) {
+                alarms.add(buildAlarmRow(r, null, null));
+            }
+            return alarmResponse(alarms, total);
+        }
+    }
+
+    private Map<String, Object> buildAlarmRow(Map<String, Object> r,
+                                               String managerId, String managerName) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("user_id",       objStr(r.get("user_id")));
+        m.put("daily_advid",   objStr(r.get("daily_advid")));
+        m.put("daily_dt",      objStr(r.get("daily_dt")));
+        String media = objStr(r.get("media"));
+        m.put("media",         media != null ? MEDIA_SET.getOrDefault(media, media) : "");
+        m.put("target_id",     objStr(r.get("target_id")));
+        m.put("target_name",   objStr(r.get("target_name")));
+        m.put("level",         objStr(r.get("level")));
+        String type = objStr(r.get("type"));
+        m.put("type",          type != null ? TYPE_SET.getOrDefault(type, type) : "");
+        m.put("content",       objStr(r.get("content")));
+        m.put("daily_regdate", objStr(r.get("daily_regdate")));
+        m.put("manager_id",    managerId);
+        m.put("manager_name",  managerName);
+        return m;
+    }
+
+    private Map<String, Object> alarmResponse(List<Map<String, Object>> alarms, long total) {
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("result",      "success");
+        res.put("status",      "200");
+        res.put("totalcount",  total);
+        res.put("resultcount", alarms.size());
+        res.put("data",        Map.of("alarms", alarms));
+        return res;
+    }
+
     private String hashSha256(String input) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");

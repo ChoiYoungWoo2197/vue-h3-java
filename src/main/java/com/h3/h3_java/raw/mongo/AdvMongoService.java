@@ -40,6 +40,10 @@ public class AdvMongoService {
         mongo.upsert(q, u, COL);
     }
 
+    public List<Document> findByMarketer(String marketerId) {
+        return mongo.find(Query.query(Criteria.where("adv_marketer").is(marketerId)), Document.class, COL);
+    }
+
     public void insert(String userId, String advId, String advMedia,
                        String advMarketer, String regdate) {
         Document doc = new Document()

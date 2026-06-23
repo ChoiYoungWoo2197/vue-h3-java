@@ -168,6 +168,56 @@ public class AdminController {
         return adminUserService.registerUser(userid, userpass, username, usercompany, advmarketer);
     }
 
+    // 에이전시 광고주 목록 (내 광고주 + 일별 비용)
+    @GetMapping("/agency-users")
+    public Map<String, Object> getAgencyUsers(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(defaultValue = "")         String query,
+            @RequestParam(defaultValue = "userid")   String field,
+            @RequestParam(defaultValue = "nd")       String sort,
+            @RequestParam(defaultValue = "0")        int    start,
+            @RequestParam(defaultValue = "10")       int    display,
+            @RequestParam(defaultValue = "")         String fromdate,
+            @RequestParam(defaultValue = "")         String todate) {
+        Claims claims   = jwtUtil.parseClaims(auth.substring(7));
+        String callerId = claims.getSubject();
+        int callerLevel = claims.get("userLevel", Integer.class);
+        String from = fromdate.isBlank() ? null : fromdate;
+        String to   = todate.isBlank()   ? null : todate;
+        return adminUserService.getAgencyUsers(callerId, callerLevel, query, field, sort, start, display, from, to);
+    }
+
+    // 에이전시 공유받은 광고주 목록 + 일별 비용
+    @GetMapping("/agency-beshared-users")
+    public Map<String, Object> getAgencyBeSharedUsers(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(defaultValue = "")         String query,
+            @RequestParam(defaultValue = "userid")   String field,
+            @RequestParam(defaultValue = "nd")       String sort,
+            @RequestParam(defaultValue = "0")        int    start,
+            @RequestParam(defaultValue = "10")       int    display,
+            @RequestParam(defaultValue = "")         String fromdate,
+            @RequestParam(defaultValue = "")         String todate) {
+        Claims claims   = jwtUtil.parseClaims(auth.substring(7));
+        String callerId = claims.getSubject();
+        int callerLevel = claims.get("userLevel", Integer.class);
+        String from = fromdate.isBlank() ? null : fromdate;
+        String to   = todate.isBlank()   ? null : todate;
+        return adminUserService.getAgencyBeSharedUsers(callerId, callerLevel, query, field, sort, start, display, from, to);
+    }
+
+    // 에이전시 통합 알림
+    @GetMapping("/agency-alarms")
+    public Map<String, Object> getAgencyAlarms(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(defaultValue = "0")  int start,
+            @RequestParam(defaultValue = "5")  int display) {
+        Claims claims   = jwtUtil.parseClaims(auth.substring(7));
+        String callerId = claims.getSubject();
+        int callerLevel = claims.get("userLevel", Integer.class);
+        return adminUserService.getAgencyAlarms(callerId, callerLevel, start, display);
+    }
+
     // 계정 등록 (없을 때만 INSERT)
     @PostMapping("/account-register")
     public Map<String, Object> registerAccount(

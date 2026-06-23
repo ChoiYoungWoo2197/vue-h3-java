@@ -15,4 +15,45 @@
         FROM h3_adv
     </select>
 
+    <!-- 매체별 일별 비용 합계 (tableName: h3_campaign_daily_naver 등, 화이트리스트로 제어) -->
+    <select id="selectDailyCstByTable" resultType="map">
+        SELECT IFNULL(SUM(daily_cst), 0) AS cst, daily_advid
+        FROM ${tableName}
+        WHERE daily_dt BETWEEN #{fromDate} AND #{toDate}
+        GROUP BY daily_advid
+    </select>
+
+    <!-- 통합 알림: admin 전체 -->
+    <select id="selectAlarmForAdmin" resultType="map">
+        SELECT *
+        FROM h3_budget_alarm
+        ORDER BY daily_dt DESC
+        LIMIT #{start}, #{display}
+    </select>
+
+    <select id="countAlarmForAdmin" resultType="long">
+        SELECT COUNT(*) FROM h3_budget_alarm
+    </select>
+
+    <!-- 통합 알림: marketer (advId IN 필터) -->
+    <select id="selectAlarmForMarketer" resultType="map">
+        SELECT *
+        FROM h3_budget_alarm
+        WHERE daily_advid IN
+        <foreach collection="advIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY daily_dt DESC
+        LIMIT #{start}, #{display}
+    </select>
+
+    <select id="countAlarmForMarketer" resultType="long">
+        SELECT COUNT(*)
+        FROM h3_budget_alarm
+        WHERE daily_advid IN
+        <foreach collection="advIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
 </mapper>
