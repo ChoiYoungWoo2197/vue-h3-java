@@ -11,6 +11,11 @@ import com.h3.h3_java.raw.mongo.UserMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -31,6 +36,7 @@ public class AdminUserService {
     private final AdvMongoService     advMongo;
     private final AdminMapper         adminMapper;
     private final JwtUtil             jwtUtil;
+    private final MongoTemplate       mongo;
 
     public Map<String, Object> getAgentList(String callerId, int callerLevel,
                                              String query, String field,
@@ -608,22 +614,26 @@ public class AdminUserService {
 
     // ── 에이전시 광고주 목록 (내 광고주 + 일별 비용) ───────────────────────────
 
-    private static final Map<String, String> COST_TABLES = Map.of(
-        "N",      "h3_campaign_daily_naver",
-        "NDA",    "h3_campaign_daily_navergfa",
-        "D",      "h3_campaign_daily_kakaokeyword",
-        "K",      "h3_campaign_daily_kakaomoment",
-        "google", "h3_campaign_daily_google"
+    // [MongoDB collection, advId 필드명] — Kakao는 advkey, 나머지는 daily_advid
+    private static final Map<String, String[]> COST_COLLECTIONS = Map.of(
+        "N",      new String[]{"naver_campaign_daily",     "daily_advid"},
+        "NDA",    new String[]{"naver_gfa_campaign_daily", "daily_advid"},
+        "D",      new String[]{"kakao_sa_campaign_daily",  "advkey"},
+        "K",      new String[]{"kakao_mo_campaign_daily",  "advkey"},
+        "google", new String[]{"google_campaign_daily",    "daily_advid"}
     );
 
     private Map<String, Long> buildCostMap(String tableKey, String fromDate, String toDate) {
-        String table = COST_TABLES.get(tableKey);
-        if (table == null || fromDate == null || toDate == null) return Map.of();
-        List<Map<String, Object>> rows = adminMapper.selectDailyCstByTable(table, fromDate, toDate);
+        String[] info = COST_COLLECTIONS.get(tableKey);
+        if (info == null || fromDate == null || toDate == null) return Map.of();
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where("daily_dt").gte(fromDate).lte(toDate)),
+            Aggregation.group(info[1]).sum("daily_cst").as("cst")
+        );
         Map<String, Long> map = new HashMap<>();
-        for (Map<String, Object> row : rows) {
-            String advId = objStr(row.get("daily_advid"));
-            if (advId != null) map.put(advId, parseLongSafe(row.get("cst"), 0L));
+        for (Document d : mongo.aggregate(agg, info[0], Document.class).getMappedResults()) {
+            String id = d.getString("_id");
+            if (id != null) map.put(id, parseLongSafe(d.get("cst"), 0L));
         }
         return map;
     }
@@ -780,24 +790,51 @@ public class AdminUserService {
 
     public Map<String, Object> getAgencyAlarms(String callerId, int callerLevel,
                                                 int start, int display) {
-        List<Map<String, Object>> rows;
-        long total;
+        List<String> alarmCols = List.of("kakao_sa_budget_alarm", "kakao_mo_budget_alarm");
+        List<Map<String, Object>> all = new ArrayList<>();
 
         if (callerLevel == 99) {
-            // admin: 전체 알림
-            rows  = adminMapper.selectAlarmForAdmin(start * display, display);
-            total = adminMapper.countAlarmForAdmin();
+            // admin: 전체 알림 — 두 컬렉션 합산
+            for (String col : alarmCols) {
+                for (Document d : mongo.find(new Query(), Document.class, col))
+                    all.add(buildAlarmRowFromDoc(d));
+            }
+        } else {
+            // marketer: adv_marketer → user_id 목록으로 필터
+            List<Document> advDocs = advMongo.findByMarketer(callerId);
+            if (advDocs.isEmpty()) return alarmResponse(List.of(), 0L);
 
-            // MongoDB에서 manager 정보 조회 (share → users)
-            List<String> userIds = rows.stream()
-                .map(r -> objStr(r.get("user_id"))).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-            Map<String, Document> shareMap = shareMongo.findByUserIds(userIds).stream()
+            List<String> userIds = advDocs.stream()
+                .map(d -> d.getString("user_id")).filter(Objects::nonNull).collect(Collectors.toList());
+
+            for (String col : alarmCols) {
+                Query q = Query.query(Criteria.where("user_id").in(userIds));
+                for (Document d : mongo.find(q, Document.class, col))
+                    all.add(buildAlarmRowFromDoc(d));
+            }
+        }
+
+        // 전체 daily_dt DESC 정렬 후 페이지네이션
+        all.sort(Comparator.comparing(m -> {
+            Object dt = m.get("daily_dt");
+            return dt != null ? dt.toString() : "";
+        }, Comparator.reverseOrder()));
+
+        long total   = all.size();
+        int startIdx = start * display;
+        List<Map<String, Object>> page = all.stream()
+            .skip(startIdx).limit(display).collect(Collectors.toList());
+
+        // admin: 페이지 결과에만 manager 정보 보강
+        if (callerLevel == 99) {
+            List<String> pageUserIds = page.stream()
+                .map(m -> (String) m.get("user_id")).filter(Objects::nonNull).distinct()
+                .collect(Collectors.toList());
+            Map<String, Document> shareMap = shareMongo.findByUserIds(pageUserIds).stream()
                 .collect(Collectors.toMap(d -> d.getString("user_id"), d -> d, (a, b) -> a));
             Map<String, String> managerNameCache = new HashMap<>();
-
-            List<Map<String, Object>> alarms = new ArrayList<>();
-            for (Map<String, Object> r : rows) {
-                String userId    = objStr(r.get("user_id"));
+            for (Map<String, Object> alarm : page) {
+                String userId    = (String) alarm.get("user_id");
                 Document share   = shareMap.get(userId);
                 String managerId = share != null ? share.getString("user_manager") : null;
                 String mName     = "";
@@ -807,57 +844,30 @@ public class AdminUserService {
                         return u != null && u.getString("user_name") != null ? u.getString("user_name") : id;
                     });
                 }
-                alarms.add(buildAlarmRow(r, managerId, mName));
+                alarm.put("manager_id",   managerId);
+                alarm.put("manager_name", mName);
             }
-            return alarmResponse(alarms, total);
-
-        } else {
-            // marketer: adv_marketer 기준으로 advIds 조회
-            List<Document> advDocs = advMongo.findByMarketer(callerId);
-            if (advDocs.isEmpty()) return alarmResponse(List.of(), 0L);
-
-            List<String> userIds = advDocs.stream()
-                .map(d -> d.getString("user_id")).filter(Objects::nonNull).collect(Collectors.toList());
-            List<Document> accounts = accountMongo.findByUserIds(userIds);
-
-            List<String> advIds = new ArrayList<>();
-            String[] fields = {"account_naver_customer", "account_kakaosa", "account_gfa", "account_kakaomoment"};
-            for (Document a : accounts) {
-                for (String f : fields) {
-                    String v = a.getString(f);
-                    if (v != null && !v.isBlank()) advIds.add(v);
-                }
-            }
-            if (advIds.isEmpty()) return alarmResponse(List.of(), 0L);
-
-            rows  = adminMapper.selectAlarmForMarketer(advIds, start * display, display);
-            total = adminMapper.countAlarmForMarketer(advIds);
-
-            List<Map<String, Object>> alarms = new ArrayList<>();
-            for (Map<String, Object> r : rows) {
-                alarms.add(buildAlarmRow(r, null, null));
-            }
-            return alarmResponse(alarms, total);
         }
+
+        return alarmResponse(page, total);
     }
 
-    private Map<String, Object> buildAlarmRow(Map<String, Object> r,
-                                               String managerId, String managerName) {
+    private Map<String, Object> buildAlarmRowFromDoc(Document d) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("user_id",       objStr(r.get("user_id")));
-        m.put("daily_advid",   objStr(r.get("daily_advid")));
-        m.put("daily_dt",      objStr(r.get("daily_dt")));
-        String media = objStr(r.get("media"));
+        m.put("user_id",       d.getString("user_id"));
+        m.put("daily_advid",   d.getString("advkey"));
+        m.put("daily_dt",      d.getString("daily_dt"));
+        String media = d.getString("media");
         m.put("media",         media != null ? MEDIA_SET.getOrDefault(media, media) : "");
-        m.put("target_id",     objStr(r.get("target_id")));
-        m.put("target_name",   objStr(r.get("target_name")));
-        m.put("level",         objStr(r.get("level")));
-        String type = objStr(r.get("type"));
+        m.put("target_id",     d.getString("target_id"));
+        m.put("target_name",   d.getString("target_name"));
+        m.put("level",         d.getString("level"));
+        String type = d.getString("type");
         m.put("type",          type != null ? TYPE_SET.getOrDefault(type, type) : "");
-        m.put("content",       objStr(r.get("content")));
-        m.put("daily_regdate", objStr(r.get("daily_regdate")));
-        m.put("manager_id",    managerId);
-        m.put("manager_name",  managerName);
+        m.put("content",       d.getString("content"));
+        m.put("daily_regdate", d.getString("daily_dt"));
+        m.put("manager_id",    null);
+        m.put("manager_name",  null);
         return m;
     }
 
