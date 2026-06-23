@@ -271,10 +271,6 @@ public class UserMongoService {
 
     // ── 광고주 등록 ─────────────────────────────────────────────────────────────
 
-    public boolean existsByUserId(String userId) {
-        return mongo.exists(Query.query(Criteria.where("user_id").is(userId)), COL);
-    }
-
     public void insertUser(Document doc) {
         mongo.insert(doc, COL);
     }
