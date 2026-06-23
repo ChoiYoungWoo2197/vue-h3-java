@@ -47,4 +47,13 @@ public class ShareMongoService {
         Query q = Query.query(Criteria.where("user_id").is(userId));
         mongo.updateFirst(q, new Update().set("share_manager", shareManager), COL);
     }
+
+    /** 계정이동 시 user_manager 변경 */
+    public void updateUserManager(String userId, String managerId) {
+        mongo.updateFirst(
+            Query.query(Criteria.where("user_id").is(userId)),
+            new Update().set("user_manager", managerId),
+            COL
+        );
+    }
 }

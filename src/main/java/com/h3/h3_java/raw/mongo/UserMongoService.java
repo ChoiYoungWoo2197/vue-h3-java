@@ -108,4 +108,59 @@ public class UserMongoService {
         // 모든 필드를 set으로 저장 (일회성 이관용)
         mongo.upsert(q, Update.fromDocument(doc), COL);
     }
+
+    // ── 마케터 목록 (user_level = 2) ───────────────────────────────────────────
+
+    public List<Document> findMarketers(String field, String query, int skip, int limit, boolean desc) {
+        Query q = buildMarketerQuery(field, query);
+        q.with(Sort.by(desc ? Sort.Direction.DESC : Sort.Direction.ASC, "user_regdate"));
+        q.skip(skip).limit(limit);
+        return mongo.find(q, Document.class, COL);
+    }
+
+    public long countMarketers(String field, String query) {
+        return mongo.count(buildMarketerQuery(field, query), COL);
+    }
+
+    private Query buildMarketerQuery(String field, String query) {
+        Criteria c = Criteria.where("user_level").is(2);
+        if (query != null && !query.isBlank()) {
+            String mongoField = "userid".equals(field) ? "user_id" : "user_name";
+            c = new Criteria().andOperator(c, Criteria.where(mongoField).regex(query, "i"));
+        }
+        return Query.query(c);
+    }
+
+    // ── 광고주 목록 (user_level = 1) ───────────────────────────────────────────
+
+    public List<Document> findLevel1Users(String field, String query, String manager, int skip, int limit, boolean desc) {
+        Query q = buildLevel1Query(field, query, manager);
+        q.with(Sort.by(desc ? Sort.Direction.DESC : Sort.Direction.ASC, "user_seq"));
+        q.skip(skip).limit(limit);
+        return mongo.find(q, Document.class, COL);
+    }
+
+    public long countLevel1Users(String field, String query, String manager) {
+        return mongo.count(buildLevel1Query(field, query, manager), COL);
+    }
+
+    private Query buildLevel1Query(String field, String query, String manager) {
+        Criteria c = Criteria.where("user_level").is(1);
+        if (manager != null && !manager.isBlank()) {
+            c = new Criteria().andOperator(c, Criteria.where("user_manager").regex(manager, "i"));
+        }
+        if (query != null && !query.isBlank()) {
+            String mongoField = "userid".equals(field) ? "user_id" : "user_company";
+            c = new Criteria().andOperator(c, Criteria.where(mongoField).regex(query, "i"));
+        }
+        return Query.query(c);
+    }
+
+    public void updateManager(String userId, String managerId) {
+        mongo.updateFirst(
+            Query.query(Criteria.where("user_id").is(userId)),
+            new Update().set("user_manager", managerId),
+            COL
+        );
+    }
 }

@@ -1,6 +1,6 @@
 package com.h3.h3_java.api.service.user;
 
-import com.h3.h3_java.auth.UserMapper;
+import com.h3.h3_java.auth.UserMapper;  // 이관용 selectAll() 에 사용
 import com.h3.h3_java.raw.mongo.UserMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,16 +28,12 @@ public class UserService {
 
     public Map<String, Object> updateUser(String userId, String pass, String name,
                                           String company, String email, String phone) {
-        // 기본 정보 업데이트 (MongoDB + MySQL 동시)
         userMongo.updateInfo(userId, name, company, email, phone);
-        userMapper.updateInfo(userId, name, company, email, phone);
 
-        // 비밀번호 변경 요청 시
         if (pass != null && !pass.isBlank()) {
             String hashed     = sha256(pass);
             String passupdate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             userMongo.updatePassword(userId, hashed, passupdate);
-            userMapper.updatePassword(userId, hashed, passupdate);
         }
 
         Map<String, Object> res = new LinkedHashMap<>();

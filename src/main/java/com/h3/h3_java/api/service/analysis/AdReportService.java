@@ -2,8 +2,7 @@ package com.h3.h3_java.api.service.analysis;
 
 import com.h3.h3_java.api.dto.AccountDto;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
-import com.h3.h3_java.auth.UserDto;
-import com.h3.h3_java.auth.UserMapper;
+import com.h3.h3_java.raw.mongo.UserMongoService;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
@@ -16,7 +15,7 @@ import java.util.*;
 public class AdReportService {
 
     private final AccountMongoService accountMongo;
-    private final UserMapper     userMapper;
+    private final UserMongoService    userMongo;
     private final DashboardMongoService mongoService;
 
     record AdConfig(String dailyCol, String adMasterCol, String agMasterCol, String campMasterCol,
@@ -256,16 +255,16 @@ public class AdReportService {
         String userName = "", userCompany = "", mngId = "", mngName = "";
         try {
             if (!ownerId.isEmpty()) {
-                UserDto user = userMapper.selectByUserId(ownerId);
+                Document user = userMongo.findByUserId(ownerId);
                 if (user != null) {
-                    userName    = safe(user.getUserName());
-                    userCompany = safe(user.getUserCompany());
-                    String mgr  = user.getUserManager();
+                    userName    = safe(user.getString("user_name"));
+                    userCompany = safe(user.getString("user_company"));
+                    String mgr  = user.getString("user_manager");
                     if (mgr != null && !mgr.isBlank()) {
-                        UserDto manager = userMapper.selectByUserId(mgr);
+                        Document manager = userMongo.findByUserId(mgr);
                         if (manager != null) {
-                            mngId   = safe(manager.getUserId());
-                            mngName = safe(manager.getUserName());
+                            mngId   = safe(manager.getString("user_id"));
+                            mngName = safe(manager.getString("user_name"));
                         }
                     }
                 }

@@ -6,6 +6,8 @@ import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 import java.util.Map;
 
 @RestController
@@ -39,5 +41,41 @@ public class AdminController {
             @RequestParam String userid,
             @RequestParam int    status) {
         return adminUserService.updateUserStatus(userid, status);
+    }
+
+    // 마케터 목록
+    @GetMapping("/marketers")
+    public Map<String, Object> getMarketerList(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(defaultValue = "")         String query,
+            @RequestParam(defaultValue = "username") String field,
+            @RequestParam(defaultValue = "0")        int    start,
+            @RequestParam(defaultValue = "100")      int    display,
+            @RequestParam(defaultValue = "dd")       String sort) {
+        return adminUserService.getMarketerList(query, field, start, display, sort);
+    }
+
+    // 광고주 목록 (계정이동용)
+    @GetMapping("/member-users")
+    public Map<String, Object> getMemberUsers(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(defaultValue = "")            String query,
+            @RequestParam(defaultValue = "usercompany") String field,
+            @RequestParam(defaultValue = "")            String manager,
+            @RequestParam(defaultValue = "0")           int    start,
+            @RequestParam(defaultValue = "10")          int    display,
+            @RequestParam(defaultValue = "dd")          String sort) {
+        return adminUserService.getMemberUsers(query, field, manager, start, display, sort);
+    }
+
+    // 계정이동
+    @PostMapping("/usertransfer")
+    public Map<String, Object> transferUsers(
+            @RequestHeader("Authorization") String auth,
+            @RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<String> applyUserIds  = (List<String>) body.get("applyuserid");
+        String       managerUserId = (String) body.get("manageruserid");
+        return adminUserService.transferUsers(applyUserIds, managerUserId);
     }
 }

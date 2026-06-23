@@ -61,6 +61,100 @@ public class AdminUserService {
         return res;
     }
 
+    // ── 마케터 목록 ────────────────────────────────────────────────────────────
+
+    public Map<String, Object> getMarketerList(String query, String field, int start, int display, String sort) {
+        boolean desc = sort == null || !sort.endsWith("a");
+        int skip = start * display;
+
+        List<Document> docs = userMongo.findMarketers(field, query, skip, display, desc);
+        long total          = userMongo.countMarketers(field, query);
+
+        Map<String, String> marketers = new LinkedHashMap<>();
+        for (Document d : docs) {
+            String userId   = d.getString("user_id");
+            String userName = d.getString("user_name");
+            if (userId != null) marketers.put(userId, userName != null ? userName : "");
+        }
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("result",      "success");
+        res.put("status",      "200");
+        res.put("marketers",   marketers);
+        res.put("totalcount",  total);
+        res.put("resultcount", docs.size());
+        return res;
+    }
+
+    // ── 광고주 목록 (계정이동용) ────────────────────────────────────────────────
+
+    public Map<String, Object> getMemberUsers(String query, String field, String manager,
+                                              int start, int display, String sort) {
+        boolean desc = sort == null || !sort.endsWith("a");
+        int skip = start * display;
+
+        List<Document> docs = userMongo.findLevel1Users(field, query, manager, skip, display, desc);
+        long total          = userMongo.countLevel1Users(field, query, manager);
+
+        List<Map<String, Object>> users = new ArrayList<>();
+        for (Document d : docs) {
+            String managerId   = d.getString("user_manager");
+            String managerName = "";
+            if (managerId != null && !managerId.isBlank()) {
+                Document mDoc = userMongo.findByUserId(managerId);
+                if (mDoc != null) managerName = mDoc.getString("user_name") != null ? mDoc.getString("user_name") : "";
+            }
+
+            Map<String, Object> u = new LinkedHashMap<>();
+            u.put("usersel",         d.get("user_seq"));
+            u.put("userid",          d.getString("user_id"));
+            u.put("username",        d.getString("user_name"));
+            u.put("usercompany",     d.getString("user_company"));
+            u.put("useremail",       d.getString("user_email"));
+            u.put("userphone",       d.getString("user_phone"));
+            u.put("userstatus",      parseIntSafe(d.get("user_status"), 0));
+            u.put("userlevel",       d.getInteger("user_level", 0));
+            u.put("usermanagername", managerName);
+            u.put("usermanager",     managerId != null ? managerId : "");
+            u.put("userregdate",     d.getString("user_regdate"));
+            users.add(u);
+        }
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("result",      "success");
+        res.put("status",      "200");
+        res.put("users",       users);
+        res.put("totalcount",  total);
+        res.put("resultcount", users.size());
+        return res;
+    }
+
+    // ── 계정이동 ────────────────────────────────────────────────────────────────
+
+    public Map<String, Object> transferUsers(List<String> applyUserIds, String managerUserId) {
+        int count = 0;
+        for (String userId : applyUserIds) {
+            Document user = userMongo.findByUserId(userId);
+            if (user != null) {
+                userMongo.updateManager(userId, managerUserId);
+                shareMongo.updateUserManager(userId, managerUserId);
+                count++;
+            }
+        }
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        if (count > 0) {
+            res.put("result",      "success");
+            res.put("status",      "200");
+            res.put("resultcount", count);
+        } else {
+            res.put("result",       "failed");
+            res.put("status",       "1002");
+            res.put("errormessage", "정상처리 되지 않았습니다.");
+        }
+        return res;
+    }
+
     public Map<String, Object> updateUserStatus(String targetUserId, int status) {
         userMongo.updateUserStatus(targetUserId, status);
         Map<String, Object> res = new LinkedHashMap<>();
