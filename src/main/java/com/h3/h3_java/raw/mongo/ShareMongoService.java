@@ -8,7 +8,11 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -55,5 +59,44 @@ public class ShareMongoService {
             new Update().set("user_manager", managerId),
             COL
         );
+    }
+
+    /** 즐겨찾기 토글 */
+    public boolean updateFavorites(String userId, String favorites) {
+        var r = mongo.updateFirst(
+            Query.query(Criteria.where("user_id").is(userId)),
+            new Update().set("share_favorites", favorites),
+            COL
+        );
+        return r.getModifiedCount() > 0;
+    }
+
+    /** user_id 목록 기준 배치 로드 */
+    public List<Document> findByUserIds(List<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) return List.of();
+        return mongo.find(Query.query(Criteria.where("user_id").in(userIds)), Document.class, COL);
+    }
+
+    /** share_manager 배열에 managerId가 포함된 user_id 목록 */
+    public List<String> findUserIdsByShareManager(String managerId) {
+        return mongo.find(
+            Query.query(Criteria.where("share_manager").is(managerId)),
+            Document.class, COL
+        ).stream()
+            .map(d -> d.getString("user_id"))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+    }
+
+    /** 광고주 등록 시 초기 share 레코드 삽입 */
+    public void insertShare(String userId, String userManager) {
+        String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        Document doc = new Document()
+            .append("user_id",         userId)
+            .append("user_manager",    userManager)
+            .append("share_manager",   List.of())
+            .append("share_favorites", "n")
+            .append("share_regdate",   now);
+        mongo.insert(doc, COL);
     }
 }

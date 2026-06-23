@@ -199,6 +199,79 @@ public class UserMongoService {
         return base;
     }
 
+    // ── 내 광고주 목록 (callerLevel 기반 필터) ───────────────────────────────────
+
+    public List<Document> findMyUsers(int callerLevel, String callerId,
+                                      String field, String query, int skip, int limit) {
+        Query q = buildMyUsersQuery(callerLevel, callerId, field, query);
+        q.with(Sort.by(Sort.Direction.DESC, "user_regdate"));
+        q.skip(skip).limit(limit);
+        return mongo.find(q, Document.class, COL);
+    }
+
+    public long countMyUsers(int callerLevel, String callerId, String field, String query) {
+        return mongo.count(buildMyUsersQuery(callerLevel, callerId, field, query), COL);
+    }
+
+    private Query buildMyUsersQuery(int callerLevel, String callerId, String field, String query) {
+        Criteria c = Criteria.where("user_level").is(1);
+        if (callerLevel == 2) {
+            c = new Criteria().andOperator(c, Criteria.where("user_manager").is(callerId));
+        } else if (callerLevel == 1) {
+            c = new Criteria().andOperator(c, Criteria.where("user_id").regex(callerId, "i"));
+        }
+        if (query != null && !query.isBlank() && field != null) {
+            String mf = switch (field) {
+                case "userid"      -> "user_id";
+                case "usercompany" -> "user_company";
+                default            -> "user_name";
+            };
+            c = new Criteria().andOperator(c, Criteria.where(mf).regex(query, "i"));
+        }
+        return Query.query(c);
+    }
+
+    // ── user_id IN list (공유받은 광고주) ─────────────────────────────────────
+
+    public List<Document> findUsersByIds(List<String> userIds, String field, String query, int skip, int limit) {
+        if (userIds == null || userIds.isEmpty()) return List.of();
+        Query q = buildUsersByIdsQuery(userIds, field, query);
+        q.with(Sort.by(Sort.Direction.DESC, "user_regdate"));
+        q.skip(skip).limit(limit);
+        return mongo.find(q, Document.class, COL);
+    }
+
+    public long countUsersByIds(List<String> userIds, String field, String query) {
+        if (userIds == null || userIds.isEmpty()) return 0;
+        return mongo.count(buildUsersByIdsQuery(userIds, field, query), COL);
+    }
+
+    private Query buildUsersByIdsQuery(List<String> userIds, String field, String query) {
+        Criteria c = new Criteria().andOperator(
+            Criteria.where("user_level").is(1),
+            Criteria.where("user_id").in(userIds)
+        );
+        if (query != null && !query.isBlank() && field != null) {
+            String mf = switch (field) {
+                case "userid"      -> "user_id";
+                case "usercompany" -> "user_company";
+                default            -> "user_name";
+            };
+            c = new Criteria().andOperator(c, Criteria.where(mf).regex(query, "i"));
+        }
+        return Query.query(c);
+    }
+
+    // ── 광고주 등록 ─────────────────────────────────────────────────────────────
+
+    public boolean existsByUserId(String userId) {
+        return mongo.exists(Query.query(Criteria.where("user_id").is(userId)), COL);
+    }
+
+    public void insertUser(Document doc) {
+        mongo.insert(doc, COL);
+    }
+
     public void updateUserStatusAndLevel(String userId, int status, int level, String managerId) {
         Update u = new Update()
             .set("user_status", status)

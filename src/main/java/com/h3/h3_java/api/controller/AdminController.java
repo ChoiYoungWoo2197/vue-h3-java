@@ -100,4 +100,87 @@ public class AdminController {
         String       managerUserId = (String) body.get("manageruserid");
         return adminUserService.transferUsers(applyUserIds, managerUserId);
     }
+
+    // 내 광고주 목록
+    @GetMapping("/my-users")
+    public Map<String, Object> getMyUsers(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(defaultValue = "")         String query,
+            @RequestParam(defaultValue = "username") String field,
+            @RequestParam(defaultValue = "fa")       String sort,
+            @RequestParam(defaultValue = "0")        int    start,
+            @RequestParam(defaultValue = "10")       int    display) {
+        Claims claims   = jwtUtil.parseClaims(auth.substring(7));
+        String callerId = claims.getSubject();
+        int callerLevel = claims.get("userLevel", Integer.class);
+        return adminUserService.getMyUsers(callerId, callerLevel, query, field, sort, start, display);
+    }
+
+    // 공유받은 광고주 목록
+    @GetMapping("/beshared-users")
+    public Map<String, Object> getBeSharedUsers(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(defaultValue = "")         String query,
+            @RequestParam(defaultValue = "username") String field,
+            @RequestParam(defaultValue = "fa")       String sort,
+            @RequestParam(defaultValue = "0")        int    start,
+            @RequestParam(defaultValue = "10")       int    display) {
+        Claims claims   = jwtUtil.parseClaims(auth.substring(7));
+        String callerId = claims.getSubject();
+        int callerLevel = claims.get("userLevel", Integer.class);
+        return adminUserService.getBeSharedUsers(callerId, callerLevel, query, field, sort, start, display);
+    }
+
+    // 즐겨찾기 토글
+    @PostMapping("/favorites")
+    public Map<String, Object> updateFavorites(
+            @RequestParam String applyuserid,
+            @RequestParam String favorites) {
+        return adminUserService.updateFavorites(applyuserid, favorites);
+    }
+
+    // 바로가기 (target user JWT 발급)
+    @PostMapping("/userlink")
+    public Map<String, Object> getUserLink(
+            @RequestParam String userid) {
+        return adminUserService.getUserLink(userid);
+    }
+
+    // 공유 마케터 업데이트
+    @PostMapping("/share-update")
+    public Map<String, Object> updateShareManagers(
+            @RequestBody Map<String, Object> body) {
+        String applyuserid = (String) body.get("applyuserid");
+        @SuppressWarnings("unchecked")
+        List<String> shareManagers = (List<String>) body.get("sharemanager");
+        return adminUserService.updateShareManagers(applyuserid, shareManagers);
+    }
+
+    // 광고주 등록
+    @PostMapping("/userregister")
+    public Map<String, Object> registerUser(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam String userid,
+            @RequestParam String userpass,
+            @RequestParam String username,
+            @RequestParam String usercompany,
+            @RequestParam(defaultValue = "") String advmarketer) {
+        return adminUserService.registerUser(userid, userpass, username, usercompany, advmarketer);
+    }
+
+    // 계정 등록 (없을 때만 INSERT)
+    @PostMapping("/account-register")
+    public Map<String, Object> registerAccount(
+            @RequestParam String userid,
+            @RequestParam(defaultValue = "") String naverid,
+            @RequestParam(defaultValue = "") String navercustomer,
+            @RequestParam(defaultValue = "") String naveraccess,
+            @RequestParam(defaultValue = "") String naversecret,
+            @RequestParam(defaultValue = "") String naverdaid,
+            @RequestParam(defaultValue = "") String kakaosaid,
+            @RequestParam(defaultValue = "") String kakaomomentid,
+            @RequestParam(defaultValue = "") String googleid) {
+        return adminUserService.registerAccount(userid, naverid, navercustomer, naveraccess,
+                                                naversecret, naverdaid, kakaosaid, kakaomomentid, googleid);
+    }
 }
