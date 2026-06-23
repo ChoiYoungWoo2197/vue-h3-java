@@ -3,8 +3,11 @@ package com.h3.h3_java.api.mapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+import java.util.Map;
+
 @Mapper
 public interface AdminMapper {
-    int countByUserManager(@Param("userId") String userId);
-    int countByShareManager(@Param("userId") String userId);
+    /** 이관용: h3_share 전체 읽기 */
+    List<Map<String, Object>> selectAllShare();
 }

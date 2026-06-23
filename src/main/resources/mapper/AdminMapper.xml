@@ -3,14 +3,10 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.h3.h3_java.api.mapper.AdminMapper">
 
-    <!-- 광고계정: 내가 관리하는 계정 수 -->
-    <select id="countByUserManager" resultType="int">
-        SELECT COUNT(*) FROM h3_share WHERE user_manager = #{userId}
-    </select>
-
-    <!-- 광고쉐어계정: 내가 쉐어받은 계정 수 -->
-    <select id="countByShareManager" resultType="int">
-        SELECT COUNT(*) FROM h3_share WHERE share_manager = #{userId}
+    <!-- 이관용: h3_share 전체 읽기 -->
+    <select id="selectAllShare" resultType="map">
+        SELECT user_id, user_manager, share_manager, share_favorites, share_regdate
+        FROM h3_share
     </select>
 
 </mapper>
