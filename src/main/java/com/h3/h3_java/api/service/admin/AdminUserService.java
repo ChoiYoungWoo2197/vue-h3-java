@@ -623,7 +623,7 @@ public class AdminUserService {
         Map<String, Long> map = new HashMap<>();
         for (Map<String, Object> row : rows) {
             String advId = objStr(row.get("daily_advid"));
-            if (advId != null) map.put(advId, parseIntSafe(row.get("cst"), 0));
+            if (advId != null) map.put(advId, parseLongSafe(row.get("cst"), 0L));
         }
         return map;
     }
@@ -889,5 +889,11 @@ public class AdminUserService {
         if (val == null) return def;
         if (val instanceof Number n) return n.intValue();
         try { return Integer.parseInt(val.toString()); } catch (Exception e) { return def; }
+    }
+
+    private long parseLongSafe(Object val, long def) {
+        if (val == null) return def;
+        if (val instanceof Number n) return n.longValue();
+        try { return Long.parseLong(val.toString()); } catch (Exception e) { return def; }
     }
 }
