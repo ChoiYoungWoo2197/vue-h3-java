@@ -68,6 +68,28 @@ public class AdminController {
         return adminUserService.getMemberUsers(query, field, manager, start, display, sort);
     }
 
+    // 가입승인 목록
+    @GetMapping("/membership-users")
+    public Map<String, Object> getMembershipUsers(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(defaultValue = "username") String field,
+            @RequestParam(defaultValue = "")         String query,
+            @RequestParam(defaultValue = "0")        int    start,
+            @RequestParam(defaultValue = "10")       int    display,
+            @RequestParam(defaultValue = "dd")       String sort) {
+        return adminUserService.getMembershipUsers(field, query, start, display, sort);
+    }
+
+    // 가입 상태 변경 (승인/보류/거절)
+    @PostMapping("/userstatus")
+    public Map<String, Object> updateMemberStatus(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam String applyuserid,
+            @RequestParam(defaultValue = "") String manageruserid,
+            @RequestParam int    userstatus) {
+        return adminUserService.updateMemberStatus(applyuserid, userstatus, manageruserid);
+    }
+
     // 계정이동
     @PostMapping("/usertransfer")
     public Map<String, Object> transferUsers(

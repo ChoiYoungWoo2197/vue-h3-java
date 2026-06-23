@@ -250,6 +250,25 @@ public class AccountMongoService {
         return doc != null ? doc.getString("user_id") : null;
     }
 
+    public List<Document> findByUserIds(List<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) return List.of();
+        return mongo.find(Query.query(Criteria.where("user_id").in(userIds)), Document.class, COL);
+    }
+
+    public List<String> findUserIdsByAdvId(String advid) {
+        Criteria c = new Criteria().orOperator(
+            Criteria.where("account_naver").regex(advid, "i"),
+            Criteria.where("account_gfa").regex(advid, "i"),
+            Criteria.where("account_kakaosa").regex(advid, "i"),
+            Criteria.where("account_kakaomoment").regex(advid, "i"),
+            Criteria.where("account_google").regex(advid, "i")
+        );
+        return mongo.find(Query.query(c), Document.class, COL).stream()
+            .map(d -> d.getString("user_id"))
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toList());
+    }
+
     public AccountDto findAccountDtoByUserId(String userId) {
         Document doc = findByUserId(userId);
         if (doc == null) return null;

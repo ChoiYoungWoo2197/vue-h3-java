@@ -163,4 +163,49 @@ public class UserMongoService {
             COL
         );
     }
+
+    // ── 가입승인 목록 (user_level 0,1) ─────────────────────────────────────────
+
+    public List<Document> findMembershipUsers(String field, String query,
+                                              List<String> advUserIds, int skip, int limit, boolean desc) {
+        Query q = Query.query(buildMembershipCriteria(field, query, advUserIds));
+        q.with(Sort.by(desc ? Sort.Direction.DESC : Sort.Direction.ASC, "user_regdate"));
+        q.skip(skip).limit(limit);
+        return mongo.find(q, Document.class, COL);
+    }
+
+    public long countMembershipUsers(String field, String query, List<String> advUserIds) {
+        return mongo.count(Query.query(buildMembershipCriteria(field, query, advUserIds)), COL);
+    }
+
+    private Criteria buildMembershipCriteria(String field, String query, List<String> advUserIds) {
+        Criteria base = new Criteria().orOperator(
+            Criteria.where("user_level").is(0),
+            Criteria.where("user_level").is(1)
+        );
+        if (advUserIds != null) {
+            return new Criteria().andOperator(base, Criteria.where("user_id").in(advUserIds));
+        }
+        if (query != null && !query.isBlank() && field != null && !"advid".equals(field)) {
+            String mongoField = switch (field) {
+                case "userid"      -> "user_id";
+                case "username"    -> "user_name";
+                case "usercompany" -> "user_company";
+                case "usermanager" -> "user_manager";
+                default            -> "user_name";
+            };
+            return new Criteria().andOperator(base, Criteria.where(mongoField).regex(query, "i"));
+        }
+        return base;
+    }
+
+    public void updateUserStatusAndLevel(String userId, int status, int level, String managerId) {
+        Update u = new Update()
+            .set("user_status", status)
+            .set("user_level",  level);
+        if (managerId != null && !managerId.isBlank()) {
+            u.set("user_manager", managerId);
+        }
+        mongo.updateFirst(Query.query(Criteria.where("user_id").is(userId)), u, COL);
+    }
 }
