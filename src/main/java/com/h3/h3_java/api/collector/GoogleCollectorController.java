@@ -3,7 +3,7 @@ package com.h3.h3_java.api.collector;
 import com.h3.h3_java.batch.master.GoogleMasterJob;
 import com.h3.h3_java.batch.stat.*;
 import com.h3.h3_java.media.google.dto.GoogleAccountDto;
-import com.h3.h3_java.media.google.mapper.GoogleMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.queue.producer.CollectorProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +20,7 @@ import java.util.Map;
 public class GoogleCollectorController {
 
     private final CollectorProducer     producer;
-    private final GoogleMapper          mapper;
+    private final AccountMongoService   accountMongo;
     private final GoogleMasterJob       masterJob;
     private final GoogleCampaignDayJob  campaignDayJob;
     private final GoogleCampaignHourJob campaignHourJob;
@@ -52,7 +52,7 @@ public class GoogleCollectorController {
 
     @PostMapping("/campaign-daily/range")
     public ResponseEntity<?> campaignDailyAllRange(@RequestParam String from, @RequestParam String to) {
-        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
         int count = 0;
         for (GoogleAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -86,7 +86,7 @@ public class GoogleCollectorController {
 
     @PostMapping("/campaign-hour/range")
     public ResponseEntity<?> campaignHourAllRange(@RequestParam String from, @RequestParam String to) {
-        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
         int count = 0;
         for (GoogleAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -120,7 +120,7 @@ public class GoogleCollectorController {
 
     @PostMapping("/adgroup-daily/range")
     public ResponseEntity<?> adGroupDailyAllRange(@RequestParam String from, @RequestParam String to) {
-        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
         int count = 0;
         for (GoogleAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -154,7 +154,7 @@ public class GoogleCollectorController {
 
     @PostMapping("/ad-daily/range")
     public ResponseEntity<?> adDailyAllRange(@RequestParam String from, @RequestParam String to) {
-        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
         int count = 0;
         for (GoogleAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -188,7 +188,7 @@ public class GoogleCollectorController {
 
     @PostMapping("/keyword-daily/range")
     public ResponseEntity<?> keywordDailyAllRange(@RequestParam String from, @RequestParam String to) {
-        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
         int count = 0;
         for (GoogleAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;

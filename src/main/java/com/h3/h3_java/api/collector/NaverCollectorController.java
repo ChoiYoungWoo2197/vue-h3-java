@@ -14,8 +14,7 @@ import com.h3.h3_java.batch.stat.NaverCampaignHourCollectionJob;
 import com.h3.h3_java.batch.stat.NaverShoppingAdDayCollectionJob;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.dto.NaverGfaAccountDto;
-import com.h3.h3_java.media.naver.mapper.NaverGfaMapper;
-import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.queue.producer.CollectorProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,8 +44,7 @@ public class NaverCollectorController {
     private final NaverAdGroupDayCollectionJob adGroupDayJob;
     private final NaverAdDayCollectionJob adDayJob;
     private final NaverShoppingAdDayCollectionJob shoppingDayJob;
-    private final NaverMasterReportMapper mapper;
-    private final NaverGfaMapper gfaMapper;
+    private final AccountMongoService accountMongo;
     private final CollectorProducer producer;
 
     // =====================================================================
@@ -54,7 +52,7 @@ public class NaverCollectorController {
     // =====================================================================
 
     private NaverAccountDto findAccount(String userId) {
-        return mapper.selectNaverAccounts().stream()
+        return accountMongo.findNaverAccountDtos().stream()
                 .filter(a -> userId.equals(a.getUserId()))
                 .findFirst().orElse(null);
     }
@@ -85,7 +83,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectMasterForce() {
         log.info("[NaverCollector] 마스터 전체 강제 수집 MQ 발행 시작");
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -141,7 +139,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectAdDetail() {
         log.info("[NaverCollector] 소재 상세 전체 수집 MQ 발행 시작");
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -197,7 +195,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] 캠페인 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -270,7 +268,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] 캠페인 시간별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -343,7 +341,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] 광고그룹 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -416,7 +414,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] 소재 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -489,7 +487,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] 쇼핑소재 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -547,7 +545,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectStateReport() {
         log.info("[NaverCollector] StateReport 전체 수집 MQ 발행 시작");
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -571,7 +569,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] StateReport 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -629,7 +627,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectConvType() {
         log.info("[NaverCollector] 전환유형 전체 수집 MQ 발행 시작");
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -653,7 +651,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] 전환유형 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
             Set<String> seen = new HashSet<>();
             int count = 0;
             for (NaverAccountDto account : accounts) {
@@ -743,7 +741,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] GFA 캠페인 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+            List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
             int count = 0;
             for (NaverGfaAccountDto account : accounts) {
                 if ("admin".equals(account.getUserId())) continue;
@@ -761,7 +759,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectGfaCampaignDailyByUser(@PathVariable String userId) {
         log.info("[NaverCollector] GFA 캠페인 일별 단일 수집 MQ 발행 userId={}", userId);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);
@@ -781,7 +779,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] GFA 캠페인 일별 기간 수집 MQ 발행 userId={} from={} to={}", userId, from, to);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);
@@ -817,7 +815,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] GFA 소재 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+            List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
             int count = 0;
             for (NaverGfaAccountDto account : accounts) {
                 if ("admin".equals(account.getUserId())) continue;
@@ -835,7 +833,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectGfaAdDailyByUser(@PathVariable String userId) {
         log.info("[NaverCollector] GFA 소재 일별 단일 수집 MQ 발행 userId={}", userId);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);
@@ -855,7 +853,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] GFA 소재 일별 기간 수집 MQ 발행 userId={} from={} to={}", userId, from, to);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);
@@ -891,7 +889,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] GFA 광고그룹 일별 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+            List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
             int count = 0;
             for (NaverGfaAccountDto account : accounts) {
                 if ("admin".equals(account.getUserId())) continue;
@@ -909,7 +907,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectGfaAdgroupDailyByUser(@PathVariable String userId) {
         log.info("[NaverCollector] GFA 광고그룹 일별 단일 수집 MQ 발행 userId={}", userId);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);
@@ -929,7 +927,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] GFA 광고그룹 일별 기간 수집 MQ 발행 userId={} from={} to={}", userId, from, to);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);
@@ -965,7 +963,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] GFA 예산 알람 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+            List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
             int count = 0;
             for (NaverGfaAccountDto account : accounts) {
                 if ("admin".equals(account.getUserId())) continue;
@@ -983,7 +981,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectGfaBudgetAlarmByUser(@PathVariable String userId) {
         log.info("[NaverCollector] GFA 예산 알람 단일 수집 MQ 발행 userId={}", userId);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);
@@ -1003,7 +1001,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] GFA 예산 알람 기간 수집 MQ 발행 userId={} from={} to={}", userId, from, to);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);
@@ -1039,7 +1037,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] GFA 전환유형 전체 기간 수집 MQ 발행 from={} to={}", from, to);
         try {
-            List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+            List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
             int count = 0;
             for (NaverGfaAccountDto account : accounts) {
                 if ("admin".equals(account.getUserId())) continue;
@@ -1057,7 +1055,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectGfaConvTypeByUser(@PathVariable String userId) {
         log.info("[NaverCollector] GFA 전환유형 단일 수집 MQ 발행 userId={}", userId);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);
@@ -1077,7 +1075,7 @@ public class NaverCollectorController {
             @RequestParam String to) {
         log.info("[NaverCollector] GFA 전환유형 기간 수집 MQ 발행 userId={} from={} to={}", userId, from, to);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);
@@ -1094,7 +1092,7 @@ public class NaverCollectorController {
     public ResponseEntity<Map<String, String>> collectGfaMasterByUser(@PathVariable String userId) {
         log.info("[NaverCollector] GFA 마스터 단일 수집 MQ 발행 userId={}", userId);
         try {
-            NaverGfaAccountDto account = gfaMapper.selectGfaAccounts().stream()
+            NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
                     .filter(a -> userId.equals(a.getUserId()))
                     .findFirst().orElse(null);
             if (account == null) return notFound(userId);

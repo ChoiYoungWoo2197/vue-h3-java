@@ -1,7 +1,7 @@
 package com.h3.h3_java.api.service.analysis;
 
 import com.h3.h3_java.api.dto.AccountDto;
-import com.h3.h3_java.api.mapper.AccountMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,13 +14,13 @@ import java.util.*;
 @RequiredArgsConstructor
 public class MediaReportService {
 
-    private final AccountMapper accountMapper;
+    private final AccountMongoService accountMongo;
     private final DashboardMongoService mongoService;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     public Map<String, Object> getMediaReport(String userId, String from, String to, String cfrom, String cto) {
-        AccountDto acc = accountMapper.selectByUserId(userId);
+        AccountDto acc = accountMongo.findAccountDtoByUserId(userId);
         if (acc == null) return fail("1009", "계정을 확인해 주세요.");
 
         String comparefrom = (cfrom != null && !cfrom.isBlank()) ? cfrom : from;

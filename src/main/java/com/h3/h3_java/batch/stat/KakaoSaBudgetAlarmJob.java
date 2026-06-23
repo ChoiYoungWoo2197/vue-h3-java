@@ -3,7 +3,7 @@ package com.h3.h3_java.batch.stat;
 import com.h3.h3_java.batch.scheduler.KakaoSaTokenManager;
 import com.h3.h3_java.media.kakao.KakaoSaApiClient;
 import com.h3.h3_java.media.kakao.dto.KakaoSaAccountDto;
-import com.h3.h3_java.media.kakao.mapper.KakaoSaMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.media.kakao.mapper.KakaoSaBudgetAlarmMapper;
 import com.h3.h3_java.raw.mongo.KakaoSaStatMongoService;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class KakaoSaBudgetAlarmJob {
 
-    private final KakaoSaMapper           mapper;
+    private final AccountMongoService     accountMongo;
     private final KakaoSaBudgetAlarmMapper alarmMapper;
     private final KakaoSaStatMongoService  statMongo;
     private final KakaoSaTokenManager      tokenManager;
@@ -37,7 +37,7 @@ public class KakaoSaBudgetAlarmJob {
     private static final List<String>      KPIS   = List.of("im", "clk", "cv", "cr");
 
     public void collect() {
-        List<KakaoSaAccountDto> accounts = mapper.selectKakaoSaAccounts();
+        List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
         log.info("[KAKAO-SA][BUDGET-ALARM] 수집 시작 accounts={}", accounts.size());
         for (KakaoSaAccountDto account : accounts) {
             collectForAccount(account);
@@ -45,7 +45,7 @@ public class KakaoSaBudgetAlarmJob {
     }
 
     public boolean collectForUserId(String userId) {
-        KakaoSaAccountDto account = mapper.selectKakaoSaAccounts().stream()
+        KakaoSaAccountDto account = accountMongo.findKakaoSaAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (account == null) return false;

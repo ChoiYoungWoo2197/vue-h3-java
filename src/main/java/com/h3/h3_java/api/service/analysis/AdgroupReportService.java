@@ -1,7 +1,7 @@
 package com.h3.h3_java.api.service.analysis;
 
 import com.h3.h3_java.api.dto.AccountDto;
-import com.h3.h3_java.api.mapper.AccountMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
@@ -13,7 +13,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AdgroupReportService {
 
-    private final AccountMapper accountMapper;
+    private final AccountMongoService accountMongo;
     private final DashboardMongoService mongoService;
 
     // naverOnoff=true: 0=on(Naver SA, parseInt("ON")→0), false: 1=on(표준)
@@ -31,7 +31,7 @@ public class AdgroupReportService {
 
     public Map<String, Object> getAdgroupReport(String userId, String md, String fromdate, String todate,
                                                  String campaignId, String sort, int start, int display) {
-        AccountDto acc = accountMapper.selectByUserId(userId);
+        AccountDto acc = accountMongo.findAccountDtoByUserId(userId);
         if (acc == null) return fail("1009", "계정을 확인해 주세요.");
 
         MediaConfig cfg = MD_MAP.getOrDefault(md != null ? md : "N", MD_MAP.get("N"));

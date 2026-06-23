@@ -3,7 +3,7 @@ package com.h3.h3_java.batch.master;
 import com.h3.h3_java.batch.scheduler.KakaoSaTokenManager;
 import com.h3.h3_java.media.kakao.KakaoSaApiClient;
 import com.h3.h3_java.media.kakao.dto.KakaoSaAccountDto;
-import com.h3.h3_java.media.kakao.mapper.KakaoSaMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.queue.producer.CollectorProducer;
 import com.h3.h3_java.raw.mongo.KakaoSaMasterMongoService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class KakaoSaMasterJob {
 
-    private final KakaoSaMapper            mapper;
+    private final AccountMongoService      accountMongo;
     private final KakaoSaMasterMongoService mongoService;
     private final KakaoSaTokenManager       tokenManager;
     private final CollectorProducer         producer;
@@ -27,7 +27,7 @@ public class KakaoSaMasterJob {
     private static final Map<String, Integer> ONOFF = Map.of("ON", 1, "OFF", 0);
 
     public void collect() {
-        List<KakaoSaAccountDto> accounts = mapper.selectKakaoSaAccounts();
+        List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
         log.info("[KAKAO-SA][MASTER] 전체 수집 시작 accounts={}", accounts.size());
         for (KakaoSaAccountDto account : accounts) {
             collectForAccount(account);
@@ -35,7 +35,7 @@ public class KakaoSaMasterJob {
     }
 
     public boolean collectForUserId(String userId) {
-        KakaoSaAccountDto account = mapper.selectKakaoSaAccounts().stream()
+        KakaoSaAccountDto account = accountMongo.findKakaoSaAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (account == null) {

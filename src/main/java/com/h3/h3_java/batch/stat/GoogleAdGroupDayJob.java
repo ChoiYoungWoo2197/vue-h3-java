@@ -3,7 +3,7 @@ package com.h3.h3_java.batch.stat;
 import com.h3.h3_java.batch.scheduler.GoogleTokenManager;
 import com.h3.h3_java.media.google.GoogleApiClient;
 import com.h3.h3_java.media.google.dto.GoogleAccountDto;
-import com.h3.h3_java.media.google.mapper.GoogleMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.GoogleMasterMongoService;
 import com.h3.h3_java.raw.mongo.GoogleStatMongoService;
@@ -24,7 +24,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class GoogleAdGroupDayJob {
 
-    private final GoogleMapper             mapper;
+    private final AccountMongoService      accountMongo;
     private final GoogleTokenManager       tokenManager;
     private final GoogleMasterMongoService masterMongoService;
     private final GoogleStatMongoService   statMongoService;
@@ -34,7 +34,7 @@ public class GoogleAdGroupDayJob {
     private static final long MICROS = 1_000_000L;
 
     public void collect() {
-        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
         log.info("[GOOGLE][ADGROUP-DAY] 전체 수집 시작 accounts={}", accounts.size());
         String token = tokenManager.getAccessToken();
         if (token == null) { log.warn("[GOOGLE][ADGROUP-DAY] 토큰 없음"); return; }
@@ -64,7 +64,7 @@ public class GoogleAdGroupDayJob {
     }
 
     private GoogleAccountDto findAccount(String userId) {
-        return mapper.selectGoogleAccounts().stream()
+        return accountMongo.findGoogleAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId())).findFirst().orElse(null);
     }
 

@@ -2,7 +2,7 @@ package com.h3.h3_java.batch.stat;
 
 import com.h3.h3_java.batch.scheduler.NaverGfaTokenManager;
 import com.h3.h3_java.media.naver.dto.NaverGfaAccountDto;
-import com.h3.h3_java.media.naver.mapper.NaverGfaMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.NaverGfaMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class NaverGfaConvTypeJob {
 
-    private final NaverGfaMapper gfaMapper;
+    private final AccountMongoService accountMongo;
     private final NaverGfaMasterMongoService mongoService;
     private final NaverGfaTokenManager tokenManager;
 
@@ -36,14 +36,14 @@ public class NaverGfaConvTypeJob {
     // =====================================================================
 
     public void collect() {
-        List<NaverGfaAccountDto> accounts = gfaMapper.selectGfaAccounts();
+        List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
         for (NaverGfaAccountDto acc : accounts) {
             collectAccount(acc, null, null);
         }
     }
 
     public boolean collectForUserId(String userId) {
-        NaverGfaAccountDto acc = gfaMapper.selectGfaAccounts().stream()
+        NaverGfaAccountDto acc = accountMongo.findGfaAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (acc == null) return false;
@@ -52,7 +52,7 @@ public class NaverGfaConvTypeJob {
     }
 
     public void collectRange(String userId, String fromDate, String toDate) {
-        NaverGfaAccountDto acc = gfaMapper.selectGfaAccounts().stream()
+        NaverGfaAccountDto acc = accountMongo.findGfaAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (acc == null) return;

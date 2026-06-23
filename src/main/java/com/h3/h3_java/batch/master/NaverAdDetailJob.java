@@ -2,7 +2,7 @@ package com.h3.h3_java.batch.master;
 
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
-import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.NaverMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class NaverAdDetailJob {
 
-    private final NaverMasterReportMapper mapper;
+    private final AccountMongoService accountMongo;
     private final NaverMasterMongoService mongoService;
 
     private static final ExecutorService FETCH_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
@@ -29,7 +29,7 @@ public class NaverAdDetailJob {
     );
 
     public void collect() {
-        List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+        List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
         Set<String> seen = new HashSet<>();
         for (NaverAccountDto account : accounts) {
             if ("admin".equals(account.getUserId())) continue;
@@ -40,7 +40,7 @@ public class NaverAdDetailJob {
     }
 
     public boolean collectForUserId(String userId) {
-        NaverAccountDto target = mapper.selectNaverAccounts().stream()
+        NaverAccountDto target = accountMongo.findNaverAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (target == null) return false;

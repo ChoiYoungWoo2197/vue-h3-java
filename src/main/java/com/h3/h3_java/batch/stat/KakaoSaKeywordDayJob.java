@@ -3,7 +3,7 @@ package com.h3.h3_java.batch.stat;
 import com.h3.h3_java.batch.scheduler.KakaoSaTokenManager;
 import com.h3.h3_java.media.kakao.KakaoSaApiClient;
 import com.h3.h3_java.media.kakao.dto.KakaoSaAccountDto;
-import com.h3.h3_java.media.kakao.mapper.KakaoSaMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.KakaoSaMasterMongoService;
 import com.h3.h3_java.raw.mongo.KakaoSaStatMongoService;
@@ -20,7 +20,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class KakaoSaKeywordDayJob {
 
-    private final KakaoSaMapper             mapper;
+    private final AccountMongoService       accountMongo;
     private final KakaoSaMasterMongoService masterMongo;
     private final KakaoSaStatMongoService   statMongo;
     private final KakaoSaTokenManager       tokenManager;
@@ -30,7 +30,7 @@ public class KakaoSaKeywordDayJob {
     private static final DateTimeFormatter APIFMT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     public void collect() {
-        List<KakaoSaAccountDto> accounts = mapper.selectKakaoSaAccounts();
+        List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
         log.info("[KAKAO-SA][KEYWORD-DAY] 전체 수집 시작 accounts={}", accounts.size());
         List<String> dates = buildAutoDates();
         for (KakaoSaAccountDto account : accounts) {
@@ -47,7 +47,7 @@ public class KakaoSaKeywordDayJob {
     }
 
     private boolean runForUser(String userId, List<String> dates) {
-        KakaoSaAccountDto account = mapper.selectKakaoSaAccounts().stream()
+        KakaoSaAccountDto account = accountMongo.findKakaoSaAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (account == null) return false;

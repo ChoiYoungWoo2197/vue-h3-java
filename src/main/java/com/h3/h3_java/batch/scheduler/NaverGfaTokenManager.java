@@ -1,7 +1,9 @@
 package com.h3.h3_java.batch.scheduler;
 
 import com.h3.h3_java.media.naver.dto.NaverGfaAdminDto;
-import com.h3.h3_java.media.naver.mapper.NaverGfaMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
+import com.h3.h3_java.raw.mongo.NaverGfaTokenMongoService;
+import org.bson.Document;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +19,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NaverGfaTokenManager {
 
-    private final NaverGfaMapper mapper;
+    private final AccountMongoService    accountMongo;
+    private final NaverGfaTokenMongoService tokenMongoService;
 
     private static final String VERIFY_URL  = "https://openapi.naver.com/v1/nid/verify";
     private static final String REFRESH_URL = "https://nid.naver.com/oauth2.0/token";
@@ -27,19 +30,23 @@ public class NaverGfaTokenManager {
 
     @PostConstruct
     public void init() {
-        adminAccount = mapper.selectGfaAdminAccount();
-        if (adminAccount == null || adminAccount.getAccountGfa() == null) {
+        Document acct = accountMongo.findByUserId("admin");
+        if (acct == null || acct.getString("account_gfa") == null) {
             log.warn("[GFA TOKEN] admin 계정 없음 - h3_account 확인 필요");
             return;
         }
+        adminAccount = new NaverGfaAdminDto();
+        adminAccount.setAccountGfa(acct.getString("account_gfa"));
+        adminAccount.setAccountNaverSecret(acct.getString("account_naver_secret"));
+        adminAccount.setAccountNaverCustomer(acct.getString("account_naver_customer"));
 
-        Map<String, Object> row = mapper.selectLatestNaverToken();
-        if (row == null || row.get("access_token") == null) {
-            log.warn("[GFA TOKEN] MySQL 토큰 없음 - 수동 등록 필요");
+        Document tok = tokenMongoService.findToken();
+        if (tok == null || tok.getString("access_token") == null) {
+            log.warn("[GFA TOKEN] MongoDB 토큰 없음 - 수동 등록 필요");
             return;
         }
-        accessToken = String.valueOf(row.get("access_token"));
-        log.info("[GFA TOKEN] MySQL 토큰 로드 완료");
+        accessToken = tok.getString("access_token");
+        log.info("[GFA TOKEN] MongoDB 토큰 로드 완료");
     }
 
     @Scheduled(fixedDelay = 1_800_000, initialDelay = 60_000)
@@ -83,10 +90,10 @@ public class NaverGfaTokenManager {
     @SuppressWarnings("unchecked")
     private void doRefresh() {
         try {
-            Map<String, Object> row = mapper.selectLatestNaverToken();
-            if (row == null) return;
+            Document tok = tokenMongoService.findToken();
+            if (tok == null) return;
 
-            String refreshToken = String.valueOf(row.get("refresh_token"));
+            String refreshToken = tok.getString("refresh_token");
             String url = REFRESH_URL
                 + "?grant_type=refresh_token"
                 + "&client_id="     + adminAccount.getAccountGfa()
@@ -107,7 +114,7 @@ public class NaverGfaTokenManager {
                 ? String.valueOf(body.get("refresh_token"))
                 : refreshToken;
 
-            mapper.updateNaverToken(newAt, newRt);
+            tokenMongoService.saveToken(newAt, newRt);
             accessToken = newAt;
             log.info("[GFA TOKEN] 갱신 완료");
 

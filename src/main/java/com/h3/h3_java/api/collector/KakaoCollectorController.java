@@ -9,7 +9,7 @@ import com.h3.h3_java.batch.stat.KakaoSaCampaignDayJob;
 import com.h3.h3_java.batch.stat.KakaoSaCampaignHourJob;
 import com.h3.h3_java.batch.stat.KakaoSaKeywordDayJob;
 import com.h3.h3_java.media.kakao.dto.KakaoSaAccountDto;
-import com.h3.h3_java.media.kakao.mapper.KakaoSaMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.queue.producer.CollectorProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,11 +33,11 @@ public class KakaoCollectorController {
     private final KakaoSaKeywordDayJob   keywordDayJob;
     private final KakaoSaAdDayJob        adDayJob;
     private final KakaoSaBudgetAlarmJob  budgetAlarmJob;
-    private final KakaoSaMapper          mapper;
+    private final AccountMongoService     accountMongo;
     private final CollectorProducer      producer;
 
     private KakaoSaAccountDto findAccount(String userId) {
-        return mapper.selectKakaoSaAccounts().stream()
+        return accountMongo.findKakaoSaAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
     }
@@ -89,7 +89,7 @@ public class KakaoCollectorController {
     @PostMapping("/campaign-daily/range")
     public ResponseEntity<Map<String, String>> collectCampaignDailyAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoSaAccountDto> accounts = mapper.selectKakaoSaAccounts();
+        List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
         int count = 0;
         for (KakaoSaAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -129,7 +129,7 @@ public class KakaoCollectorController {
     @PostMapping("/campaign-hour/range")
     public ResponseEntity<Map<String, String>> collectCampaignHourAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoSaAccountDto> accounts = mapper.selectKakaoSaAccounts();
+        List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
         int count = 0;
         for (KakaoSaAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -169,7 +169,7 @@ public class KakaoCollectorController {
     @PostMapping("/adgroup-daily/range")
     public ResponseEntity<Map<String, String>> collectAdGroupDailyAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoSaAccountDto> accounts = mapper.selectKakaoSaAccounts();
+        List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
         int count = 0;
         for (KakaoSaAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -209,7 +209,7 @@ public class KakaoCollectorController {
     @PostMapping("/keyword-daily/range")
     public ResponseEntity<Map<String, String>> collectKeywordDailyAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoSaAccountDto> accounts = mapper.selectKakaoSaAccounts();
+        List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
         int count = 0;
         for (KakaoSaAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -249,7 +249,7 @@ public class KakaoCollectorController {
     @PostMapping("/ad-daily/range")
     public ResponseEntity<Map<String, String>> collectAdDailyAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoSaAccountDto> accounts = mapper.selectKakaoSaAccounts();
+        List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
         int count = 0;
         for (KakaoSaAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -289,7 +289,7 @@ public class KakaoCollectorController {
     @PostMapping("/budget-alarm/range")
     public ResponseEntity<Map<String, String>> collectBudgetAlarmAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoSaAccountDto> accounts = mapper.selectKakaoSaAccounts();
+        List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
         int count = 0;
         for (KakaoSaAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;

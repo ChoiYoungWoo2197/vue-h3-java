@@ -1,6 +1,7 @@
 package com.h3.h3_java.batch.scheduler;
 
-import com.h3.h3_java.media.kakao.mapper.KakaoMoMapper;
+import com.h3.h3_java.raw.mongo.KakaoMoTokenMongoService;
+import org.bson.Document;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +24,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class KakaoMoTokenManager {
 
-    private final KakaoMoMapper mapper;
+    private final KakaoMoTokenMongoService tokenMongoService;
 
     @Value("${kakao.mo.client-id}")
     private String clientId;
@@ -38,13 +39,13 @@ public class KakaoMoTokenManager {
 
     @PostConstruct
     public void init() {
-        Map<String, Object> row = mapper.selectLatestKakaoMoToken();
-        if (row == null || row.get("access_token") == null) {
-            log.warn("[KAKAO-MO TOKEN] MySQL 토큰 없음 - 수동 등록 필요");
+        Document doc = tokenMongoService.findToken();
+        if (doc == null || doc.getString("access_token") == null) {
+            log.warn("[KAKAO-MO TOKEN] MongoDB 토큰 없음 - 수동 등록 필요");
             return;
         }
-        accessToken = String.valueOf(row.get("access_token"));
-        log.info("[KAKAO-MO TOKEN] MySQL 토큰 로드 완료");
+        accessToken = doc.getString("access_token");
+        log.info("[KAKAO-MO TOKEN] MongoDB 토큰 로드 완료");
     }
 
     @Scheduled(fixedDelay = 1_800_000, initialDelay = 90_000)
@@ -83,10 +84,10 @@ public class KakaoMoTokenManager {
     @SuppressWarnings("unchecked")
     private void doRefresh() {
         try {
-            Map<String, Object> row = mapper.selectLatestKakaoMoToken();
-            if (row == null) return;
+            Document doc = tokenMongoService.findToken();
+            if (doc == null) return;
 
-            String refreshToken = String.valueOf(row.get("refresh_token"));
+            String refreshToken = doc.getString("refresh_token");
 
             RestTemplate rt = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
@@ -115,7 +116,7 @@ public class KakaoMoTokenManager {
                 ? String.valueOf(resBody.get("refresh_token"))
                 : refreshToken;
 
-            mapper.updateKakaoMoToken(newAt, newRt);
+            tokenMongoService.saveToken(newAt, newRt);
             accessToken = newAt;
             log.info("[KAKAO-MO TOKEN] 갱신 완료");
 

@@ -3,7 +3,7 @@ package com.h3.h3_java.batch.master;
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.NaverTsvParser;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
-import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.queue.producer.CollectorProducer;
 import com.h3.h3_java.raw.mongo.NaverMasterMongoService;
 import org.bson.Document;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class NaverMasterReportJob {
 
-    private final NaverMasterReportMapper mapper;
+    private final AccountMongoService accountMongo;
     private final NaverMasterMongoService mongoService;
     private final CollectorProducer producer;
 
@@ -46,7 +46,7 @@ public class NaverMasterReportJob {
     private record SpecResult(String spec, String reportId, String downloadUrl, boolean shouldDownload) {}
 
     public void collect() {
-        List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+        List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
         Set<String> seen = new HashSet<>();
         for (NaverAccountDto account : accounts) {
             if ("admin".equals(account.getUserId())) continue;
@@ -57,7 +57,7 @@ public class NaverMasterReportJob {
     }
 
     public void collectForce() {
-        List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+        List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
         Set<String> seen = new HashSet<>();
         for (NaverAccountDto account : accounts) {
             if ("admin".equals(account.getUserId())) continue;
@@ -68,7 +68,7 @@ public class NaverMasterReportJob {
     }
 
     public boolean collectForUserId(String userId, boolean force) {
-        NaverAccountDto target = mapper.selectNaverAccounts().stream()
+        NaverAccountDto target = accountMongo.findNaverAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (target == null) return false;

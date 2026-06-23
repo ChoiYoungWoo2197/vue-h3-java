@@ -1,7 +1,7 @@
 package com.h3.h3_java.api.service.analysis;
 
 import com.h3.h3_java.api.dto.AccountDto;
-import com.h3.h3_java.api.mapper.AccountMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.auth.UserDto;
 import com.h3.h3_java.auth.UserMapper;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
@@ -15,7 +15,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AdReportService {
 
-    private final AccountMapper accountMapper;
+    private final AccountMongoService accountMongo;
     private final UserMapper     userMapper;
     private final DashboardMongoService mongoService;
 
@@ -59,7 +59,7 @@ public class AdReportService {
     public Map<String, Object> getAdReport(String userId, String md, String fromdate, String todate,
                                              String cfrom, String cto,
                                              String kpi, String sort, int start, int display, boolean base64) {
-        AccountDto acc = accountMapper.selectByUserId(userId);
+        AccountDto acc = accountMongo.findAccountDtoByUserId(userId);
         if (acc == null) return fail("1009", "계정을 확인해 주세요.");
 
         String comparefrom = (cfrom != null && !cfrom.isBlank()) ? cfrom : fromdate;
@@ -277,9 +277,9 @@ public class AdReportService {
     private String findAccountOwner(String targetMd, String advid) {
         try {
             return switch (targetMd) {
-                case "Nda"    -> accountMapper.selectUserIdByGfa(advid);
-                case "K"      -> accountMapper.selectUserIdByKakaomo(advid);
-                case "google" -> accountMapper.selectUserIdByGoogle(advid);
+                case "Nda"    -> accountMongo.findUserIdByGfa(advid);
+                case "K"      -> accountMongo.findUserIdByKakaomoment(advid);
+                case "google" -> accountMongo.findUserIdByGoogle(advid);
                 default       -> null;
             };
         } catch (Exception e) { return null; }

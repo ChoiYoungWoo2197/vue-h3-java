@@ -1,6 +1,7 @@
 package com.h3.h3_java.batch.scheduler;
 
-import com.h3.h3_java.media.kakao.mapper.KakaoSaMapper;
+import com.h3.h3_java.raw.mongo.KakaoSaTokenMongoService;
+import org.bson.Document;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,13 +18,14 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.Collections;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class KakaoSaTokenManager {
 
-    private final KakaoSaMapper mapper;
+    private final KakaoSaTokenMongoService tokenMongoService;
 
     @Value("${kakao.sa.client-id}")
     private String clientId;
@@ -38,13 +40,13 @@ public class KakaoSaTokenManager {
 
     @PostConstruct
     public void init() {
-        Map<String, Object> row = mapper.selectLatestKakaoSaToken();
-        if (row == null || row.get("access_token") == null) {
-            log.warn("[KAKAO-SA TOKEN] MySQL 토큰 없음 - 수동 등록 필요");
+        Document doc = tokenMongoService.findToken();
+        if (doc == null || doc.getString("access_token") == null) {
+            log.warn("[KAKAO-SA TOKEN] MongoDB 토큰 없음 - 수동 등록 필요");
             return;
         }
-        accessToken = String.valueOf(row.get("access_token"));
-        log.info("[KAKAO-SA TOKEN] MySQL 토큰 로드 완료");
+        accessToken = doc.getString("access_token");
+        log.info("[KAKAO-SA TOKEN] MongoDB 토큰 로드 완료");
     }
 
     @Scheduled(fixedDelay = 1_800_000, initialDelay = 60_000)
@@ -83,10 +85,10 @@ public class KakaoSaTokenManager {
     @SuppressWarnings("unchecked")
     private void doRefresh() {
         try {
-            Map<String, Object> row = mapper.selectLatestKakaoSaToken();
-            if (row == null) return;
+            Document doc = tokenMongoService.findToken();
+            if (doc == null) return;
 
-            String refreshToken = String.valueOf(row.get("refresh_token"));
+            String refreshToken = doc.getString("refresh_token");
 
             RestTemplate rt = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
@@ -115,7 +117,7 @@ public class KakaoSaTokenManager {
                 ? String.valueOf(resBody.get("refresh_token"))
                 : refreshToken;
 
-            mapper.updateKakaoSaToken(newAt, newRt);
+            tokenMongoService.saveToken(newAt, newRt);
             accessToken = newAt;
             log.info("[KAKAO-SA TOKEN] 갱신 완료");
 

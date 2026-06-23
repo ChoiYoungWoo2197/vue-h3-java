@@ -3,7 +3,7 @@ package com.h3.h3_java.batch.stat;
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.dto.NaverShoppingAdDto;
-import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class NaverShoppingAdDayCollectionJob {
 
-    private final NaverMasterReportMapper mapper;
+    private final AccountMongoService accountMongo;
     private final NaverStatMongoService   statMongoService;
     private final AccountLogMongoService  accountLogMongo;
 
@@ -29,7 +29,7 @@ public class NaverShoppingAdDayCollectionJob {
     private static final int MAX_RETRY    = 2;
 
     public void collect() {
-        List<NaverAccountDto> accounts = mapper.selectNaverAccounts();
+        List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
         Set<String> seen = new HashSet<>();
         for (NaverAccountDto acc : accounts) {
             if ("admin".equals(acc.getUserId())) continue;
@@ -40,7 +40,7 @@ public class NaverShoppingAdDayCollectionJob {
     }
 
     public boolean collectForUserId(String userId) {
-        NaverAccountDto acc = mapper.selectNaverAccounts().stream()
+        NaverAccountDto acc = accountMongo.findNaverAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (acc == null) return false;
@@ -49,7 +49,7 @@ public class NaverShoppingAdDayCollectionJob {
     }
 
     public void collectRange(String userId, String fromDate, String toDate) {
-        NaverAccountDto acc = mapper.selectNaverAccounts().stream()
+        NaverAccountDto acc = accountMongo.findNaverAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (acc == null) return;

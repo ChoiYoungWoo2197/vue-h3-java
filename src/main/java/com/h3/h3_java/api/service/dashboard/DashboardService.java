@@ -1,7 +1,6 @@
 package com.h3.h3_java.api.service.dashboard;
 
 import com.h3.h3_java.api.dto.AccountDto;
-import com.h3.h3_java.api.mapper.AccountMapper;
 import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
@@ -18,7 +17,6 @@ import java.util.*;
 @RequiredArgsConstructor
 public class DashboardService {
 
-    private final AccountMapper          accountMapper;
     private final AccountLogMongoService accountLogMongo;
     private final AccountMongoService    accountMongo;
     private final DashboardMongoService  mongoService;
@@ -29,7 +27,7 @@ public class DashboardService {
     // ─── 매체별 요약 (summarymedia) ──────────────────────────────────────────
 
     public Map<String, Object> getSummaryMedia(String userId, String fromdate, String todate, String media) {
-        AccountDto acc = accountMapper.selectByUserId(userId);
+        AccountDto acc = accountMongo.findAccountDtoByUserId(userId);
         if (acc == null) return Map.of("result", "failed", "status", "1009", "errormessage", "계정 없음");
 
         boolean[] m = parseMedia(media);
@@ -55,7 +53,7 @@ public class DashboardService {
 
     public Map<String, Object> getSummary(String userId, String fromdate, String todate,
                                           String comparefromdate, String comparetodate, String media) {
-        AccountDto acc = accountMapper.selectByUserId(userId);
+        AccountDto acc = accountMongo.findAccountDtoByUserId(userId);
         if (acc == null) return Map.of("result", "failed", "status", "1009", "errormessage", "계정 없음");
 
         boolean[] m  = parseMedia(media);
@@ -131,7 +129,7 @@ public class DashboardService {
         if (fromdate == null || fromdate.isBlank() || todate == null || todate.isBlank())
             return Map.of("result", "success", "status", "1004", "errormessage", "검색 결과가 없습니다.");
 
-        AccountDto acc = accountMapper.selectByUserId(userId);
+        AccountDto acc = accountMongo.findAccountDtoByUserId(userId);
         if (acc == null) return Map.of("result", "failed", "status", "1009", "errormessage", "계정 없음");
 
         boolean[] m = parseMedia(media);
@@ -161,7 +159,7 @@ public class DashboardService {
         if (fromdate == null || fromdate.isBlank() || todate == null || todate.isBlank())
             return Map.of("result", "success", "status", "1004", "errormessage", "검색 결과가 없습니다.");
 
-        AccountDto acc = accountMapper.selectByUserId(userId);
+        AccountDto acc = accountMongo.findAccountDtoByUserId(userId);
         if (acc == null) return Map.of("result", "failed", "status", "1009", "errormessage", "계정 없음");
 
         boolean[] m = parseMedia(media);

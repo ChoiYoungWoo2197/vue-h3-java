@@ -1,7 +1,7 @@
 package com.h3.h3_java.api.service.analysis;
 
 import com.h3.h3_java.api.dto.AccountDto;
-import com.h3.h3_java.api.mapper.AccountMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ShoppingReportService {
 
-    private final AccountMapper accountMapper;
+    private final AccountMongoService accountMongo;
     private final NaverStatMongoService naverStatMongoService;
 
     public Map<String, Object> getShoppingReport(
@@ -23,7 +23,7 @@ public class ShoppingReportService {
             String kpi, String adpid, String adid,
             String sort, int start, int display) {
 
-        AccountDto acc = accountMapper.selectByUserId(userId);
+        AccountDto acc = accountMongo.findAccountDtoByUserId(userId);
         if (acc == null) return fail("1009", "계정을 확인해 주세요.");
 
         String advkey = acc.getAccountNaverCustomer();

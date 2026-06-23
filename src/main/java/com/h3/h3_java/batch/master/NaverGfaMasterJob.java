@@ -2,7 +2,7 @@ package com.h3.h3_java.batch.master;
 
 import com.h3.h3_java.batch.scheduler.NaverGfaTokenManager;
 import com.h3.h3_java.media.naver.dto.NaverGfaAccountDto;
-import com.h3.h3_java.media.naver.mapper.NaverGfaMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.NaverGfaMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 public class NaverGfaMasterJob {
 
-    private final NaverGfaMapper mapper;
+    private final AccountMongoService accountMongo;
     private final NaverGfaMasterMongoService mongoService;
     private final NaverGfaTokenManager tokenManager;
 
@@ -56,14 +56,14 @@ public class NaverGfaMasterJob {
     );
 
     public void collect() {
-        List<NaverGfaAccountDto> accounts = mapper.selectGfaAccounts();
+        List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
         for (NaverGfaAccountDto account : accounts) {
             collectForAccount(account);
         }
     }
 
     public boolean collectForUserId(String userId) {
-        NaverGfaAccountDto account = mapper.selectGfaAccounts().stream()
+        NaverGfaAccountDto account = accountMongo.findGfaAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (account == null) return false;

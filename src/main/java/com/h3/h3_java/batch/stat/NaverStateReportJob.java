@@ -2,7 +2,7 @@ package com.h3.h3_java.batch.stat;
 
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
-import com.h3.h3_java.media.naver.mapper.NaverMasterReportMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.AccountLogMongoService;
 import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class NaverStateReportJob {
 
-    private final NaverMasterReportMapper accountMapper;
+    private final AccountMongoService accountMongo;
     private final NaverStatMongoService   statMongoService;
     private final AccountLogMongoService  accountLogMongo;
 
@@ -61,7 +61,7 @@ public class NaverStateReportJob {
     private static final int CV_COLS        = 15;
 
     public void collect() {
-        List<NaverAccountDto> accounts = accountMapper.selectNaverAccounts();
+        List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
         Set<String> seen = new HashSet<>();
         for (NaverAccountDto acc : accounts) {
             if (shouldSkip(acc.getUserId())) continue;
@@ -72,7 +72,7 @@ public class NaverStateReportJob {
     }
 
     public boolean collectForUserId(String userId) {
-        NaverAccountDto acc = accountMapper.selectNaverAccounts().stream()
+        NaverAccountDto acc = accountMongo.findNaverAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (acc == null) return false;
@@ -81,7 +81,7 @@ public class NaverStateReportJob {
     }
 
     public void collectRange(String userId, String fromDate, String toDate) {
-        NaverAccountDto acc = accountMapper.selectNaverAccounts().stream()
+        NaverAccountDto acc = accountMongo.findNaverAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (acc == null) return;

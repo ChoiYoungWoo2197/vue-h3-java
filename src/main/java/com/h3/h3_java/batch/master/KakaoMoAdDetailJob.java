@@ -3,7 +3,7 @@ package com.h3.h3_java.batch.master;
 import com.h3.h3_java.batch.scheduler.KakaoMoTokenManager;
 import com.h3.h3_java.media.kakao.KakaoMoApiClient;
 import com.h3.h3_java.media.kakao.dto.KakaoMoAccountDto;
-import com.h3.h3_java.media.kakao.mapper.KakaoMoMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.KakaoMoMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,12 +18,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class KakaoMoAdDetailJob {
 
-    private final KakaoMoMapper             mapper;
+    private final AccountMongoService       accountMongo;
     private final KakaoMoMasterMongoService mongoService;
     private final KakaoMoTokenManager       tokenManager;
 
     public void collect() {
-        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
         log.info("[KAKAO-MO][AD-DETAIL] 전체 수집 시작 accounts={}", accounts.size());
         for (KakaoMoAccountDto account : accounts) {
             collectForAccount(account);
@@ -31,7 +31,7 @@ public class KakaoMoAdDetailJob {
     }
 
     public boolean collectForUserId(String userId) {
-        KakaoMoAccountDto account = mapper.selectKakaoMoAccounts().stream()
+        KakaoMoAccountDto account = accountMongo.findKakaoMoAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
         if (account == null) {

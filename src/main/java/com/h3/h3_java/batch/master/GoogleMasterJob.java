@@ -3,7 +3,7 @@ package com.h3.h3_java.batch.master;
 import com.h3.h3_java.batch.scheduler.GoogleTokenManager;
 import com.h3.h3_java.media.google.GoogleApiClient;
 import com.h3.h3_java.media.google.dto.GoogleAccountDto;
-import com.h3.h3_java.media.google.mapper.GoogleMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.GoogleMasterMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +22,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class GoogleMasterJob {
 
-    private final GoogleMapper              mapper;
+    private final AccountMongoService       accountMongo;
     private final GoogleTokenManager        tokenManager;
     private final GoogleMasterMongoService  masterMongoService;
 
@@ -61,7 +61,7 @@ public class GoogleMasterJob {
     );
 
     public void collect() {
-        List<GoogleAccountDto> accounts = mapper.selectGoogleAccounts();
+        List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
         log.info("[GOOGLE][MASTER] 전체 수집 시작 accounts={}", accounts.size());
         String token = tokenManager.getAccessToken();
         if (token == null) {
@@ -83,7 +83,7 @@ public class GoogleMasterJob {
     }
 
     private GoogleAccountDto findAccount(String userId) {
-        return mapper.selectGoogleAccounts().stream()
+        return accountMongo.findGoogleAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
     }

@@ -1,7 +1,7 @@
 package com.h3.h3_java.api.service.analysis;
 
 import com.h3.h3_java.api.dto.AccountDto;
-import com.h3.h3_java.api.mapper.AccountMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
@@ -13,7 +13,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class CampaignReportService {
 
-    private final AccountMapper accountMapper;
+    private final AccountMongoService accountMongo;
     private final DashboardMongoService mongoService;
 
     // 네이버 SA 캠페인 타입
@@ -41,7 +41,7 @@ public class CampaignReportService {
 
     public Map<String, Object> getCampaignReport(String userId, String fromdate, String todate,
                                                   String comparefromdate, String comparetodate) {
-        AccountDto acc = accountMapper.selectByUserId(userId);
+        AccountDto acc = accountMongo.findAccountDtoByUserId(userId);
         if (acc == null) return Map.of("result", "failed", "status", "1009", "errormessage", "계정 없음");
 
         String cfrom = (comparefromdate != null && !comparefromdate.isEmpty()) ? comparefromdate : fromdate;

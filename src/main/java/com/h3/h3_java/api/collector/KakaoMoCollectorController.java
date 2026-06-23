@@ -8,7 +8,7 @@ import com.h3.h3_java.batch.stat.KakaoMoBudgetAlarmJob;
 import com.h3.h3_java.batch.stat.KakaoMoCampaignDayJob;
 import com.h3.h3_java.batch.stat.KakaoMoCampaignHourJob;
 import com.h3.h3_java.media.kakao.dto.KakaoMoAccountDto;
-import com.h3.h3_java.media.kakao.mapper.KakaoMoMapper;
+import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.queue.producer.CollectorProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,11 +31,11 @@ public class KakaoMoCollectorController {
     private final KakaoMoAdGroupDayJob   adGroupDayJob;
     private final KakaoMoAdDayJob        adDayJob;
     private final KakaoMoBudgetAlarmJob  budgetAlarmJob;
-    private final KakaoMoMapper          mapper;
+    private final AccountMongoService     accountMongo;
     private final CollectorProducer      producer;
 
     private KakaoMoAccountDto findAccount(String userId) {
-        return mapper.selectKakaoMoAccounts().stream()
+        return accountMongo.findKakaoMoAccountDtos().stream()
             .filter(a -> userId.equals(a.getUserId()))
             .findFirst().orElse(null);
     }
@@ -87,7 +87,7 @@ public class KakaoMoCollectorController {
     @PostMapping("/campaign-daily/range")
     public ResponseEntity<Map<String, String>> collectCampaignDailyAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
         int count = 0;
         for (KakaoMoAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -127,7 +127,7 @@ public class KakaoMoCollectorController {
     @PostMapping("/campaign-hour/range")
     public ResponseEntity<Map<String, String>> collectCampaignHourAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
         int count = 0;
         for (KakaoMoAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -167,7 +167,7 @@ public class KakaoMoCollectorController {
     @PostMapping("/adgroup-daily/range")
     public ResponseEntity<Map<String, String>> collectAdGroupDailyAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
         int count = 0;
         for (KakaoMoAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -207,7 +207,7 @@ public class KakaoMoCollectorController {
     @PostMapping("/ad-daily/range")
     public ResponseEntity<Map<String, String>> collectAdDailyAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
         int count = 0;
         for (KakaoMoAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
@@ -247,7 +247,7 @@ public class KakaoMoCollectorController {
     @PostMapping("/budget-alarm/range")
     public ResponseEntity<Map<String, String>> collectBudgetAlarmAllRange(
         @RequestParam String from, @RequestParam String to) {
-        List<KakaoMoAccountDto> accounts = mapper.selectKakaoMoAccounts();
+        List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
         int count = 0;
         for (KakaoMoAccountDto a : accounts) {
             if ("admin".equals(a.getUserId())) continue;
