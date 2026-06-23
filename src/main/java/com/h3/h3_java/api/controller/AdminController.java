@@ -184,9 +184,4 @@ public class AdminController {
                                                 naversecret, naverdaid, kakaosaid, kakaomomentid, googleid);
     }
 
-    // h3_adv MySQL → MongoDB 일회성 이관
-    @PostMapping("/migrate/adv")
-    public Map<String, Object> migrateAdv() {
-        return adminUserService.migrateAdv();
-    }
 }

@@ -26,4 +26,9 @@ public class UserMigrateController {
     public Map<String, Object> migrateShare() {
         return adminUserService.migrateShare();
     }
+
+    @PostMapping("/adv-migrate")
+    public Map<String, Object> migrateAdv() {
+        return adminUserService.migrateAdv();
+    }
 }
