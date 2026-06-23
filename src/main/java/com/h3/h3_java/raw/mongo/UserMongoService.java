@@ -39,6 +39,13 @@ public class UserMongoService {
         );
     }
 
+    public boolean existsByUserId(String userId) {
+        return mongo.exists(
+            Query.query(Criteria.where("user_id").is(userId)),
+            COL
+        );
+    }
+
     public void updateInfo(String userId, String name, String company, String email, String phone) {
         Query q = Query.query(Criteria.where("user_id").is(userId));
         Update u = new Update()
