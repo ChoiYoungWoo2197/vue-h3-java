@@ -10,4 +10,7 @@ import java.util.Map;
 public interface AdminMapper {
     /** 이관용: h3_share 전체 읽기 */
     List<Map<String, Object>> selectAllShare();
+
+    /** 이관용: h3_adv 전체 읽기 */
+    List<Map<String, Object>> selectAllAdv();
 }

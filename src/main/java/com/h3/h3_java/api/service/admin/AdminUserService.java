@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.h3.h3_java.api.mapper.AdminMapper;
 import com.h3.h3_java.auth.JwtUtil;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
+import com.h3.h3_java.raw.mongo.AdvMongoService;
 import com.h3.h3_java.raw.mongo.ShareMongoService;
 import com.h3.h3_java.raw.mongo.UserMongoService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class AdminUserService {
     private final UserMongoService    userMongo;
     private final ShareMongoService   shareMongo;
     private final AccountMongoService accountMongo;
+    private final AdvMongoService     advMongo;
     private final AdminMapper         adminMapper;
     private final JwtUtil             jwtUtil;
 
@@ -275,6 +277,37 @@ public class AdminUserService {
         return res;
     }
 
+    // ── h3_adv MySQL → MongoDB 일회성 이관 ─────────────────────────────────────
+
+    public Map<String, Object> migrateAdv() {
+        List<Map<String, Object>> rows = adminMapper.selectAllAdv();
+        int ok = 0, skip = 0;
+        for (Map<String, Object> row : rows) {
+            try {
+                String userId              = objStr(row.get("user_id"));
+                String advId               = objStr(row.get("adv_id"));
+                String advMedia            = objStr(row.get("adv_media"));
+                String advRegdate          = objStr(row.get("adv_regdate"));
+                String advMarketer         = objStr(row.get("adv_marketer"));
+                String advMarketerRegdate  = objStr(row.get("adv_marketer_regdate"));
+                int    advSalseDay         = parseIntSafe(row.get("adv_salse_day"), 0);
+
+                advMongo.upsert(userId,
+                    advId               != null ? advId               : "",
+                    advMedia            != null ? advMedia            : "",
+                    advRegdate          != null ? advRegdate          : "",
+                    advMarketer         != null ? advMarketer         : "",
+                    advMarketerRegdate  != null ? advMarketerRegdate  : "",
+                    advSalseDay);
+                ok++;
+            } catch (Exception e) {
+                log.warn("[ADV-MIGRATE] 실패: {} - {}", row.get("user_id"), e.getMessage());
+                skip++;
+            }
+        }
+        return Map.of("result", "success", "migrated", ok, "skipped", skip);
+    }
+
     // ── h3_share MySQL → MongoDB 일회성 이관 ────────────────────────────────────
 
     public Map<String, Object> migrateShare() {
@@ -317,6 +350,8 @@ public class AdminUserService {
             .map(d -> d.getString("user_id")).filter(Objects::nonNull).collect(Collectors.toList());
         Map<String, Document> shareMap = shareMongo.findByUserIds(userIds).stream()
             .collect(Collectors.toMap(d -> d.getString("user_id"), d -> d, (a, b) -> a));
+        Map<String, Document> advMap = advMongo.findByUserIds(userIds).stream()
+            .collect(Collectors.toMap(d -> d.getString("user_id"), d -> d, (a, b) -> a));
         Map<String, Document> marketerCache = new HashMap<>();
 
         List<Map<String, Object>> users = new ArrayList<>();
@@ -324,6 +359,7 @@ public class AdminUserService {
             String userId    = d.getString("user_id");
             String managerId = d.getString("user_manager");
             Document share   = shareMap.get(userId);
+            Document adv     = advMap.get(userId);
 
             Map<String, String> shareObj = new LinkedHashMap<>();
             if (share != null) {
@@ -343,6 +379,10 @@ public class AdminUserService {
                 if (mDoc != null && mDoc.getString("user_name") != null) managerName = mDoc.getString("user_name");
             }
 
+            String advId    = adv != null ? adv.getString("adv_id")    : null;
+            String advMedia = adv != null ? adv.getString("adv_media")  : null;
+            int    salse    = adv != null ? parseIntSafe(adv.get("adv_salse_day"), 0) : 0;
+
             Map<String, Object> u = new LinkedHashMap<>();
             u.put("usersel",         d.get("user_seq"));
             u.put("userid",          userId);
@@ -355,9 +395,9 @@ public class AdminUserService {
             u.put("favorites",       share != null ? share.get("share_favorites") : "n");
             u.put("usermanagername", managerName);
             u.put("usermanager",     managerId != null ? managerId : "");
-            u.put("advid",           null);
-            u.put("advmedia",        null);
-            u.put("salse",           0);
+            u.put("advid",           advId);
+            u.put("advmedia",        advMedia);
+            u.put("salse",           salse);
             u.put("share",           shareObj.isEmpty() ? null : shareObj);
             users.add(u);
         }
@@ -387,6 +427,8 @@ public class AdminUserService {
             .map(d -> d.getString("user_id")).filter(Objects::nonNull).collect(Collectors.toList());
         Map<String, Document> shareMap = shareMongo.findByUserIds(pageUserIds).stream()
             .collect(Collectors.toMap(d -> d.getString("user_id"), d -> d, (a, b) -> a));
+        Map<String, Document> advMap = advMongo.findByUserIds(pageUserIds).stream()
+            .collect(Collectors.toMap(d -> d.getString("user_id"), d -> d, (a, b) -> a));
         Map<String, Document> marketerCache = new HashMap<>();
 
         List<Map<String, Object>> users = new ArrayList<>();
@@ -394,12 +436,17 @@ public class AdminUserService {
             String userId    = d.getString("user_id");
             String managerId = d.getString("user_manager");
             Document share   = shareMap.get(userId);
+            Document adv     = advMap.get(userId);
 
             String managerName = "";
             if (managerId != null && !managerId.isBlank()) {
                 Document mDoc = marketerCache.computeIfAbsent(managerId, userMongo::findByUserId);
                 if (mDoc != null && mDoc.getString("user_name") != null) managerName = mDoc.getString("user_name");
             }
+
+            String advId    = adv != null ? adv.getString("adv_id")    : null;
+            String advMedia = adv != null ? adv.getString("adv_media")  : null;
+            int    salse    = adv != null ? parseIntSafe(adv.get("adv_salse_day"), 0) : 0;
 
             Map<String, Object> u = new LinkedHashMap<>();
             u.put("usersel",         d.get("user_seq"));
@@ -413,9 +460,9 @@ public class AdminUserService {
             u.put("favorites",       share != null ? share.get("share_favorites") : "n");
             u.put("usermanagername", managerName);
             u.put("usermanager",     managerId != null ? managerId : "");
-            u.put("advid",           null);
-            u.put("advmedia",        null);
-            u.put("salse",           0);
+            u.put("advid",           advId);
+            u.put("advmedia",        advMedia);
+            u.put("salse",           salse);
             users.add(u);
         }
 
@@ -516,6 +563,7 @@ public class AdminUserService {
             .append("user_regdate",    now);
         userMongo.insertUser(doc);
         shareMongo.insertShare(userid, advmarketer != null ? advmarketer : "");
+        advMongo.insert(userid, "", "", advmarketer != null ? advmarketer : "", now);
 
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("result", "success");

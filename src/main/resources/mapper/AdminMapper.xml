@@ -9,4 +9,10 @@
         FROM h3_share
     </select>
 
+    <!-- 이관용: h3_adv 전체 읽기 -->
+    <select id="selectAllAdv" resultType="map">
+        SELECT user_id, adv_id, adv_media, adv_regdate, adv_marketer, adv_marketer_regdate, adv_salse_day
+        FROM h3_adv
+    </select>
+
 </mapper>
