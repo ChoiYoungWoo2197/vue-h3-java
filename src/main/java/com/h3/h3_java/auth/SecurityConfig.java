@@ -44,6 +44,7 @@ public class SecurityConfig {
                 .requestMatchers("/v1/h3/auth/**").permitAll()
                 .requestMatchers("/api/collector/**").permitAll()
                 .requestMatchers("/v1/h3/app/**").authenticated()
+                .requestMatchers("/v1/h3/admin/**").authenticated()
                 .anyRequest().permitAll()
             )
             .exceptionHandling(ex -> ex
