@@ -163,11 +163,15 @@ public class TokenController {
             if (body == null || body.get("access_token") == null)
                 return fail("카카오 SA 토큰 발급 실패");
 
-            String at = String.valueOf(body.get("access_token"));
-            String rt = body.containsKey("refresh_token")
-                ? String.valueOf(body.get("refresh_token")) : "";
-
-            kakaoSaTokenMongo.saveToken(at, rt);
+            // PHP INSERT 필드 완전 동일: code, accesstoken, expires_in, refreshtoken, refresh_expires_in, type, tokentype
+            kakaoSaTokenMongo.saveFullToken(
+                code,
+                String.valueOf(body.get("access_token")),
+                body.get("expires_in"),
+                body.containsKey("refresh_token") ? String.valueOf(body.get("refresh_token")) : "",
+                body.get("refresh_token_expires_in"),
+                body.containsKey("token_type") ? String.valueOf(body.get("token_type")) : ""
+            );
             log.info("[KAKAO-SA TOKEN] 최초 발급 완료");
             return ok("카카오 SA 토큰 발급 완료");
         } catch (Exception e) {
@@ -187,14 +191,13 @@ public class TokenController {
     // 카카오 MO
     // =============================================================================
 
-    /** PHP kakaomo_oauth.php 이식 */
+    /** PHP kakaomo_oauth.php 이식 — MO는 prompt=none 없음 (SA와 다름) */
     @GetMapping("/kakao-mo/oauth")
     public void kakaoMoOauth(HttpServletResponse response) throws IOException {
         String url = "https://kauth.kakao.com/oauth/authorize"
             + "?response_type=code"
             + "&client_id=" + kakaoMoClientId
-            + "&redirect_uri=" + URLEncoder.encode(kakaoMoRedirectUri, StandardCharsets.UTF_8)
-            + "&prompt=none";
+            + "&redirect_uri=" + URLEncoder.encode(kakaoMoRedirectUri, StandardCharsets.UTF_8);
         response.sendRedirect(url);
     }
 
@@ -206,11 +209,15 @@ public class TokenController {
             if (body == null || body.get("access_token") == null)
                 return fail("카카오 MO 토큰 발급 실패");
 
-            String at = String.valueOf(body.get("access_token"));
-            String rt = body.containsKey("refresh_token")
-                ? String.valueOf(body.get("refresh_token")) : "";
-
-            kakaoMoTokenMongo.saveToken(at, rt);
+            // PHP INSERT 필드 완전 동일: code, accesstoken, expires_in, refreshtoken, refresh_expires_in, type, tokentype
+            kakaoMoTokenMongo.saveFullToken(
+                code,
+                String.valueOf(body.get("access_token")),
+                body.get("expires_in"),
+                body.containsKey("refresh_token") ? String.valueOf(body.get("refresh_token")) : "",
+                body.get("refresh_token_expires_in"),
+                body.containsKey("token_type") ? String.valueOf(body.get("token_type")) : ""
+            );
             log.info("[KAKAO-MO TOKEN] 최초 발급 완료");
             return ok("카카오 MO 토큰 발급 완료");
         } catch (Exception e) {
