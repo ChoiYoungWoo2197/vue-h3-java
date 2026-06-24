@@ -27,18 +27,24 @@ spring:
     jdbc:
       initialize-schema: never
 
+naver:
+  gfa:
+    redirect-uri: https://api.heeil.com/v1/h3/token/naver-gfa/callback
+
 kakao:
   sa:
     client-id: 1bc34ca0c3ea23dbb3e1259e08912e9d
     client-secret: CgtEYS9tWvpaQxCY3ZY1H7JKQYV4EJky
+    redirect-uri: https://api.heeil.com/v1/h3/token/kakao-sa/callback
   mo:
     client-id: 1bc34ca0c3ea23dbb3e1259e08912e9d
     client-secret: CgtEYS9tWvpaQxCY3ZY1H7JKQYV4EJky
+    redirect-uri: https://api.heeil.com/v1/h3/token/kakao-mo/callback
 
 google:
   client-id: 126509907351-8kuaiak2qnmgd6q0hi9l36jiae4tgibb.apps.googleusercontent.com
   client-secret: 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
-  redirect-uri: https://api.heeil.com/api/h3/googleauth/googlesa_access_token.php
+  redirect-uri: https://api.heeil.com/v1/h3/token/google/callback
   developer-token: vxKM6J4s-oTW3gbvMLMjlg
   manager-id: "6769413271"
 

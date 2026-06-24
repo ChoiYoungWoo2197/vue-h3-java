@@ -42,6 +42,7 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/v1/h3/auth/**").permitAll()
+                .requestMatchers("/v1/h3/token/**").permitAll()   // OAuth callback은 브라우저 리다이렉트
                 .requestMatchers("/api/collector/**").permitAll()
                 .requestMatchers("/v1/h3/app/**").authenticated()
                 .requestMatchers("/v1/h3/admin/**").authenticated()

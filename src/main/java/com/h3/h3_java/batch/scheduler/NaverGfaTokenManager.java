@@ -67,6 +67,10 @@ public class NaverGfaTokenManager {
         return adminAccount != null ? adminAccount.getAccountNaverCustomer() : null;
     }
 
+    public void forceRefresh() {
+        doRefresh();
+    }
+
     @SuppressWarnings("unchecked")
     private boolean isTokenValid() {
         try {

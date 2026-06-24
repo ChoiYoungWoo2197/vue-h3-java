@@ -62,6 +62,10 @@ public class KakaoMoTokenManager {
         return accessToken;
     }
 
+    public void forceRefresh() {
+        doRefresh();
+    }
+
     private boolean isTokenValid() {
         try {
             RestTemplate rt = new RestTemplate();
