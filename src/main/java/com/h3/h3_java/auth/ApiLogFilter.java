@@ -76,7 +76,7 @@ public class ApiLogFilter extends OncePerRequestFilter {
         return req.getRemoteAddr();
     }
 
-    private String extractUserId(HttpServletRequest req) {
+    private String extractUserId(ContentCachingRequestWrapper req) {
         // 1순위: SecurityContext (JwtFilter가 설정한 인증 정보)
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated()
