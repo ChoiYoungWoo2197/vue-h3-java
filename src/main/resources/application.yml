@@ -37,8 +37,8 @@ kakao:
     client-secret: CgtEYS9tWvpaQxCY3ZY1H7JKQYV4EJky
     redirect-uri: https://api.heeil.com/java/v1/h3/token/kakao-sa/callback
   mo:
-    client-id: 1bc34ca0c3ea23dbb3e1259e08912e9d
-    client-secret: CgtEYS9tWvpaQxCY3ZY1H7JKQYV4EJky
+    client-id: 2b040d0b66341dae01d26ad852ce7046
+    client-secret: MXCcnuEjTOVKJ1NE4t6UPF8JntgkMuos
     redirect-uri: https://api.heeil.com/java/v1/h3/token/kakao-mo/callback
 
 google:
