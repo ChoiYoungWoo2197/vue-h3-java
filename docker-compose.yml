@@ -10,6 +10,7 @@ services:
       - TZ=Asia/Seoul
     volumes:
       - ./logs:/logs
+      - /opt/h3-java/config:/opt/h3-java/config
     restart: unless-stopped
 
   nginx:
