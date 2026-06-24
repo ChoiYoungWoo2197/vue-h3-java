@@ -24,8 +24,8 @@ public class CollectorScheduler {
     private final AccountMongoService accountMongo;
     private final CollectorProducer   producer;
 
-    // 매일 오전 8시 00분 - GFA 전환유형 수집
-    @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Seoul")
+    // 매일 오전 5시 00분 - GFA 전환유형 수집
+    @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Seoul")
     public void scheduleNaverGfaConvType() {
         log.info("[SCHEDULER] 네이버 GFA 전환유형 수집 시작");
         List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
@@ -40,8 +40,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 네이버 GFA 전환유형 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오전 7시 30분 - GFA 소재 일별 수집
-    @Scheduled(cron = "0 30 7 * * *", zone = "Asia/Seoul")
+    // 매일 오전 4시 30분 - GFA 소재 일별 수집
+    @Scheduled(cron = "0 30 4 * * *", zone = "Asia/Seoul")
     public void scheduleNaverGfaAdDaily() {
         log.info("[SCHEDULER] 네이버 GFA 소재 일별 수집 시작");
         List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
@@ -56,8 +56,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 네이버 GFA 소재 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오전 6시 30분 - GFA 광고그룹 일별 수집
-    @Scheduled(cron = "0 30 6 * * *", zone = "Asia/Seoul")
+    // 매일 오전 3시 30분 - GFA 광고그룹 일별 수집
+    @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Seoul")
     public void scheduleNaverGfaAdgroupDaily() {
         log.info("[SCHEDULER] 네이버 GFA 광고그룹 일별 수집 시작");
         List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
@@ -72,8 +72,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 네이버 GFA 광고그룹 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오전 7시 - GFA 예산 알람 (GFA 캠페인 일별 수집 완료 후)
-    @Scheduled(cron = "0 0 7 * * *", zone = "Asia/Seoul")
+    // 매일 오전 4시 - GFA 예산 알람 (GFA 캠페인 일별 수집 완료 후)
+    @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul")
     public void scheduleNaverGfaBudgetAlarm() {
         log.info("[SCHEDULER] 네이버 GFA 예산 알람 시작");
         List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
@@ -88,8 +88,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 네이버 GFA 예산 알람 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오전 6시 - GFA 캠페인 일별 수집
-    @Scheduled(cron = "0 0 6 * * *", zone = "Asia/Seoul")
+    // 매일 오전 3시 - GFA 캠페인 일별 수집
+    @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Seoul")
     public void scheduleNaverGfaCampaignDaily() {
         log.info("[SCHEDULER] 네이버 GFA 캠페인 일별 수집 시작");
         List<NaverGfaAccountDto> accounts = accountMongo.findGfaAccountDtos();
@@ -258,8 +258,8 @@ public class CollectorScheduler {
 
     // ── Kakao SA 스케줄 ────────────────────────────────────────────────────────
 
-    // 매일 오전 9시 - Kakao SA 마스터 수집
-    @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Seoul")
+    // 매일 오전 3시 - Kakao SA 마스터 수집
+    @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoSaMaster() {
         log.info("[SCHEDULER] 카카오SA 마스터 수집 시작");
         List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
@@ -274,8 +274,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오SA 마스터 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오전 10시 - Kakao SA 캠페인 일별 수집
-    @Scheduled(cron = "0 0 10 * * *", zone = "Asia/Seoul")
+    // 매일 오전 4시 - Kakao SA 캠페인 일별 수집
+    @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoSaCampaignDaily() {
         log.info("[SCHEDULER] 카카오SA 캠페인 일별 수집 시작");
         List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
@@ -290,8 +290,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오SA 캠페인 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오전 10시 30분 - Kakao SA 캠페인 시간별 수집
-    @Scheduled(cron = "0 30 10 * * *", zone = "Asia/Seoul")
+    // 매일 오전 4시 30분 - Kakao SA 캠페인 시간별 수집
+    @Scheduled(cron = "0 30 4 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoSaCampaignHour() {
         log.info("[SCHEDULER] 카카오SA 캠페인 시간별 수집 시작");
         List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
@@ -306,8 +306,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오SA 캠페인 시간별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오전 11시 - Kakao SA 광고그룹 일별 수집
-    @Scheduled(cron = "0 0 11 * * *", zone = "Asia/Seoul")
+    // 매일 오전 5시 - Kakao SA 광고그룹 일별 수집
+    @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoSaAdGroupDaily() {
         log.info("[SCHEDULER] 카카오SA 광고그룹 일별 수집 시작");
         List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
@@ -322,8 +322,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오SA 광고그룹 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오전 11시 30분 - Kakao SA 키워드 일별 수집
-    @Scheduled(cron = "0 30 11 * * *", zone = "Asia/Seoul")
+    // 매일 오전 5시 30분 - Kakao SA 키워드 일별 수집
+    @Scheduled(cron = "0 30 5 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoSaKeywordDaily() {
         log.info("[SCHEDULER] 카카오SA 키워드 일별 수집 시작");
         List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
@@ -338,8 +338,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오SA 키워드 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 정오 12시 - Kakao SA 소재 일별 수집
-    @Scheduled(cron = "0 0 12 * * *", zone = "Asia/Seoul")
+    // 매일 오전 6시 - Kakao SA 소재 일별 수집
+    @Scheduled(cron = "0 0 6 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoSaAdDaily() {
         log.info("[SCHEDULER] 카카오SA 소재 일별 수집 시작");
         List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
@@ -354,8 +354,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오SA 소재 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 12시 30분 - Kakao SA 예산 알람
-    @Scheduled(cron = "0 30 12 * * *", zone = "Asia/Seoul")
+    // 매일 오전 6시 30분 - Kakao SA 예산 알람
+    @Scheduled(cron = "0 30 6 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoSaBudgetAlarm() {
         log.info("[SCHEDULER] 카카오SA 예산 알람 시작");
         List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
@@ -372,8 +372,8 @@ public class CollectorScheduler {
 
     // ── Kakao MO 스케줄 ────────────────────────────────────────────────────────
 
-    // 매일 오후 1시 - Kakao MO 마스터 수집
-    @Scheduled(cron = "0 0 13 * * *", zone = "Asia/Seoul")
+    // 매일 오전 5시 30분 - Kakao MO 마스터 수집
+    @Scheduled(cron = "0 30 5 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoMoMaster() {
         log.info("[SCHEDULER] 카카오MO 마스터 수집 시작");
         List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
@@ -388,8 +388,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오MO 마스터 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 2시 - Kakao MO 캠페인 일별 수집
-    @Scheduled(cron = "0 0 14 * * *", zone = "Asia/Seoul")
+    // 매일 오전 6시 30분 - Kakao MO 캠페인 일별 수집
+    @Scheduled(cron = "0 30 6 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoMoCampaignDaily() {
         log.info("[SCHEDULER] 카카오MO 캠페인 일별 수집 시작");
         List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
@@ -404,8 +404,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오MO 캠페인 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 2시 30분 - Kakao MO 캠페인 시간별 수집
-    @Scheduled(cron = "0 30 14 * * *", zone = "Asia/Seoul")
+    // 매일 오전 7시 - Kakao MO 캠페인 시간별 수집
+    @Scheduled(cron = "0 0 7 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoMoCampaignHour() {
         log.info("[SCHEDULER] 카카오MO 캠페인 시간별 수집 시작");
         List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
@@ -420,8 +420,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오MO 캠페인 시간별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 3시 - Kakao MO 광고그룹 일별 수집
-    @Scheduled(cron = "0 0 15 * * *", zone = "Asia/Seoul")
+    // 매일 오전 7시 30분 - Kakao MO 광고그룹 일별 수집
+    @Scheduled(cron = "0 30 7 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoMoAdGroupDaily() {
         log.info("[SCHEDULER] 카카오MO 광고그룹 일별 수집 시작");
         List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
@@ -436,8 +436,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오MO 광고그룹 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 3시 30분 - Kakao MO 소재 일별 수집
-    @Scheduled(cron = "0 30 15 * * *", zone = "Asia/Seoul")
+    // 매일 오전 8시 - Kakao MO 소재 일별 수집
+    @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoMoAdDaily() {
         log.info("[SCHEDULER] 카카오MO 소재 일별 수집 시작");
         List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
@@ -452,8 +452,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 카카오MO 소재 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 4시 - Kakao MO 예산 알람
-    @Scheduled(cron = "0 0 16 * * *", zone = "Asia/Seoul")
+    // 매일 오전 8시 30분 - Kakao MO 예산 알람
+    @Scheduled(cron = "0 30 8 * * *", zone = "Asia/Seoul")
     public void scheduleKakaoMoBudgetAlarm() {
         log.info("[SCHEDULER] 카카오MO 예산 알람 시작");
         List<KakaoMoAccountDto> accounts = accountMongo.findKakaoMoAccountDtos();
@@ -470,8 +470,8 @@ public class CollectorScheduler {
 
     // ── Google 스케줄 ──────────────────────────────────────────────────────────
 
-    // 매일 오후 5시 - Google 마스터 수집
-    @Scheduled(cron = "0 0 17 * * *", zone = "Asia/Seoul")
+    // 매일 오전 5시 - Google 마스터 수집
+    @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Seoul")
     public void scheduleGoogleMaster() {
         log.info("[SCHEDULER] 구글 마스터 수집 시작");
         List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
@@ -486,8 +486,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 구글 마스터 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 6시 - Google 캠페인 일별 수집
-    @Scheduled(cron = "0 0 18 * * *", zone = "Asia/Seoul")
+    // 매일 오전 6시 - Google 캠페인 일별 수집
+    @Scheduled(cron = "0 0 6 * * *", zone = "Asia/Seoul")
     public void scheduleGoogleCampaignDaily() {
         log.info("[SCHEDULER] 구글 캠페인 일별 수집 시작");
         List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
@@ -502,8 +502,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 구글 캠페인 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 6시 30분 - Google 캠페인 시간별 수집
-    @Scheduled(cron = "0 30 18 * * *", zone = "Asia/Seoul")
+    // 매일 오전 6시 30분 - Google 캠페인 시간별 수집
+    @Scheduled(cron = "0 30 6 * * *", zone = "Asia/Seoul")
     public void scheduleGoogleCampaignHour() {
         log.info("[SCHEDULER] 구글 캠페인 시간별 수집 시작");
         List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
@@ -518,8 +518,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 구글 캠페인 시간별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 7시 - Google 광고그룹 일별 수집
-    @Scheduled(cron = "0 0 19 * * *", zone = "Asia/Seoul")
+    // 매일 오전 7시 - Google 광고그룹 일별 수집
+    @Scheduled(cron = "0 0 7 * * *", zone = "Asia/Seoul")
     public void scheduleGoogleAdGroupDaily() {
         log.info("[SCHEDULER] 구글 광고그룹 일별 수집 시작");
         List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
@@ -534,8 +534,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 구글 광고그룹 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 7시 30분 - Google 소재 일별 수집
-    @Scheduled(cron = "0 30 19 * * *", zone = "Asia/Seoul")
+    // 매일 오전 7시 30분 - Google 소재 일별 수집
+    @Scheduled(cron = "0 30 7 * * *", zone = "Asia/Seoul")
     public void scheduleGoogleAdDaily() {
         log.info("[SCHEDULER] 구글 소재 일별 수집 시작");
         List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
@@ -550,8 +550,8 @@ public class CollectorScheduler {
         log.info("[SCHEDULER] 구글 소재 일별 메시지 발행 완료 총={}건", count);
     }
 
-    // 매일 오후 8시 - Google 키워드 일별 수집
-    @Scheduled(cron = "0 0 20 * * *", zone = "Asia/Seoul")
+    // 매일 오전 8시 - Google 키워드 일별 수집
+    @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Seoul")
     public void scheduleGoogleKeywordDaily() {
         log.info("[SCHEDULER] 구글 키워드 일별 수집 시작");
         List<GoogleAccountDto> accounts = accountMongo.findGoogleAccountDtos();
