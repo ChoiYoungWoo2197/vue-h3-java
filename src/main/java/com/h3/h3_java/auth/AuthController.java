@@ -1,6 +1,8 @@
 package com.h3.h3_java.auth;
 
+import com.h3.h3_java.raw.mongo.LogMongoService;
 import com.h3.h3_java.raw.mongo.UserMongoService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.springframework.http.ResponseEntity;
@@ -20,10 +22,13 @@ import java.util.Map;
 public class AuthController {
 
     private final UserMongoService userMongo;
+    private final LogMongoService  logMongo;
     private final JwtUtil          jwtUtil;
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody LoginRequestDto req) {
+    public ResponseEntity<Map<String, Object>> login(@RequestBody LoginRequestDto req,
+                                                     HttpServletRequest httpReq) {
+        String ip = extractIp(httpReq);
         Map<String, Object> res = new LinkedHashMap<>();
 
         if (req.getUserid() == null || req.getUserpass() == null) {
@@ -36,6 +41,7 @@ public class AuthController {
         Document user = userMongo.findByUserId(req.getUserid());
 
         if (user == null || user.getString("user_pass") == null) {
+            logMongo.insertLoginLog(req.getUserid(), "n", ip, "");
             res.put("result", "failed");
             res.put("status", "1005");
             res.put("errormessage", "아이디 또는 비밀번호를 확인하고 입력해주세요.");
@@ -44,6 +50,7 @@ public class AuthController {
 
         String hashedPass = sha256(req.getUserpass());
         if (!hashedPass.equals(user.getString("user_pass"))) {
+            logMongo.insertLoginLog(req.getUserid(), "n", ip, "");
             res.put("result", "failed");
             res.put("status", "1005");
             res.put("errormessage", "아이디 또는 비밀번호를 확인하고 입력해주세요.");
@@ -53,6 +60,9 @@ public class AuthController {
         String  userId    = user.getString("user_id");
         Integer userLevel = user.getInteger("user_level", 1);
         String  token     = jwtUtil.generateToken(userId, userLevel);
+
+        // PHP login.php 와 동일: 로그인 성공 시 h3_login 기록
+        logMongo.insertLoginLog(userId, "y", ip, token);
 
         Map<String, Object> userInfo = new LinkedHashMap<>();
         userInfo.put("userid",      userId);
@@ -68,6 +78,12 @@ public class AuthController {
         res.put("accessToken", token);
         res.put("userinfo",    userInfo);
         return ResponseEntity.ok(res);
+    }
+
+    private String extractIp(HttpServletRequest req) {
+        String forwarded = req.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) return forwarded.split(",")[0].trim();
+        return req.getRemoteAddr();
     }
 
     private int parseIntSafe(Object val, int def) {
