@@ -42,7 +42,9 @@ kakao:
     redirect-uri: https://api.heeil.com/java/v1/h3/token/kakao-mo/callback
 
 google:
-  service-account-path: /opt/h3-java/config/google-service-account.json
+  client-id: 126509907351-8kuaiak2qnmgd6q0hi9l36jiae4tgibb.apps.googleusercontent.com
+  client-secret: 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
+  redirect-uri: https://api.heeil.com/java/v1/h3/token/google/callback
   developer-token: vxKM6J4s-oTW3gbvMLMjlg
   manager-id: "6769413271"
 
