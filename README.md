@@ -334,6 +334,7 @@ job-type: `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-dail
 | `kakao_mo_adgroup_daily` | 카카오 MO 광고그룹 일별 통계 |
 | `kakao_mo_ad_daily` | 카카오 MO 소재 일별 통계 |
 | `kakao_mo_budget_alarm` | 카카오 MO 예산알람 |
+| `google_token` | 구글 OAuth 토큰 |
 | `google_campaign` | 구글 캠페인 마스터 |
 | `google_adgroup` | 구글 광고그룹 마스터 |
 | `google_keyword` | 구글 키워드 마스터 |
@@ -343,6 +344,67 @@ job-type: `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-dail
 | `google_adgroup_daily` | 구글 광고그룹 일별 통계 |
 | `google_ad_daily` | 구글 소재 일별 통계 |
 | `google_keyword_daily` | 구글 키워드 일별 통계 |
+
+---
+
+## OAuth 토큰 관리
+
+광고 플랫폼 OAuth 토큰(Access Token / Refresh Token)을 Java로 발급·갱신한다.  
+`/v1/h3/token/**` 경로는 `permitAll` — JWT 인증 없이 브라우저에서 직접 호출 가능.
+
+### 공통 흐름
+
+1. 브라우저에서 `oauth` URL 접속 → 플랫폼 인가 화면
+2. 동의 완료 → `callback` URL로 자동 redirect → MongoDB에 토큰 저장
+3. 이후 앱 자동갱신 스케줄러가 30분 주기로 갱신
+
+### 네이버 GFA
+
+| 구분 | URL |
+|---|---|
+| 최초 발급 | `GET https://api.heeil.com/java/v1/h3/token/naver-gfa/oauth` |
+| 콜백 (자동) | `GET https://api.heeil.com/java/v1/h3/token/naver-gfa/callback?code=&state=` |
+| 수동 갱신 | `POST https://api.heeil.com/java/v1/h3/token/naver-gfa/refresh` |
+
+- client_id/secret: MongoDB `h3_account` admin 계정 `account_gfa` / `account_naver_secret` 필드
+- 저장 컬렉션: `naver_gfa_token` (key: `"navergfa"`)
+
+### 카카오 SA
+
+| 구분 | URL |
+|---|---|
+| 최초 발급 | `GET https://api.heeil.com/java/v1/h3/token/kakao-sa/oauth` |
+| 콜백 (자동) | `GET https://api.heeil.com/java/v1/h3/token/kakao-sa/callback?code=` |
+| 수동 갱신 | `POST https://api.heeil.com/java/v1/h3/token/kakao-sa/refresh` |
+
+- client_id: `application.yml` `kakao.sa.client-id`
+- `&prompt=none` 포함 (자동 재인가)
+- 저장 컬렉션: `kakao_sa_token` (key: `"kakaosa"`)
+
+### 카카오 MO
+
+| 구분 | URL |
+|---|---|
+| 최초 발급 | `GET https://api.heeil.com/java/v1/h3/token/kakao-mo/oauth` |
+| 콜백 (자동) | `GET https://api.heeil.com/java/v1/h3/token/kakao-mo/callback?code=` |
+| 수동 갱신 | `POST https://api.heeil.com/java/v1/h3/token/kakao-mo/refresh` |
+
+- client_id: `application.yml` `kakao.mo.client-id` (SA와 **다른** 앱)
+- `&prompt=none` 없음
+- 저장 컬렉션: `kakao_mo_token` (key: `"kakaomo"`)
+
+### 구글
+
+| 구분 | URL |
+|---|---|
+| 최초 발급 | `GET https://api.heeil.com/java/v1/h3/token/google/oauth` |
+| 콜백 (자동) | `GET https://api.heeil.com/java/v1/h3/token/google/callback?code=` |
+| 수동 갱신 | `POST https://api.heeil.com/java/v1/h3/token/google/refresh` |
+
+- client_id/secret: `application.yml` `google.client-id` / `google.client-secret`
+- scope: `https://www.googleapis.com/auth/adwords`, access_type: `offline`, prompt: `consent`
+- 저장 컬렉션: `google_token` (key: `"google"`)
+- Google Cloud Console → OAuth 2.0 Credentials → Authorized redirect URIs 등록 필요
 
 ---
 
@@ -361,7 +423,6 @@ job-type: `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-dail
 | `naverstatereport.php` | `NaverStateReportJob` | ✅ |
 | `naverconvtypecollection.php` | `NaverConvTypeJob` | ✅ |
 | `naverbudgetalarmcollection.php` | — | ❌ 미이식 |
-| `navergfa*.php` | — | ❌ 미이식 |
 
 ### 네이버 GFA
 
@@ -425,33 +486,40 @@ job-type: `master`, `campaign-daily`, `campaign-hour`, `adgroup-daily`, `ad-dail
 
 ## 신규 계정 자동 초기화
 
-`NaverNewAccountScheduler`가 10분 주기로 `h3_account`를 폴링한다.  
-MongoDB `naver_campaign`에 advkey가 없는 계정을 신규로 판별하고 아래 순서로 자동 초기화한다.
+5개 매체별 스케줄러가 **10분 주기**로 MongoDB `h3_account`를 폴링한다.  
+각 매체 컬렉션에 advkey/adAccountId가 없는 계정을 신규로 판별하고 마스터 수집 후 MQ를 발행한다.
 
-1. `NaverMasterReportJob.collectForUserId(userId, false)` — 마스터 동기 실행
-2. MQ 7개 발행 — CampaignDaily, CampaignHour, AdGroupDaily, AdDaily, ShoppingDaily, StateReport, ConvType
+| 스케줄러 | 감지 대상 | 초기화 순서 |
+|---|---|---|
+| `NaverNewAccountScheduler` | 네이버 SA | 마스터 동기 → MQ 7개 (CampaignDaily, CampaignHour, AdGroupDaily, AdDaily, ShoppingDaily, StateReport, ConvType) |
+| `NaverGfaNewAccountScheduler` | 네이버 GFA | 마스터 동기 → MQ 발행 |
+| `KakaoSaNewAccountScheduler` | 카카오 SA | 마스터 동기 → MQ 발행 |
+| `KakaoMoNewAccountScheduler` | 카카오 MO | 마스터 동기 → MQ 발행 |
+| `GoogleNewAccountScheduler` | 구글 | 마스터 동기 → MQ 발행 |
 
----
-
-## 서버 정보 (네이버 클라우드)
-
-| 항목 | 내용 |
-|---|---|
-| 서버명 | heeil-h3 |
-| 원격 접속 | 101.101.163.90:9919 |
-| 공인 IP | 49.50.167.235 |
-| 내부 IP | 192.168.100.31 |
-| 계정 | root / heeil-h3 |
-| ACG | ncloud-default-acg |
-| 스펙 | [High-Memory] 8vCPU, 64GB Mem [g1] |
+- 한 번 시도한 계정은 앱 재시작 전까지 재시도하지 않음 (`initiated` Set으로 차단)
+- 실패 후 재시도: 앱 재시작 또는 수동 REST 호출 (`/api/collector/{media}/master/{userId}`)
 
 ---
 
 ## 배포
 
 ```bash
-# 코드 변경 후 이미지 재빌드 필수
-docker compose up -d --build
+# 1. 컨테이너 정지
+docker compose down
+
+# 2. (선택) RabbitMQ 큐 purge — http://192.168.100.12:15672 관리 콘솔에서 수동
+
+# 3. 코드 pull + 재빌드 + 재시작
+git pull && docker compose build --no-cache h3-java && docker compose up -d h3-java
 ```
 
-`docker-compose.yml`에 `build: .` 설정이 되어 있어 `--build` 없이 `up -d`만 실행하면 이전 이미지를 그대로 사용한다.
+`--no-cache` 없이 `up -d`만 실행하면 이전 캐시 이미지를 그대로 사용한다.
+
+```bash
+# 실시간 로그
+tail -f /opt/h3-java/logs/h3-java.log
+
+# 에러 로그
+tail -f /opt/h3-java/logs/h3-java-error.log
+```

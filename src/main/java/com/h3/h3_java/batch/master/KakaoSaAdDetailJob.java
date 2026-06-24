@@ -9,9 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.*;
 
 @Slf4j
 @Component
@@ -21,6 +20,9 @@ public class KakaoSaAdDetailJob {
     private final AccountMongoService       accountMongo;
     private final KakaoSaMasterMongoService mongoService;
     private final KakaoSaTokenManager       tokenManager;
+
+    private static final ExecutorService FETCH_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
+    private static final Semaphore       RATE_LIMITER   = new Semaphore(8);
 
     public void collect() {
         List<KakaoSaAccountDto> accounts = accountMongo.findKakaoSaAccountDtos();
@@ -42,7 +44,6 @@ public class KakaoSaAdDetailJob {
         return true;
     }
 
-    @SuppressWarnings("unchecked")
     private void collectForAccount(KakaoSaAccountDto account) {
         String advkey = account.getAccountKakaosa();
         String token  = tokenManager.getAccessToken();
@@ -55,70 +56,125 @@ public class KakaoSaAdDetailJob {
         KakaoSaApiClient api = new KakaoSaApiClient(token, advkey);
         log.info("[KAKAO-SA][AD-DETAIL] 시작 advkey={}", advkey);
 
-        // 소재 상세 + 이미지 수집
+        processAds(advkey, api);
+        processKeywords(advkey, api);
+
+        log.info("[KAKAO-SA][AD-DETAIL] 완료 advkey={}", advkey);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void processAds(String advkey, KakaoSaApiClient api) {
         List<String> adIds = mongoService.selectAdIds(advkey);
-        log.info("[KAKAO-SA][AD-DETAIL] 소재 ads={} advkey={}", adIds.size(), advkey);
+        if (adIds.isEmpty()) {
+            log.info("[KAKAO-SA][AD-DETAIL][AD] ads=0 advkey={}", advkey);
+            return;
+        }
+        log.info("[KAKAO-SA][AD-DETAIL][AD] ads={} advkey={}", adIds.size(), advkey);
 
-        for (String aid : adIds) {
-            try {
-                Map<String, Object> creative = api.get("/openapi/v1/creatives/basic/" + aid);
-                if (creative == null) continue;
+        ConcurrentHashMap<String, Map<String, Object>> results = new ConcurrentHashMap<>();
 
-                String headline    = str(creative, "title", "");
-                String description = str(creative, "description", "");
-                String rspvUrl     = "";
-                Object landing = creative.get("landingInfo");
-                if (landing instanceof Map) {
-                    rspvUrl = str((Map<String, Object>) landing, "rspvLandingUrl", "");
-                }
+        CompletableFuture.allOf(
+            adIds.stream()
+                .map(aid -> CompletableFuture.runAsync(() -> {
+                    try {
+                        RATE_LIMITER.acquire();
+                        try {
+                            Map<String, Object> creative = api.get("/openapi/v1/creatives/basic/" + aid);
+                            if (creative == null) return;
 
-                String imgurl1 = "";
-                Object assets = creative.get("assets");
-                if (assets instanceof Map) {
-                    Object thumbnail = ((Map<String, Object>) assets).get("thumbnail");
-                    if (thumbnail instanceof Map) {
-                        String imageId = str((Map<String, Object>) thumbnail, "imageId");
-                        if (imageId != null && !imageId.isEmpty()) {
-                            Map<String, Object> img = api.get("/openapi/v1/images/" + imageId);
-                            if (img != null) imgurl1 = str(img, "url", "");
+                            String headline    = str(creative, "title", "");
+                            String description = str(creative, "description", "");
+                            String rspvUrl     = "";
+                            Object landing = creative.get("landingInfo");
+                            if (landing instanceof Map) {
+                                rspvUrl = str((Map<String, Object>) landing, "rspvLandingUrl", "");
+                            }
+
+                            String imgurl1 = "";
+                            Object assets = creative.get("assets");
+                            if (assets instanceof Map) {
+                                Object thumbnail = ((Map<String, Object>) assets).get("thumbnail");
+                                if (thumbnail instanceof Map) {
+                                    String imageId = str((Map<String, Object>) thumbnail, "imageId");
+                                    if (imageId != null && !imageId.isEmpty()) {
+                                        RATE_LIMITER.acquire();
+                                        try {
+                                            Map<String, Object> img = api.get("/openapi/v1/images/" + imageId);
+                                            if (img != null) imgurl1 = str(img, "url", "");
+                                        } finally {
+                                            RATE_LIMITER.release();
+                                        }
+                                    }
+                                }
+                            }
+
+                            Map<String, Object> updates = new HashMap<>();
+                            updates.put("headline",    headline);
+                            updates.put("description", description);
+                            updates.put("purl",        rspvUrl);
+                            updates.put("purlf",       rspvUrl);
+                            updates.put("murl",        rspvUrl);
+                            updates.put("murlf",       rspvUrl);
+                            updates.put("imgurl1",     imgurl1);
+                            results.put(aid, updates);
+                        } finally {
+                            RATE_LIMITER.release();
                         }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } catch (Exception e) {
+                        log.warn("[KAKAO-SA][AD-DETAIL][AD] 소재 상세 실패 aid={} err={}", aid, e.getMessage());
                     }
-                }
+                }, FETCH_EXECUTOR))
+                .toArray(CompletableFuture[]::new)
+        ).join();
 
-                Map<String, Object> updates = new HashMap<>();
-                updates.put("headline",    headline);
-                updates.put("description", description);
-                updates.put("purl",        rspvUrl);
-                updates.put("purlf",       rspvUrl);
-                updates.put("murl",        rspvUrl);
-                updates.put("murlf",       rspvUrl);
-                updates.put("imgurl1",     imgurl1);
-                mongoService.updateAdDetail(aid, updates);
-            } catch (Exception e) {
-                log.warn("[KAKAO-SA][AD-DETAIL] 소재 상세 조회 실패 aid={} err={}", aid, e.getMessage());
-            }
+        for (Map.Entry<String, Map<String, Object>> entry : results.entrySet()) {
+            mongoService.updateAdDetail(entry.getKey(), entry.getValue());
         }
+        log.info("[KAKAO-SA][AD-DETAIL][AD] 완료 updated={} advkey={}", results.size(), advkey);
+    }
 
-        // 키워드 품질지수 수집
+    private void processKeywords(String advkey, KakaoSaApiClient api) {
         List<String> kwIds = mongoService.selectKeywordIds(advkey);
-        log.info("[KAKAO-SA][AD-DETAIL] 키워드 keywords={} advkey={}", kwIds.size(), advkey);
-
-        for (String kid : kwIds) {
-            try {
-                Map<String, Object> quality = api.get("/openapi/v1/keywords/" + kid + "/quality");
-                if (quality == null) continue;
-                int qigrade = 0;
-                Object q = quality.get("quality");
-                if (q instanceof Number) qigrade = ((Number) q).intValue();
-                Map<String, Object> updates = new HashMap<>();
-                updates.put("qigrade", qigrade);
-                mongoService.updateKeywordDetail(kid, updates);
-            } catch (Exception e) {
-                log.warn("[KAKAO-SA][AD-DETAIL] 품질지수 조회 실패 kid={} err={}", kid, e.getMessage());
-            }
+        if (kwIds.isEmpty()) {
+            log.info("[KAKAO-SA][AD-DETAIL][KW] keywords=0 advkey={}", advkey);
+            return;
         }
+        log.info("[KAKAO-SA][AD-DETAIL][KW] keywords={} advkey={}", kwIds.size(), advkey);
 
-        log.info("[KAKAO-SA][AD-DETAIL] 완료 advkey={} ads={} keywords={}", advkey, adIds.size(), kwIds.size());
+        ConcurrentHashMap<String, Integer> kwResults = new ConcurrentHashMap<>();
+
+        CompletableFuture.allOf(
+            kwIds.stream()
+                .map(kid -> CompletableFuture.runAsync(() -> {
+                    try {
+                        RATE_LIMITER.acquire();
+                        try {
+                            Map<String, Object> quality = api.get("/openapi/v1/keywords/" + kid + "/quality");
+                            if (quality == null) return;
+                            int qigrade = 0;
+                            Object q = quality.get("quality");
+                            if (q instanceof Number) qigrade = ((Number) q).intValue();
+                            kwResults.put(kid, qigrade);
+                        } finally {
+                            RATE_LIMITER.release();
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } catch (Exception e) {
+                        log.warn("[KAKAO-SA][AD-DETAIL][KW] 품질지수 실패 kid={} err={}", kid, e.getMessage());
+                    }
+                }, FETCH_EXECUTOR))
+                .toArray(CompletableFuture[]::new)
+        ).join();
+
+        for (Map.Entry<String, Integer> entry : kwResults.entrySet()) {
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("qigrade", entry.getValue());
+            mongoService.updateKeywordDetail(entry.getKey(), updates);
+        }
+        log.info("[KAKAO-SA][AD-DETAIL][KW] 완료 updated={} advkey={}", kwResults.size(), advkey);
     }
 
     private String str(Map<String, Object> map, String key, String def) {
