@@ -10,7 +10,9 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
@@ -44,6 +46,59 @@ public class ReportMongoService {
     public void updatePdfDate(String id, String pdfdate) {
         Query q = Query.query(Criteria.where("_id").is(new ObjectId(id)));
         mongo.updateFirst(q, Update.update("pdfdate", pdfdate), COL);
+    }
+
+    public void updateSendStatus(String id, String sendate, int sendstatus) {
+        Query q = Query.query(Criteria.where("_id").is(new ObjectId(id)));
+        Update u = new Update().set("sendate", sendate).set("sendstatus", sendstatus);
+        mongo.updateFirst(q, u, COL);
+    }
+
+    public Document findById(String id) {
+        Query q = Query.query(Criteria.where("_id").is(new ObjectId(id)));
+        return mongo.findOne(q, Document.class, COL);
+    }
+
+    // ── 예약 발송 (h3_report_reservation) ───────────────────────────────────
+    private static final String RES_COL = "h3_report_reservation";
+    private static final DateTimeFormatter DT_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    public List<Map<String, Object>> findReservation(String bid) {
+        Query q = Query.query(Criteria.where("b_id").is(bid));
+        List<Document> docs = mongo.find(q, Document.class, RES_COL);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Document d : docs) {
+            Map<String, Object> m = new LinkedHashMap<>(d);
+            m.remove("_id");
+            result.add(m);
+        }
+        return result;
+    }
+
+    public void upsertReservation(String bid, String userId, String semail, String remail,
+                                   String time, int type) {
+        Query q = Query.query(Criteria.where("b_id").is(bid));
+        Document existing = mongo.findOne(q, Document.class, RES_COL);
+        String now = LocalDateTime.now().format(DT_FMT);
+        String target = userId + "-" + bid;
+
+        if (existing == null) {
+            Document doc = new Document()
+                    .append("b_id",         bid)
+                    .append("user_id",       userId)
+                    .append("status",        0)
+                    .append("s_email",       semail)
+                    .append("r_email",       remail)
+                    .append("time",          time)
+                    .append("type",          type)
+                    .append("target",        target)
+                    .append("daily_regdate", now);
+            mongo.insert(doc, RES_COL);
+        } else {
+            Update u = new Update().set("type", type).set("time", time).set("status", 0);
+            mongo.updateFirst(q, u, RES_COL);
+        }
     }
 
     // MongoDB 저장 키(소문자) → Vue가 기대하는 camelCase 키 매핑

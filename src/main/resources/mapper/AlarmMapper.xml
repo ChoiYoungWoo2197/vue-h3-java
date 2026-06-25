@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.h3.h3_java.api.mapper.AlarmMapper">
+
+    <!-- user/marketer 모드: 특정 user_id 조건 -->
+    <select id="selectAlarmsForUser" resultType="map">
+        SELECT user_id, daily_advid, daily_dt, media, target_id, target_name,
+               level, type, content, daily_regdate
+        FROM h3_budget_alarm
+        <where>
+            user_id = #{userId}
+            <if test="fromdate != null and fromdate != ''">
+                AND daily_dt BETWEEN #{fromdate} AND #{todate}
+            </if>
+        </where>
+        ORDER BY daily_dt DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countAlarmsForUser" resultType="int">
+        SELECT COUNT(*)
+        FROM h3_budget_alarm
+        <where>
+            user_id = #{userId}
+            <if test="fromdate != null and fromdate != ''">
+                AND daily_dt BETWEEN #{fromdate} AND #{todate}
+            </if>
+        </where>
+    </select>
+
+    <!-- admin 모드: 전체 + 마케터 JOIN -->
+    <select id="selectAlarmsForAdmin" resultType="map">
+        SELECT A.user_id, A.daily_advid, A.daily_dt, A.media, A.target_id, A.target_name,
+               A.level, A.type, A.content, A.daily_regdate,
+               S.user_manager AS manager_id, U.user_name AS manager_name
+        FROM h3_budget_alarm A
+        LEFT JOIN h3_share S ON S.user_id = A.user_id
+        LEFT JOIN h3_users U ON U.user_id = S.user_manager
+        <where>
+            <if test="fromdate != null and fromdate != ''">
+                A.daily_dt BETWEEN #{fromdate} AND #{todate}
+            </if>
+        </where>
+        ORDER BY A.daily_dt DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countAlarmsForAdmin" resultType="int">
+        SELECT COUNT(*)
+        FROM h3_budget_alarm A
+        <where>
+            <if test="fromdate != null and fromdate != ''">
+                A.daily_dt BETWEEN #{fromdate} AND #{todate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 알람 설정 조회 -->
+    <select id="selectAlarmSetting" resultType="map">
+        SELECT type, im, clk, cv, cr
+        FROM h3_budget_daily_alarm
+        WHERE user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <!-- 알람 설정 신규 저장 -->
+    <insert id="insertAlarmSetting" parameterType="map">
+        INSERT INTO h3_budget_daily_alarm (user_id, type, bizmoney, im, clk, cv, cr, daily_regdate)
+        VALUES (#{userId}, #{type}, null, #{im}, #{clk}, #{cv}, #{cr}, NOW())
+    </insert>
+
+    <!-- 알람 설정 수정 -->
+    <update id="updateAlarmSetting" parameterType="map">
+        UPDATE h3_budget_daily_alarm
+        SET type = #{type}, im = #{im}, clk = #{clk}, cv = #{cv}, cr = #{cr}
+        WHERE user_id = #{userId}
+    </update>
+
+</mapper>

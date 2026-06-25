@@ -6,6 +6,8 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,6 +49,40 @@ public class SendGridService {
             return ok;
         } catch (Exception e) {
             log.error("[SENDGRID] 발송 오류 to={} err={}", toEmail, e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean sendWithPdfAttachment(String toEmail, String toName, String subject,
+                                          String htmlBody, byte[] pdfBytes, String fileName) {
+        try {
+            String base64Pdf = Base64.getEncoder().encodeToString(pdfBytes);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("personalizations", List.of(Map.of(
+                "to", List.of(Map.of("email", toEmail, "name", toName))
+            )));
+            body.put("from",    Map.of("email", fromEmail, "name", fromName));
+            body.put("subject", subject);
+            body.put("content", List.of(Map.of("type", "text/html", "value", htmlBody)));
+            body.put("attachments", List.of(Map.of(
+                "content",     base64Pdf,
+                "type",        "application/pdf",
+                "filename",    fileName,
+                "disposition", "attachment"
+            )));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(apiKey);
+
+            ResponseEntity<String> res = new RestTemplate().exchange(
+                SEND_URL, HttpMethod.POST, new HttpEntity<>(body, headers), String.class);
+
+            boolean ok = res.getStatusCode().value() == 202;
+            if (!ok) log.warn("[SENDGRID] PDF 발송 실패 status={}", res.getStatusCode());
+            return ok;
+        } catch (Exception e) {
+            log.error("[SENDGRID] PDF 발송 오류 to={} err={}", toEmail, e.getMessage());
             return false;
         }
     }

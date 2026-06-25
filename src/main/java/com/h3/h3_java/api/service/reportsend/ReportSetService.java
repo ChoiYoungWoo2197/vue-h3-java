@@ -1,16 +1,27 @@
 package com.h3.h3_java.api.service.reportsend;
 
+import com.h3.h3_java.api.service.SendGridService;
 import com.h3.h3_java.raw.mongo.ReportMongoService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReportSetService {
 
     private final ReportMongoService reportMongoService;
+    private final SendGridService    sendGridService;
+
+    private static final DateTimeFormatter DT_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public Map<String, Object> handleReportSet(Map<String, String> params) {
         String mode = params.getOrDefault("mode", "");
@@ -122,6 +133,91 @@ public class ReportSetService {
 
         reportMongoService.insert(doc);
         return success();
+    }
+
+    // ── RESERVATION ──────────────────────────────────────────────────────────
+
+    public Map<String, Object> handleReservation(Map<String, String> params) {
+        String mode = params.getOrDefault("mode", "get");
+        String bid  = params.getOrDefault("bid", "");
+        if (bid.isBlank()) return fail("bid 누락");
+
+        if ("upsert".equals(mode)) {
+            return upsertReservation(bid, params);
+        }
+        return getReservation(bid);
+    }
+
+    private Map<String, Object> getReservation(String bid) {
+        List<Map<String, Object>> list = reportMongoService.findReservation(bid);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("reportReservationSet", list);
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("result",      "success");
+        res.put("status",      "200");
+        res.put("data",        data);
+        res.put("resultcount", 0);
+        res.put("totalcount",  0);
+        return res;
+    }
+
+    private Map<String, Object> upsertReservation(String bid, Map<String, String> params) {
+        String userId = params.getOrDefault("userid", "");
+        String time   = params.getOrDefault("time",   "");
+        String typeRaw = params.getOrDefault("type",  "0");
+        int    type    = toInt(typeRaw, 0);
+
+        // semail/remail은 MongoDB h3_report에서 조회
+        String semail = "";
+        String remail = "";
+        try {
+            Document report = reportMongoService.findById(bid);
+            if (report != null) {
+                semail = report.getString("email")  != null ? report.getString("email")  : "";
+                remail = report.getString("recver") != null ? report.getString("recver") : "";
+            }
+        } catch (Exception e) {
+            log.warn("[RESERVATION] 리포트 조회 실패 bid={} err={}", bid, e.getMessage());
+        }
+
+        reportMongoService.upsertReservation(bid, userId, semail, remail, time, type);
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("result", "success");
+        res.put("status", "200");
+        return res;
+    }
+
+    // ── EMAIL SEND ────────────────────────────────────────────────────────────
+
+    public Map<String, Object> handleSendEmail(String userid, String bid, String name,
+                                                String sender, String semail,
+                                                String recver, String remail,
+                                                MultipartFile file) {
+        try {
+            byte[] pdfBytes = file.getBytes();
+            String fileName = file.getOriginalFilename() != null
+                    ? file.getOriginalFilename() : "report.pdf";
+            String subject  = "희일커뮤니케이션 보고서";
+            String htmlBody = "<div style='font-family:Arial,sans-serif;margin-top:60px;'>"
+                    + "<p>" + sender + "님으로부터 <strong>" + name + "</strong> 보고서가 도착했습니다.</p>"
+                    + "<p>첨부 파일을 확인해 주세요.</p>"
+                    + "<p style='color:#999;font-size:11px;'>이 메일은 발신 전용입니다.</p>"
+                    + "</div>";
+
+            boolean sent = sendGridService.sendWithPdfAttachment(remail, recver, subject, htmlBody, pdfBytes, fileName);
+            log.info("[EMAIL] 보고서 발송 bid={} to={} sent={}", bid, remail, sent);
+
+            if (sent) {
+                String sendate = LocalDateTime.now().format(DT_FMT);
+                reportMongoService.updateSendStatus(bid, sendate, 1);
+            }
+
+            return Map.of("result", "success", "status", "200");
+        } catch (Exception e) {
+            log.error("[EMAIL] 보고서 발송 오류 bid={} err={}", bid, e.getMessage());
+            return fail("발송 오류: " + e.getMessage());
+        }
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
