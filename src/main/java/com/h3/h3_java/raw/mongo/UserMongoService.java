@@ -271,6 +271,34 @@ public class UserMongoService {
 
     // ── 광고주 등록 ─────────────────────────────────────────────────────────────
 
+    public Document findByUserNameAndEmail(String userName, String userEmail) {
+        return mongo.findOne(
+            Query.query(new Criteria().andOperator(
+                Criteria.where("user_name").is(userName),
+                Criteria.where("user_email").is(userEmail)
+            )),
+            Document.class, COL
+        );
+    }
+
+    public Document findByUserIdAndEmail(String userId, String userEmail) {
+        return mongo.findOne(
+            Query.query(new Criteria().andOperator(
+                Criteria.where("user_id").is(userId),
+                Criteria.where("user_email").is(userEmail)
+            )),
+            Document.class, COL
+        );
+    }
+
+    public void updateUserPassByIdAndEmail(String userId, String userEmail, String hashedPass) {
+        Query q = Query.query(new Criteria().andOperator(
+            Criteria.where("user_id").is(userId),
+            Criteria.where("user_email").is(userEmail)
+        ));
+        mongo.updateFirst(q, new Update().set("user_pass", hashedPass), COL);
+    }
+
     public void insertUser(Document doc) {
         mongo.insert(doc, COL);
     }

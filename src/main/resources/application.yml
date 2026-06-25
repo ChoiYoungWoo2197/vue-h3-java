@@ -48,6 +48,12 @@ google:
   developer-token: vxKM6J4s-oTW3gbvMLMjlg
   manager-id: "6769413271"
 
+# SendGrid
+sendgrid:
+  api-key: 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
+  from-email: web@heeil.com
+  from-name: 희일커뮤니케이션
+
 # OpenAI
 openai:
   api-key: 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
