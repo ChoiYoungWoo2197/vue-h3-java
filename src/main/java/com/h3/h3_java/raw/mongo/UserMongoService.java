@@ -118,6 +118,13 @@ public class UserMongoService {
 
     // ── 마케터 목록 (user_level = 2) ───────────────────────────────────────────
 
+    public List<Document> findMarketerList() {
+        Query q = Query.query(Criteria.where("user_level").is(2));
+        q.with(Sort.by(Sort.Direction.ASC, "user_seq"));
+        q.fields().include("user_id").include("user_name");
+        return mongo.find(q, Document.class, COL);
+    }
+
     public List<Document> findMarketers(String field, String query, int skip, int limit, boolean desc) {
         Query q = buildMarketerQuery(field, query);
         q.with(Sort.by(desc ? Sort.Direction.DESC : Sort.Direction.ASC, "user_regdate"));

@@ -1,6 +1,7 @@
 package com.h3.h3_java.api.controller;
 
 import com.h3.h3_java.api.service.SendGridService;
+import com.h3.h3_java.raw.mongo.AdvMongoService;
 import com.h3.h3_java.raw.mongo.EmailAuthMongoService;
 import com.h3.h3_java.raw.mongo.UserMongoService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,7 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.MessageDigest;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -25,8 +29,12 @@ import java.util.Map;
 public class FindUserController {
 
     private final UserMongoService      userMongo;
+    private final AdvMongoService       advMongo;
     private final EmailAuthMongoService emailAuthMongo;
     private final SendGridService       sendGrid;
+
+    private static final DateTimeFormatter DT_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // =============================================================================
     // 아이디 찾기 — 인증코드 발송
@@ -151,6 +159,101 @@ public class FindUserController {
     }
 
     // =============================================================================
+    // 아이디/이메일 중복 확인
+    // =============================================================================
+
+    @PostMapping("/exists")
+    public ResponseEntity<Map<String, Object>> exists(
+            @RequestParam(defaultValue = "") String userid,
+            @RequestParam(defaultValue = "") String useremail) {
+
+        if (!userid.isBlank() && !useremail.isBlank()) {
+            return failMsg("하나만 검색 가능합니다.", "1007");
+        }
+        if (!userid.isBlank()) {
+            return userMongo.existsByUserId(userid)
+                    ? failMsg("사용할 수 없는 아이디 입니다.", "1005") : ok();
+        }
+        if (!useremail.isBlank()) {
+            return userMongo.existsByEmail(useremail)
+                    ? failMsg("사용할 수 없는 이메일 입니다.", "1006") : ok();
+        }
+        return fail();
+    }
+
+    // =============================================================================
+    // 마케터 목록 (select2 드롭다운용)
+    // =============================================================================
+
+    @PostMapping("/findmarketers")
+    public ResponseEntity<Map<String, Object>> findMarketers(
+            @RequestParam(defaultValue = "") String userlevel) {
+
+        if (!"2".equals(userlevel)) {
+            return failMsg("검색 결과가 없습니다.", "1004");
+        }
+        List<Document> list = userMongo.findMarketerList();
+        Map<String, String> marketerMap = new LinkedHashMap<>();
+        for (Document d : list) {
+            marketerMap.put(d.getString("user_id"), d.getString("user_name"));
+        }
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("result",    "success");
+        res.put("status",    "200");
+        res.put("marketers", marketerMap);
+        return ResponseEntity.ok(res);
+    }
+
+    // =============================================================================
+    // 회원가입 (자체 신청 — user_status=0, 관리자 승인 대기)
+    // =============================================================================
+
+    @PostMapping("/register")
+    public ResponseEntity<Map<String, Object>> register(
+            @RequestParam(defaultValue = "") String userid,
+            @RequestParam(defaultValue = "") String userpass,
+            @RequestParam(defaultValue = "") String username,
+            @RequestParam(defaultValue = "") String usercompany,
+            @RequestParam(defaultValue = "") String useremail,
+            @RequestParam(defaultValue = "") String userphone,
+            @RequestParam(defaultValue = "") String advmedia,
+            @RequestParam(defaultValue = "") String advid,
+            @RequestParam(defaultValue = "") String advmarketer) {
+
+        if (userid.isBlank())      return failMsg("아이디를 확인해 주세요.", "1009");
+        if (userpass.isBlank())    return failMsg("비밀번호를 확인해 주세요.", "1010");
+        if (username.isBlank())    return failMsg("이름을 확인해 주세요.", "1011");
+        if (usercompany.isBlank()) return failMsg("회사명을 확인해 주세요.", "1012");
+        if (useremail.isBlank())   return failMsg("이메일을 확인해 주세요.", "1013");
+        if (userphone.isBlank())   return failMsg("휴대번호를 확인해 주세요.", "1014");
+        if (advmedia.isBlank())    return failMsg("매체를 확인해 주세요.", "1015");
+        if (advid.isBlank())       return failMsg("광고 아이디를 확인해 주세요.", "1016");
+
+        if (userMongo.existsByUserId(userid) || userMongo.existsByEmail(useremail)) {
+            return failMsg("정상처리 되지 않았습니다.", "1002");
+        }
+
+        String now = LocalDateTime.now().format(DT_FMT);
+        Document doc = new Document()
+                .append("user_id",         userid)
+                .append("user_pass",       sha256(userpass))
+                .append("user_name",       username)
+                .append("user_company",    usercompany)
+                .append("user_email",      useremail)
+                .append("user_phone",      userphone)
+                .append("user_status",     0)
+                .append("user_level",      0)
+                .append("user_manager",    "H00408")
+                .append("user_passupdate", now)
+                .append("user_regdate",    now);
+        userMongo.insertUser(doc);
+        advMongo.insert(userid, advid, advmedia, advmarketer, now);
+
+        log.info("[USER][REGISTER] 회원가입 신청 id={} media={}", userid, advmedia);
+        return ok();
+    }
+
+    // =============================================================================
     // 공통
     // =============================================================================
 
@@ -165,6 +268,14 @@ public class FindUserController {
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("result", "failed");
         res.put("status", "1020");
+        return ResponseEntity.ok(res);
+    }
+
+    private ResponseEntity<Map<String, Object>> failMsg(String msg, String status) {
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("result",       "failed");
+        res.put("status",       status);
+        res.put("errormessage", msg);
         return ResponseEntity.ok(res);
     }
 
