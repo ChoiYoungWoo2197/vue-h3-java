@@ -1,11 +1,15 @@
 package com.h3.h3_java.api.controller;
 
-import com.h3.h3_java.api.mapper.AlarmMapper;
+import com.h3.h3_java.raw.mongo.BudgetAlarmMongoService;
+import com.h3.h3_java.raw.mongo.ShareMongoService;
+import com.h3.h3_java.raw.mongo.UserMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -13,7 +17,9 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AlarmController {
 
-    private final AlarmMapper alarmMapper;
+    private final BudgetAlarmMongoService budgetAlarmMongo;
+    private final ShareMongoService       shareMongo;
+    private final UserMongoService        userMongo;
 
     private static final Map<String, String> MEDIA_SET = Map.of(
         "naver",   "네이버검색광고",
@@ -47,31 +53,63 @@ public class AlarmController {
         int    display  = toInt(params.get("display"), 10);
         int    offset   = start * display;
 
-        Map<String, Object> q = new HashMap<>();
-        q.put("userId",   userId);
-        q.put("fromdate", fromdate.isBlank() ? null : fromdate);
-        q.put("todate",   todate.isBlank()   ? null : todate);
-        q.put("offset",   offset);
-        q.put("limit",    display);
+        String fd = fromdate.isBlank() ? null : fromdate;
+        String td = todate.isBlank()   ? null : todate;
 
-        List<Map<String, Object>> rows;
-        int totalcount;
+        boolean isAdmin = "admin".equals(mode);
+        List<Document> docs;
+        long totalcount;
 
-        if ("admin".equals(mode)) {
-            rows       = alarmMapper.selectAlarmsForAdmin(q);
-            totalcount = alarmMapper.countAlarmsForAdmin(q);
+        if (isAdmin) {
+            docs       = budgetAlarmMongo.findAllAlarms(fd, td, offset, display);
+            totalcount = budgetAlarmMongo.countAllAlarms(fd, td);
         } else {
-            rows       = alarmMapper.selectAlarmsForUser(q);
-            totalcount = alarmMapper.countAlarmsForUser(q);
+            docs       = budgetAlarmMongo.findAlarmsForUser(userId, fd, td, offset, display);
+            totalcount = budgetAlarmMongo.countAlarmsForUser(userId, fd, td);
+        }
+
+        // admin 모드: h3_share + h3_users JOIN으로 매니저 정보 추가
+        Map<String, String> userIdToManagerId = new HashMap<>();
+        Map<String, String> managerIdToName   = new HashMap<>();
+        if (isAdmin && !docs.isEmpty()) {
+            List<String> userIds = docs.stream()
+                .map(d -> d.getString("user_id"))
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+            List<Document> shares = shareMongo.findByUserIds(userIds);
+            List<String> managerIds = new ArrayList<>();
+            for (Document s : shares) {
+                String uid = s.getString("user_id");
+                String mid = s.getString("user_manager");
+                if (uid != null && mid != null) {
+                    userIdToManagerId.put(uid, mid);
+                    managerIds.add(mid);
+                }
+            }
+            for (String mid : managerIds.stream().distinct().collect(Collectors.toList())) {
+                Document u = userMongo.findByUserId(mid);
+                if (u != null) {
+                    managerIdToName.put(mid, u.getString("user_name"));
+                }
+            }
         }
 
         List<Map<String, Object>> alarms = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
-            Map<String, Object> alarm = new LinkedHashMap<>(row);
-            String media = str(row.get("media"));
-            String type  = str(row.get("type"));
+        for (Document doc : docs) {
+            Map<String, Object> alarm = new LinkedHashMap<>(doc);
+            alarm.remove("_id");
+            String media = str(doc.get("media"));
+            String type  = str(doc.get("type"));
             alarm.put("media", MEDIA_SET.getOrDefault(media, media));
             alarm.put("type",  TYPE_SET.getOrDefault(type, type));
+            if (isAdmin) {
+                String uid = doc.getString("user_id");
+                String mid = userIdToManagerId.get(uid);
+                alarm.put("manager_id",   mid);
+                alarm.put("manager_name", mid != null ? managerIdToName.get(mid) : null);
+            }
             alarms.add(alarm);
         }
 
@@ -100,7 +138,7 @@ public class AlarmController {
     }
 
     private Map<String, Object> getAlarmSetting(String userId) {
-        Map<String, Object> row = alarmMapper.selectAlarmSetting(userId);
+        Document row = budgetAlarmMongo.findSetting(userId);
 
         List<Map<String, Object>> alarmset = new ArrayList<>();
         if (row != null) {
@@ -133,21 +171,7 @@ public class AlarmController {
         String cr   = params.getOrDefault("cr",  "");
         int    type = "1".equals(params.get("type")) || "true".equalsIgnoreCase(params.get("type")) ? 1 : 0;
 
-        Map<String, Object> existing = alarmMapper.selectAlarmSetting(userId);
-
-        Map<String, Object> row = new HashMap<>();
-        row.put("userId", userId);
-        row.put("type",   type);
-        row.put("im",     im);
-        row.put("clk",    clk);
-        row.put("cv",     cv);
-        row.put("cr",     cr);
-
-        if (existing == null) {
-            alarmMapper.insertAlarmSetting(row);
-        } else {
-            alarmMapper.updateAlarmSetting(row);
-        }
+        budgetAlarmMongo.upsertSetting(userId, type, im, clk, cv, cr);
 
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("result",      "success");

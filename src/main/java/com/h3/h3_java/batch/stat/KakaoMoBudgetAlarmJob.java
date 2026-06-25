@@ -4,10 +4,11 @@ import com.h3.h3_java.batch.scheduler.KakaoMoTokenManager;
 import com.h3.h3_java.media.kakao.KakaoMoApiClient;
 import com.h3.h3_java.media.kakao.dto.KakaoMoAccountDto;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
-import com.h3.h3_java.media.kakao.mapper.KakaoMoBudgetAlarmMapper;
+import com.h3.h3_java.raw.mongo.BudgetAlarmMongoService;
 import com.h3.h3_java.raw.mongo.KakaoMoStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
@@ -17,20 +18,15 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-/**
- * Kakao MO 예산 알람 수집.
- * PHP kakaomobudgetalarmcollection.php → MongoDB kakao_mo_budget_alarm.
- * 알람 설정은 MySQL h3_budget_daily_alarm에서 읽고, 실적은 MongoDB kakao_mo_campaign_daily에서 읽음.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class KakaoMoBudgetAlarmJob {
 
     private final AccountMongoService     accountMongo;
-    private final KakaoMoBudgetAlarmMapper alarmMapper;
-    private final KakaoMoStatMongoService  statMongo;
-    private final KakaoMoTokenManager      tokenManager;
+    private final BudgetAlarmMongoService budgetAlarmMongo;
+    private final KakaoMoStatMongoService statMongo;
+    private final KakaoMoTokenManager     tokenManager;
 
     private static final DateTimeFormatter FMT  = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final List<String>      KPIS = List.of("im", "clk", "cv", "cr");
@@ -63,12 +59,14 @@ public class KakaoMoBudgetAlarmJob {
 
         KakaoMoApiClient api = new KakaoMoApiClient(token, advkey);
 
-        Map<String, Object> alarmSet = alarmMapper.selectBudgetAlarm(userId);
+        // 알람 설정 조회 (MongoDB)
+        Document alarmDoc = budgetAlarmMongo.findSetting(userId);
 
-        // 캠페인/계정 예산 알람 (알람 설정 있을 때)
-        if (alarmSet != null) {
-            String alarmType = alarmMapper.selectAlarmType(userId);
-            if (alarmType != null) {
+        if (alarmDoc != null) {
+            Map<String, Object> alarmSet = new HashMap<>(alarmDoc);
+            Object typeVal = alarmDoc.get("type");
+            // type 필드가 존재하면 계정 레벨, 없으면(null) 캠페인 레벨
+            if (typeVal != null) {
                 accountBudgetAlarm(userId, advkey, alarmSet);
             } else {
                 campaignBudgetAlarm(api, userId, advkey, alarmSet);
@@ -124,7 +122,6 @@ public class KakaoMoBudgetAlarmJob {
             String onoff = str(campaign, "config");
             if (cid == null || "OFF".equals(onoff)) continue;
 
-            // KPI 알람
             for (String kpi : KPIS) {
                 String setting = alarmSet.get(kpi) != null ? alarmSet.get(kpi).toString() : null;
                 if (setting == null || setting.isEmpty()) continue;

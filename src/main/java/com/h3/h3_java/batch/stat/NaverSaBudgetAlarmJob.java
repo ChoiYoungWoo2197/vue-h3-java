@@ -2,8 +2,8 @@ package com.h3.h3_java.batch.stat;
 
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
-import com.h3.h3_java.media.naver.mapper.NaverSaBudgetAlarmMapper;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
+import com.h3.h3_java.raw.mongo.BudgetAlarmMongoService;
 import com.h3.h3_java.raw.mongo.NaverStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,9 +20,9 @@ import java.util.*;
 @RequiredArgsConstructor
 public class NaverSaBudgetAlarmJob {
 
-    private final AccountMongoService    accountMongo;
-    private final NaverSaBudgetAlarmMapper alarmMapper;
-    private final NaverStatMongoService  statMongo;
+    private final AccountMongoService     accountMongo;
+    private final BudgetAlarmMongoService budgetAlarmMongo;
+    private final NaverStatMongoService   statMongo;
 
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final List<String> KPIS = List.of("im", "clk", "cv", "cr");
@@ -70,7 +70,7 @@ public class NaverSaBudgetAlarmJob {
         bizmoneyLockAlarm(acc.getUserId(), customerId, client);
 
         // 2. 계정/캠페인 KPI 알람 (알람 설정이 있는 경우만)
-        Map<String, Object> alarmSetting = alarmMapper.selectAlarmSetting(acc.getUserId());
+        Document alarmSetting = budgetAlarmMongo.findSetting(acc.getUserId());
         if (alarmSetting == null) {
             log.debug("[SA][BUDGET-ALARM][SKIP] 알람설정 없음 userId={}", acc.getUserId());
             return;
@@ -93,8 +93,7 @@ public class NaverSaBudgetAlarmJob {
         Boolean budgetLock = (Boolean) res.get("budgetLock");
         if (!Boolean.TRUE.equals(budgetLock)) return;
 
-        int cnt = alarmMapper.countRecentBizmoneyAlarm(userId, customerId);
-        if (cnt > 0) return;
+        if (budgetAlarmMongo.countRecentBizmoneyAlarm(userId, customerId) > 0) return;
 
         String dateTime = LocalDateTime.now().format(DT_FMT);
         String content  = customerId + "계정 비즈머니 잔액 부족으로 계정잠김 상태가 되어 모든 광고 노출이 중지됐습니다.";
@@ -111,20 +110,19 @@ public class NaverSaBudgetAlarmJob {
         row.put("content",       content);
         row.put("daily_regdate", dateTime);
 
-        alarmMapper.insertBudgetAlarm(row);
+        budgetAlarmMongo.insertAlarm(row);
         log.info("[SA][BUDGET-ALARM] bizmoney 잠금 알람 userId={}", userId);
     }
 
     // ─── 계정 수준 KPI 인상률 알람 ───────────────────────────────────────────
 
-    private void accountBudgetAlarm(String userId, String customerId, Map<String, Object> alarmSetting) {
+    private void accountBudgetAlarm(String userId, String customerId, Document alarmSetting) {
         for (String kpi : KPIS) {
             String periodStr = getStr(alarmSetting.get(kpi));
             if (periodStr.length() < 2) continue;
 
-            int cnt = alarmMapper.countRecentAlarm(userId, customerId, "account", null,
-                "account_rate_updown_by_" + kpi);
-            if (cnt > 0) continue;
+            if (budgetAlarmMongo.countRecentAlarm(userId, customerId, "naver", "account", null,
+                    "account_rate_updown_by_" + kpi, 7) > 0) continue;
 
             int day;
             try {
@@ -161,7 +159,7 @@ public class NaverSaBudgetAlarmJob {
             row.put("content",       content);
             row.put("daily_regdate", dateTime);
 
-            alarmMapper.insertBudgetAlarm(row);
+            budgetAlarmMongo.insertAlarm(row);
             log.info("[SA][BUDGET-ALARM] account alarm userId={} kpi={} rate={}", userId, kpi, perStr);
         }
     }
@@ -169,14 +167,14 @@ public class NaverSaBudgetAlarmJob {
     // ─── 캠페인 수준 알람 ─────────────────────────────────────────────────────
 
     private void campaignBudgetAlarm(String userId, String customerId,
-                                     Map<String, Object> alarmSetting, NaverApiClient client) {
-        List<Document> campaigns = statMongo.selectCampaignsByCustomer(customerId);
+                                     Document alarmSetting, NaverApiClient client) {
+        List<org.bson.Document> campaigns = statMongo.selectCampaignsByCustomer(customerId);
         if (campaigns.isEmpty()) {
             log.warn("[SA][BUDGET-ALARM] 캠페인 없음 customerId={}", customerId);
             return;
         }
 
-        for (Document campaign : campaigns) {
+        for (org.bson.Document campaign : campaigns) {
             String campaignId   = campaign.getString("campaignid");
             String campaignName = campaign.getString("campaignname");
             if (campaignId == null) continue;
@@ -186,9 +184,8 @@ public class NaverSaBudgetAlarmJob {
             if (detail != null && Boolean.TRUE.equals(detail.get("useDailyBudget"))
                     && "CAMPAIGN_LIMITED_BY_BUDGET".equals(detail.get("statusReason"))) {
 
-                int cnt = alarmMapper.countRecentAlarm(
-                    userId, customerId, "campaign", campaignId, "campaign_limited_by_budget");
-                if (cnt == 0) {
+                if (budgetAlarmMongo.countRecentAlarm(userId, customerId, "naver", "campaign",
+                        campaignId, "campaign_limited_by_budget", 7) == 0) {
                     String dateTime = LocalDateTime.now().format(DT_FMT);
                     String content  = campaignName + " 캠페인 하루예산이 초과 혹은 초과 예상되어 캠페인이 중지되었습니다.";
                     Map<String, Object> row = new LinkedHashMap<>();
@@ -202,7 +199,7 @@ public class NaverSaBudgetAlarmJob {
                     row.put("type",          "campaign_limited_by_budget");
                     row.put("content",       content);
                     row.put("daily_regdate", dateTime);
-                    alarmMapper.insertBudgetAlarm(row);
+                    budgetAlarmMongo.insertAlarm(row);
                     log.info("[SA][BUDGET-ALARM] 캠페인 하루예산 초과 userId={} campaignId={}", userId, campaignId);
                 }
             }
@@ -215,9 +212,8 @@ public class NaverSaBudgetAlarmJob {
                 String periodStr = getStr(alarmSetting.get(kpi));
                 if (periodStr.length() < 2) continue;
 
-                int cnt = alarmMapper.countRecentAlarm(
-                    userId, customerId, "campaign", campaignId, "campaign_rate_updown_by_" + kpi);
-                if (cnt > 0) continue;
+                if (budgetAlarmMongo.countRecentAlarm(userId, customerId, "naver", "campaign",
+                        campaignId, "campaign_rate_updown_by_" + kpi, 7) > 0) continue;
 
                 int day;
                 try {
@@ -254,7 +250,7 @@ public class NaverSaBudgetAlarmJob {
                 row.put("content",       content);
                 row.put("daily_regdate", dateTime);
 
-                alarmMapper.insertBudgetAlarm(row);
+                budgetAlarmMongo.insertAlarm(row);
                 log.info("[SA][BUDGET-ALARM] campaign alarm userId={} campaignId={} kpi={} rate={}",
                     userId, campaignId, kpi, perStr);
             }

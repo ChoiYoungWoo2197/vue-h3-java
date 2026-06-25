@@ -4,10 +4,11 @@ import com.h3.h3_java.batch.scheduler.KakaoSaTokenManager;
 import com.h3.h3_java.media.kakao.KakaoSaApiClient;
 import com.h3.h3_java.media.kakao.dto.KakaoSaAccountDto;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
-import com.h3.h3_java.media.kakao.mapper.KakaoSaBudgetAlarmMapper;
+import com.h3.h3_java.raw.mongo.BudgetAlarmMongoService;
 import com.h3.h3_java.raw.mongo.KakaoSaStatMongoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
@@ -17,20 +18,15 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-/**
- * Kakao SA 예산 알람 수집.
- * PHP kakaosabudgetalarmcollection.php → MongoDB kakao_sa_budget_alarm.
- * 알람 설정은 MySQL h3_budget_daily_alarm에서 읽고, 실적은 MongoDB kakao_sa_campaign_daily에서 읽음.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class KakaoSaBudgetAlarmJob {
 
     private final AccountMongoService     accountMongo;
-    private final KakaoSaBudgetAlarmMapper alarmMapper;
-    private final KakaoSaStatMongoService  statMongo;
-    private final KakaoSaTokenManager      tokenManager;
+    private final BudgetAlarmMongoService budgetAlarmMongo;
+    private final KakaoSaStatMongoService statMongo;
+    private final KakaoSaTokenManager     tokenManager;
 
     private static final DateTimeFormatter FMT    = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter APIFMT = DateTimeFormatter.ofPattern("yyyyMMdd");
@@ -64,16 +60,18 @@ public class KakaoSaBudgetAlarmJob {
 
         KakaoSaApiClient api = new KakaoSaApiClient(token, advkey);
 
-        // 알람 설정 조회 (MySQL)
-        Map<String, Object> alarmSet = alarmMapper.selectBudgetAlarm(userId);
+        // 알람 설정 조회 (MongoDB)
+        Document alarmDoc = budgetAlarmMongo.findSetting(userId);
 
         // 1. 비즈머니 잔액 부족 알람
         bizmoneyLockAlarm(api, userId, advkey);
 
         // 2. 캠페인/계정 예산 알람 (알람 설정 있을 때)
-        if (alarmSet != null) {
-            String alarmType = alarmMapper.selectAlarmType(userId);
-            if (alarmType != null) {
+        if (alarmDoc != null) {
+            Map<String, Object> alarmSet = new HashMap<>(alarmDoc);
+            Object typeVal = alarmDoc.get("type");
+            // type 필드가 존재하면 계정 레벨, 없으면(null) 캠페인 레벨
+            if (typeVal != null) {
                 accountBudgetAlarm(userId, advkey, alarmSet);
             } else {
                 campaignBudgetAlarm(api, userId, advkey, alarmSet);
@@ -125,8 +123,7 @@ public class KakaoSaBudgetAlarmJob {
             );
             if (statMongo.countBudgetAlarm(checkQ) > 0) continue;
 
-            int  day    = Integer.parseInt(setting.substring(1)) - 1;
-            boolean isPlus = setting.startsWith("+");
+            int  day     = Integer.parseInt(setting.substring(1)) - 1;
             String toDate   = LocalDate.now().minusDays(1).format(FMT);
             String fromDate = LocalDate.now().minusDays(1 + day).format(FMT);
             String ctoDate  = LocalDate.now().minusDays(2 + day).format(FMT);
@@ -206,7 +203,6 @@ public class KakaoSaBudgetAlarmJob {
                 if (statMongo.countBudgetAlarm(checkQ) > 0) continue;
 
                 int  day     = Integer.parseInt(setting.substring(1)) - 1;
-                boolean isPlus = setting.startsWith("+");
                 String toDate   = LocalDate.now().minusDays(1).format(FMT);
                 String fromDate = LocalDate.now().minusDays(1 + day).format(FMT);
                 String ctoDate  = LocalDate.now().minusDays(2 + day).format(FMT);
@@ -230,15 +226,15 @@ public class KakaoSaBudgetAlarmJob {
                               String type, String content) {
         String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         Map<String, Object> doc = new HashMap<>();
-        doc.put("user_id",    userId);
-        doc.put("advkey",     advkey);
-        doc.put("daily_dt",   now);
-        doc.put("media",      "kakaosa");
-        doc.put("target_id",  targetId);
+        doc.put("user_id",     userId);
+        doc.put("advkey",      advkey);
+        doc.put("daily_dt",    now);
+        doc.put("media",       "kakaosa");
+        doc.put("target_id",   targetId);
         doc.put("target_name", targetName);
-        doc.put("level",      level);
-        doc.put("type",       type);
-        doc.put("content",    content);
+        doc.put("level",       level);
+        doc.put("type",        type);
+        doc.put("content",     content);
         statMongo.insertBudgetAlarm(doc);
         log.info("[KAKAO-SA][BUDGET-ALARM] 알람 저장 advkey={} type={}", advkey, type);
     }
