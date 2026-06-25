@@ -221,6 +221,22 @@ public class CollectorProducer {
     }
 
     // =====================================================================
+    // SA BUDGET ALARM
+    // =====================================================================
+
+    public void sendNaverSaBudgetAlarm(String userId) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "SA_BUDGET_ALARM", userId, null, false);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_SA_BUDGET_ALARM, msg);
+        log.info("[MQ][SEND] NAVER SA BUDGET ALARM userId={}", userId);
+    }
+
+    public void sendNaverSaBudgetAlarmRange(String userId, String from, String to) {
+        CollectorMessage msg = new CollectorMessage("NAVER", "SA_BUDGET_ALARM", userId, null, false, from, to);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_NAVER_SA_BUDGET_ALARM, msg);
+        log.info("[MQ][SEND] NAVER SA BUDGET ALARM RANGE userId={} from={} to={}", userId, from, to);
+    }
+
+    // =====================================================================
     // GFA CONV TYPE
     // =====================================================================
 

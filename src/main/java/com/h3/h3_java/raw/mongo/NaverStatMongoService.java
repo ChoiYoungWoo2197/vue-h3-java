@@ -131,6 +131,29 @@ public class NaverStatMongoService {
     }
 
     // =====================================================================
+    // SA Budget Alarm 용 집계
+    // =====================================================================
+
+    public double sumSaCampaignDaily(String customerId, String fromDate, String toDate,
+                                     String kpiColumn, String campaignId) {
+        Criteria criteria = Criteria.where("daily_advid").is(customerId)
+            .and("daily_dt").gte(fromDate).lte(toDate);
+        if (campaignId != null) {
+            criteria = criteria.and("campaign_id").is(campaignId);
+        }
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(criteria),
+            Aggregation.group().sum(kpiColumn).as("total")
+        );
+        AggregationResults<Document> results =
+            mongoTemplate.aggregate(agg, "naver_campaign_daily", Document.class);
+        Document result = results.getUniqueMappedResult();
+        if (result == null) return 0.0;
+        Object total = result.get("total");
+        return total instanceof Number ? ((Number) total).doubleValue() : 0.0;
+    }
+
+    // =====================================================================
     // Gap 체크 (has* 메서드)
     // =====================================================================
 

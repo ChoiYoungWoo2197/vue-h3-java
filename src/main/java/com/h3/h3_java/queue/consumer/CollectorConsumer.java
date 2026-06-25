@@ -34,6 +34,7 @@ import com.h3.h3_java.batch.stat.NaverGfaAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverGfaAdgroupDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverGfaBudgetAlarmJob;
 import com.h3.h3_java.batch.stat.NaverGfaConvTypeJob;
+import com.h3.h3_java.batch.stat.NaverSaBudgetAlarmJob;
 import com.h3.h3_java.batch.stat.NaverShoppingAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverStateReportJob;
 import com.h3.h3_java.common.config.RabbitMQConfig;
@@ -62,6 +63,7 @@ public class CollectorConsumer {
     private final NaverGfaAdDayCollectionJob naverGfaAdDayCollectionJob;
     private final NaverGfaAdgroupDayCollectionJob naverGfaAdgroupDayCollectionJob;
     private final NaverGfaBudgetAlarmJob naverGfaBudgetAlarmJob;
+    private final NaverSaBudgetAlarmJob  naverSaBudgetAlarmJob;
     private final NaverGfaConvTypeJob naverGfaConvTypeJob;
     private final KakaoSaAdDetailJob     kakaoSaAdDetailJob;
     private final KakaoMoAdDetailJob     kakaoMoAdDetailJob;
@@ -262,6 +264,16 @@ public class CollectorConsumer {
             naverGfaBudgetAlarmJob.collectForUserId(msg.getUserId());
         } catch (Exception e) {
             log.error("[MQ][ERROR] NAVER GFA BUDGET ALARM userId={} error={}", msg.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NAVER_SA_BUDGET_ALARM, concurrency = "3")
+    public void consumeNaverSaBudgetAlarm(CollectorMessage msg) {
+        log.info("[MQ][RECV] NAVER SA BUDGET ALARM userId={}", msg.getUserId());
+        try {
+            naverSaBudgetAlarmJob.collectForUserId(msg.getUserId());
+        } catch (Exception e) {
+            log.error("[MQ][ERROR] NAVER SA BUDGET ALARM userId={} error={}", msg.getUserId(), e.getMessage(), e);
         }
     }
 

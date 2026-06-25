@@ -54,6 +54,9 @@ public class RabbitMQConfig {
     public static final String QUEUE_NAVER_GFA_BUDGET_ALARM    = "h3.collector.naver.gfa.budget.alarm";
     public static final String ROUTING_NAVER_GFA_BUDGET_ALARM  = "naver.gfa.budget.alarm";
 
+    public static final String QUEUE_NAVER_SA_BUDGET_ALARM    = "h3.collector.naver.sa.budget.alarm";
+    public static final String ROUTING_NAVER_SA_BUDGET_ALARM  = "naver.sa.budget.alarm";
+
     public static final String QUEUE_NAVER_GFA_CONV_TYPE   = "h3.collector.naver.gfa.conv.type";
     public static final String ROUTING_NAVER_GFA_CONV_TYPE = "naver.gfa.conv.type";
 
@@ -269,6 +272,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding naverGfaBudgetAlarmBinding(Queue naverGfaBudgetAlarmQueue, DirectExchange collectorExchange) {
         return BindingBuilder.bind(naverGfaBudgetAlarmQueue).to(collectorExchange).with(ROUTING_NAVER_GFA_BUDGET_ALARM);
+    }
+
+    @Bean
+    public Queue naverSaBudgetAlarmQueue() {
+        return QueueBuilder.durable(QUEUE_NAVER_SA_BUDGET_ALARM).build();
+    }
+
+    @Bean
+    public Binding naverSaBudgetAlarmBinding(Queue naverSaBudgetAlarmQueue, DirectExchange collectorExchange) {
+        return BindingBuilder.bind(naverSaBudgetAlarmQueue).to(collectorExchange).with(ROUTING_NAVER_SA_BUDGET_ALARM);
     }
 
     @Bean

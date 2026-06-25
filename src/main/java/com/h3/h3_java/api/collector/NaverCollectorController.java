@@ -4,6 +4,7 @@ import com.h3.h3_java.batch.master.NaverGfaMasterJob;
 import com.h3.h3_java.batch.stat.NaverGfaAdDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverGfaAdgroupDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverGfaBudgetAlarmJob;
+import com.h3.h3_java.batch.stat.NaverSaBudgetAlarmJob;
 import com.h3.h3_java.batch.stat.NaverGfaCampaignDayCollectionJob;
 import com.h3.h3_java.batch.stat.NaverGfaConvTypeJob;
 import com.h3.h3_java.batch.master.NaverMasterReportJob;
@@ -37,6 +38,7 @@ public class NaverCollectorController {
     private final NaverGfaAdDayCollectionJob gfaAdDayJob;
     private final NaverGfaAdgroupDayCollectionJob gfaAdgroupDayJob;
     private final NaverGfaBudgetAlarmJob gfaBudgetAlarmJob;
+    private final NaverSaBudgetAlarmJob  saBudgetAlarmJob;
     private final NaverGfaCampaignDayCollectionJob gfaCampaignDayJob;
     private final NaverGfaConvTypeJob gfaConvTypeJob;
     private final NaverCampaignDayCollectionJob campaignDayJob;
@@ -1009,6 +1011,80 @@ public class NaverCollectorController {
             return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " GFA 예산 알람 MQ 발행 완료"));
         } catch (Exception e) {
             log.error("[NaverCollector] GFA 예산 알람 기간 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    // =====================================================================
+    // SA 예산 알람
+    // =====================================================================
+
+    @PostMapping("/sa-budget-alarm")
+    public ResponseEntity<Map<String, String>> collectSaBudgetAlarm() {
+        log.info("[NaverCollector] SA 예산 알람 전체 수집 시작");
+        try {
+            saBudgetAlarmJob.collect();
+            return ResponseEntity.ok(Map.of("status", "ok", "message", "SA 예산 알람 전체 수집 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] SA 예산 알람 수집 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/sa-budget-alarm/range")
+    public ResponseEntity<Map<String, String>> collectSaBudgetAlarmAllRange(
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] SA 예산 알람 전체 기간 수집 MQ 발행 from={} to={}", from, to);
+        try {
+            List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
+            int count = 0;
+            for (NaverAccountDto account : accounts) {
+                if ("admin".equals(account.getUserId())) continue;
+                producer.sendNaverSaBudgetAlarmRange(account.getUserId(), from, to);
+                count++;
+            }
+            return ResponseEntity.ok(Map.of("status", "ok", "message", from + "~" + to + " SA 예산 알람 MQ 발행 완료 " + count + "건"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] SA 예산 알람 전체 기간 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/sa-budget-alarm/{userId}")
+    public ResponseEntity<Map<String, String>> collectSaBudgetAlarmByUser(@PathVariable String userId) {
+        log.info("[NaverCollector] SA 예산 알람 단일 MQ 발행 userId={}", userId);
+        try {
+            NaverAccountDto account = accountMongo.findNaverAccountDtos().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverSaBudgetAlarm(userId);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " SA 예산 알람 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] SA 예산 알람 MQ 발행 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/sa-budget-alarm/{userId}/range")
+    public ResponseEntity<Map<String, String>> collectSaBudgetAlarmRange(
+            @PathVariable String userId,
+            @RequestParam String from,
+            @RequestParam String to) {
+        log.info("[NaverCollector] SA 예산 알람 기간 MQ 발행 userId={} from={} to={}", userId, from, to);
+        try {
+            NaverAccountDto account = accountMongo.findNaverAccountDtos().stream()
+                    .filter(a -> userId.equals(a.getUserId()))
+                    .findFirst().orElse(null);
+            if (account == null) return notFound(userId);
+            producer.sendNaverSaBudgetAlarmRange(userId, from, to);
+            return ResponseEntity.ok(Map.of("status", "ok", "message", userId + " " + from + "~" + to + " SA 예산 알람 MQ 발행 완료"));
+        } catch (Exception e) {
+            log.error("[NaverCollector] SA 예산 알람 기간 MQ 발행 실패", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", e.getMessage()));
         }

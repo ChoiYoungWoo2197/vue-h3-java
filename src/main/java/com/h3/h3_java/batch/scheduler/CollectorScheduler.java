@@ -24,6 +24,20 @@ public class CollectorScheduler {
     private final AccountMongoService accountMongo;
     private final CollectorProducer   producer;
 
+    // 매일 오전 7시 00분 - 네이버 SA 예산 알람 (SA 수집 완료 후)
+    @Scheduled(cron = "0 0 7 * * *", zone = "Asia/Seoul")
+    public void scheduleNaverSaBudgetAlarm() {
+        log.info("[SCHEDULER] 네이버 SA 예산 알람 시작");
+        List<NaverAccountDto> accounts = accountMongo.findNaverAccountDtos();
+        int count = 0;
+        for (NaverAccountDto account : accounts) {
+            if ("admin".equals(account.getUserId()) || "dydrp123".equals(account.getUserId())) continue;
+            producer.sendNaverSaBudgetAlarm(account.getUserId());
+            count++;
+        }
+        log.info("[SCHEDULER] 네이버 SA 예산 알람 메시지 발행 완료 총={}건", count);
+    }
+
     // 매일 오전 5시 00분 - GFA 전환유형 수집
     @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Seoul")
     public void scheduleNaverGfaConvType() {
