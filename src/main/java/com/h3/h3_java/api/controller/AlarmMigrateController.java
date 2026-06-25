@@ -18,7 +18,7 @@ import java.util.Map;
 /** MySQL h3_budget_alarm / h3_budget_daily_alarm → MongoDB 일회성 이관 */
 @Slf4j
 @RestController
-@RequestMapping("/v1/h3/admin/migrate")
+@RequestMapping("/api/collector/migrate")
 @RequiredArgsConstructor
 public class AlarmMigrateController {
 
