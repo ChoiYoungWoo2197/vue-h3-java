@@ -435,16 +435,20 @@ public class CampaignReportService {
         String[] keys = {"im","clk","cst","cv","cr","ctr","cpc","cpa","cvr","roas",
                          "purchase_cv","purchase_cr","signup_cv","signup_cr","cart_cv","cart_cr",
                          "lead_cv","lead_cr","other_cv","other_cr","purchase_roas"};
-        Map<String, Object> per = new LinkedHashMap<>();
-        Map<String, Object> cp  = new LinkedHashMap<>();
+        Set<String> ppSet = new HashSet<>(Arrays.asList("ctr","cpc","cpa","cvr","roas","purchase_roas"));
+        Map<String, Object> per  = new LinkedHashMap<>();
+        Map<String, Object> cp   = new LinkedHashMap<>();
+        Map<String, Object> diff = new LinkedHashMap<>();
         for (String k : keys) {
             double c = toDouble(cur, k), p = toDouble(comp, k);
-            per.put(k, (c > 0 && p > 0) ? fmt((c - p) / p * 100) : 0);
-            cp.put(k,  p > 0 ? p : 0);
+            per.put(k,  (c > 0 && p > 0) ? fmt((c - p) / p * 100) : 0);
+            cp.put(k,   p > 0 ? p : 0);
+            diff.put(k, ppSet.contains(k) ? fmt(c - p) : (long) Math.round(c - p));
         }
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("per", per);
-        result.put("cp",  cp);
+        result.put("per",  per);
+        result.put("cp",   cp);
+        result.put("diff", diff);
         return result;
     }
 
