@@ -280,6 +280,7 @@ public class TokenController {
                 body.containsKey("scope")      ? String.valueOf(body.get("scope"))      : "",
                 body.containsKey("token_type") ? String.valueOf(body.get("token_type")) : ""
             );
+            googleTokenManager.forceRefresh();
             log.info("[GOOGLE][TOKEN] 최초 발급 완료");
             return ok("구글 토큰 발급 완료");
         } catch (Exception e) {
