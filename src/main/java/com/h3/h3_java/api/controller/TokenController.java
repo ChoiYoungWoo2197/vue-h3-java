@@ -125,6 +125,7 @@ public class TokenController {
                 ? String.valueOf(body.get("refresh_token")) : "";
 
             naverGfaTokenMongo.saveToken(at, rt2);
+            naverGfaTokenManager.forceRefresh();
             log.info("[GFA TOKEN] 최초 발급 완료");
             return ok("네이버 GFA 토큰 발급 완료");
         } catch (Exception e) {
@@ -171,6 +172,7 @@ public class TokenController {
                 body.get("refresh_token_expires_in"),
                 body.containsKey("token_type") ? String.valueOf(body.get("token_type")) : ""
             );
+            kakaoSaTokenManager.forceRefresh();
             log.info("[KAKAO-SA TOKEN] 최초 발급 완료");
             return ok("카카오 SA 토큰 발급 완료");
         } catch (Exception e) {
@@ -216,6 +218,7 @@ public class TokenController {
                 body.get("refresh_token_expires_in"),
                 body.containsKey("token_type") ? String.valueOf(body.get("token_type")) : ""
             );
+            kakaoMoTokenManager.forceRefresh();
             log.info("[KAKAO-MO TOKEN] 최초 발급 완료");
             return ok("카카오 MO 토큰 발급 완료");
         } catch (Exception e) {
