@@ -26,13 +26,16 @@ public class KakaoMoTokenMongoService {
         );
     }
 
-    public void saveToken(String accessToken, String refreshToken) {
+    public void saveToken(String accessToken, String refreshToken, Object refreshExpiresIn) {
         Query q = Query.query(Criteria.where("key").is(TOKEN_KEY));
         Update u = new Update()
             .set("key",           TOKEN_KEY)
             .set("access_token",  accessToken)
             .set("refresh_token", refreshToken)
             .set("updated_at",    LocalDateTime.now().toString());
+        if (refreshExpiresIn != null) {
+            u.set("refresh_expires_in", refreshExpiresIn);
+        }
         mongoTemplate.upsert(q, u, COLLECTION);
     }
 

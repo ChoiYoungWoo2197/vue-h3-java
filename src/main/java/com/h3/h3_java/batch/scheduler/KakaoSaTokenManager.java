@@ -117,12 +117,17 @@ public class KakaoSaTokenManager {
             }
 
             String newAt = String.valueOf(resBody.get("access_token"));
-            String newRt = resBody.containsKey("refresh_token")
+            boolean newRtIssued = resBody.containsKey("refresh_token");
+            String newRt = newRtIssued
                 ? String.valueOf(resBody.get("refresh_token"))
                 : refreshToken;
+            Object newRtExpiresIn = newRtIssued ? resBody.get("refresh_token_expires_in") : null;
 
-            tokenMongoService.saveToken(newAt, newRt);
+            tokenMongoService.saveToken(newAt, newRt, newRtExpiresIn);
             accessToken = newAt;
+            if (newRtIssued) {
+                log.info("[KAKAO-SA TOKEN] refresh_token 재발급 완료 expires_in={}", newRtExpiresIn);
+            }
             log.info("[KAKAO-SA TOKEN] 갱신 완료");
 
         } catch (Exception e) {
