@@ -60,6 +60,20 @@ public class AnalysisController {
             userid, fromdate, todate, comparefromdate, comparetodate, media, campaignid);
     }
 
+    /** 진단 상세 리포트 — 캠페인 1개일 때 프론트가 호출, campaignid 필수 */
+    @GetMapping("/diagnosisdetailreport")
+    public Map<String, Object> diagnosisDetailReport(
+            @RequestParam String userid,
+            @RequestParam String fromdate,
+            @RequestParam String todate,
+            @RequestParam(required = false) String comparefromdate,
+            @RequestParam(required = false) String comparetodate,
+            @RequestParam(required = false, defaultValue = "naver") String media,
+            @RequestParam(required = false, defaultValue = "") String campaignid) {
+        return diagnosisReportService.getDiagnosisDetailReport(
+            userid, fromdate, todate, comparefromdate, comparetodate, media, campaignid);
+    }
+
     /** 캠페인 리포트 */
     @GetMapping("/campaignreport")
     public Map<String, Object> campaignReport(

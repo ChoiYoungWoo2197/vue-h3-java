@@ -207,6 +207,157 @@ public class DiagnosisReportService {
         return Map.of("result", "success", "status", "200", "data", data);
     }
 
+    // ─── diagnosisdetailreport ────────────────────────────────────────────────
+    // 캠페인 1개일 때 campaignid 필수, 하위 단위 cascade, 플랫 배열 응답
+
+    public Map<String, Object> getDiagnosisDetailReport(String userId, String fromdate, String todate,
+                                                         String comparefromdate, String comparetodate,
+                                                         String media, String campaignId) {
+        AccountDto acc = accountMongo.findAccountDtoByUserId(userId);
+        if (acc == null) return fail("1009", "계정 없음");
+
+        MediaCfg cfg = MEDIA_MAP.get(media);
+        if (cfg == null) return fail("1001", "지원하지 않는 매체입니다.");
+
+        String advid = getAdvid(acc, media);
+        if (advid == null || advid.isBlank()) return noDataDetail(media, campaignId);
+
+        String cfrom = (comparefromdate != null && !comparefromdate.isEmpty()) ? comparefromdate : fromdate;
+        String cto   = (comparetodate   != null && !comparetodate.isEmpty())   ? comparetodate   : todate;
+
+        // 캠페인 이름 조회
+        List<Document> campMasters = mongoService.findCampaigns(advid, cfg.campMasterCol());
+        Map<String, String> campNameMap = buildNameMap(campMasters, cfg.campIdFieldInMaster(), cfg.campNameFieldInMaster());
+        String campaignName = campNameMap.getOrDefault(campaignId, campaignId != null ? campaignId : "");
+
+        // 하위 단위 통계 수집
+        List<Map<String, Object>> agStats = mongoService.aggregateByAdgroup(
+            advid, fromdate, todate, cfg.agCol(), cfg.advField(), campaignId);
+        int agCount = agStats.size();
+
+        int kwCount = 0;
+        List<Map<String, Object>> kwStats = new ArrayList<>();
+        if (cfg.kwCol() != null) {
+            List<Map<String, Object>> kwAll = mongoService.aggregateByKeyword(advid, fromdate, todate, cfg.kwCol(), cfg.advField());
+            kwStats = kwAll.stream()
+                .filter(r -> campaignId == null || campaignId.equals(r.get("campaign_id")))
+                .collect(Collectors.toList());
+            kwCount = kwStats.size();
+        }
+
+        List<Map<String, Object>> adStats = mongoService.aggregateByAd(advid, fromdate, todate, cfg.adCol(), cfg.advField());
+        adStats = adStats.stream()
+            .filter(r -> campaignId == null || campaignId.equals(r.get("campaign_id")))
+            .collect(Collectors.toList());
+        int adCount = adStats.size();
+
+        // Cascade 결정 (campaign count 체크 없이 하위 단위만)
+        String level;
+        if (agCount >= 2) {
+            level = "adgroup";
+        } else if (kwCount >= 2) {
+            level = "keyword";
+        } else if (adCount >= 2) {
+            level = "creative";
+        } else {
+            level = "none";
+        }
+
+        String levelLabel = getLevelLabel(level);
+        String message    = buildDetailMessage(level, levelLabel);
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("campaign_count", 1);
+        summary.put("adgroup_count",  agCount);
+        summary.put("keyword_count",  kwCount);
+        summary.put("creative_count", adCount);
+
+        // 아이템 빌드
+        List<Map<String, Object>> mainItems;
+        if ("none".equals(level)) {
+            mainItems = new ArrayList<>();
+        } else if ("adgroup".equals(level)) {
+            mainItems = buildAdgroupItems(agStats, advid, cfrom, cto, cfg, campaignId);
+        } else if ("keyword".equals(level)) {
+            mainItems = buildKeywordItems(kwStats, advid, cfrom, cto, cfg, campaignId);
+        } else {
+            mainItems = buildCreativeItems(adStats, advid, cfrom, cto, cfg, campaignId);
+        }
+
+        // TOP3 분류
+        List<Map<String, Object>> costTop3 = mainItems.stream()
+            .filter(i -> { Map<?, ?> d = (Map<?, ?>) i.get("diff"); return d != null && td(d, "cst") > 0; })
+            .sorted((a, b) -> Double.compare(td((Map<?, ?>) b.get("diff"), "cst"), td((Map<?, ?>) a.get("diff"), "cst")))
+            .limit(3).collect(Collectors.toList());
+
+        List<Map<String, Object>> convTop3 = mainItems.stream()
+            .filter(i -> { Map<?, ?> d = (Map<?, ?>) i.get("diff"); return d != null && td(d, "cv") < 0; })
+            .sorted((a, b) -> Double.compare(td((Map<?, ?>) a.get("diff"), "cv"), td((Map<?, ?>) b.get("diff"), "cv")))
+            .limit(3).collect(Collectors.toList());
+
+        List<Map<String, Object>> roasTop3 = mainItems.stream()
+            .filter(i -> {
+                Map<?, ?> d = (Map<?, ?>) i.get("diff");
+                Map<?, ?> cur = (Map<?, ?>) i.get("current");
+                Map<?, ?> comp = (Map<?, ?>) i.get("compare");
+                return d != null && td(d, "purchase_roas") < 0
+                    && cur != null && td(cur, "purchase_roas") > 0
+                    && comp != null && td(comp, "purchase_roas") > 0;
+            })
+            .sorted((a, b) -> Double.compare(
+                td((Map<?, ?>) a.get("diff"), "purchase_roas"),
+                td((Map<?, ?>) b.get("diff"), "purchase_roas")))
+            .limit(3).collect(Collectors.toList());
+
+        // main: |diff.cst| 내림차순 정렬
+        mainItems.sort((a, b) -> Double.compare(
+            Math.abs(td((Map<?, ?>) b.get("diff"), "cst")),
+            Math.abs(td((Map<?, ?>) a.get("diff"), "cst"))));
+
+        addRanks(mainItems);
+        addRanks(costTop3);
+        addRanks(convTop3);
+        addRanks(roasTop3);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("media",        media);
+        data.put("campaign_id",  campaignId != null ? campaignId : "");
+        data.put("campaign_name", campaignName);
+        data.put("level",        level);
+        data.put("level_label",  levelLabel);
+        data.put("fallback",     true);
+        data.put("message",      message);
+        data.put("summary",      summary);
+        data.put("main_items",              mainItems);
+        data.put("cost_increase",           costTop3);
+        data.put("conversion_decrease",     convTop3);
+        data.put("purchase_roas_decrease",  roasTop3);
+
+        return Map.of("result", "success", "status", "200", "data", data);
+    }
+
+    private String buildDetailMessage(String level, String levelLabel) {
+        if ("none".equals(level)) return "분석 가능한 하위 데이터가 부족합니다.\n전체 성과 요약과 주요 지표 추이를 기준으로 확인해주세요.";
+        return "캠페인이 1개만 조회되어 " + levelLabel + " 기준으로 성과 원인을 분석했어요.";
+    }
+
+    private Map<String, Object> noDataDetail(String media, String campaignId) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("media",        media);
+        data.put("campaign_id",  campaignId != null ? campaignId : "");
+        data.put("campaign_name", "");
+        data.put("level",        "none");
+        data.put("level_label",  "");
+        data.put("fallback",     true);
+        data.put("message",      "해당 매체 계정이 없습니다.");
+        data.put("summary",      Map.of("campaign_count",0,"adgroup_count",0,"keyword_count",0,"creative_count",0));
+        data.put("main_items",              new ArrayList<>());
+        data.put("cost_increase",           new ArrayList<>());
+        data.put("conversion_decrease",     new ArrayList<>());
+        data.put("purchase_roas_decrease",  new ArrayList<>());
+        return Map.of("result","success","status","200","data",data);
+    }
+
     // ─── Level item builders ──────────────────────────────────────────────────
 
     private List<Map<String, Object>> buildCampaignItems(List<Map<String, Object>> curList,
