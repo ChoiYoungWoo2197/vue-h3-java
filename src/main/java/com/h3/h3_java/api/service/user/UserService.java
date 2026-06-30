@@ -1,10 +1,7 @@
 package com.h3.h3_java.api.service.user;
 
-import com.h3.h3_java.auth.UserMapper;  // 이관용 selectAll() 에 사용
 import com.h3.h3_java.raw.mongo.UserMongoService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.bson.Document;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -14,13 +11,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private final UserMongoService userMongo;
-    private final UserMapper       userMapper;
 
     // -------------------------------------------------------------------------
     // 회원정보 수정
@@ -60,37 +55,6 @@ public class UserService {
         return success();
     }
 
-    // -------------------------------------------------------------------------
-    // h3_users MySQL → MongoDB 일회성 이관
-    // -------------------------------------------------------------------------
-
-    public Map<String, Object> migrateUsers() {
-        var users = userMapper.selectAll();
-        int count = 0;
-        for (var u : users) {
-            Document doc = new Document();
-            doc.put("user_id",         u.getUserId());
-            doc.put("user_name",       u.getUserName());
-            doc.put("user_pass",       u.getUserPass());
-            doc.put("user_email",      u.getUserEmail());
-            doc.put("user_company",    u.getUserCompany());
-            doc.put("user_phone",      u.getUserPhone());
-            doc.put("user_level",      u.getUserLevel());
-            doc.put("user_status",     u.getUserStatus());
-            doc.put("user_manager",    u.getUserManager());
-            doc.put("user_passupdate", u.getUserPassupdate());
-            doc.put("user_regdate",    u.getUserRegdate());
-            userMongo.upsert(doc);
-            count++;
-        }
-        log.info("[UserMigration] h3_users 이관 완료: {}건", count);
-
-        Map<String, Object> res = new LinkedHashMap<>();
-        res.put("result", "success");
-        res.put("status", "200");
-        res.put("count",  count);
-        return res;
-    }
 
     // -------------------------------------------------------------------------
 

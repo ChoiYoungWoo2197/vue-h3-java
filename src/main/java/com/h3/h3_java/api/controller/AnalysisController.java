@@ -14,6 +14,7 @@ import com.h3.h3_java.api.service.analysis.KeywordReReportService;
 import com.h3.h3_java.api.service.analysis.MediaReportService;
 import com.h3.h3_java.api.service.analysis.PeriodReportService;
 import com.h3.h3_java.api.service.analysis.ShoppingReportService;
+import com.h3.h3_java.api.service.analysis.TargetReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,6 +42,7 @@ public class AnalysisController {
     private final AdgroupShoppingReportService   adgroupShoppingReportService;
     private final CampaignShoppingReportService  campaignShoppingReportService;
     private final PeriodReportService            periodReportService;
+    private final TargetReportService            targetReportService;
 
     /** 캠페인 리포트 */
     @GetMapping("/campaignreport")
@@ -164,6 +166,23 @@ public class AnalysisController {
             @RequestParam(required = false, defaultValue = "day") String periodunit) {
         return periodReportService.getPeriodReport(userid, fromdate, todate,
                 comparefromdate, comparetodate, periodunit);
+    }
+
+    /** 타겟 리포트 */
+    @GetMapping("/targetreport")
+    public Map<String, Object> targetReport(
+            @RequestParam String userid,
+            @RequestParam String fromdate,
+            @RequestParam String todate,
+            @RequestParam(required = false, defaultValue = "N") String md,
+            @RequestParam(required = false, defaultValue = "campaign") String level,
+            @RequestParam(required = false, defaultValue = "device") String target,
+            @RequestParam(required = false, defaultValue = "") String id,
+            @RequestParam(required = false, defaultValue = "0") int start,
+            @RequestParam(required = false, defaultValue = "cstd") String sort,
+            @RequestParam(required = false, defaultValue = "20") int display,
+            @RequestParam(required = false, defaultValue = "-1") long totalcount) {
+        return targetReportService.getTargetReport(userid, fromdate, todate, md, level, target, id, start, sort, display, totalcount);
     }
 
     /** 확장검색 키워드 리포트 (stub - 추후 구현) */
