@@ -9,6 +9,7 @@ import com.h3.h3_java.api.service.analysis.CampaignAdReportService;
 import com.h3.h3_java.api.service.analysis.CampaignKeywordReportService;
 import com.h3.h3_java.api.service.analysis.CampaignReportService;
 import com.h3.h3_java.api.service.analysis.CampaignShoppingReportService;
+import com.h3.h3_java.api.service.analysis.DiagnosisReportService;
 import com.h3.h3_java.api.service.analysis.KeywordReportService;
 import com.h3.h3_java.api.service.analysis.KeywordReReportService;
 import com.h3.h3_java.api.service.analysis.MediaReportService;
@@ -29,6 +30,7 @@ import java.util.Map;
 public class AnalysisController {
 
     private final CampaignReportService          campaignReportService;
+    private final DiagnosisReportService         diagnosisReportService;
     private final AdgroupReportService           adgroupReportService;
     private final KeywordReportService           keywordReportService;
     private final AdgroupKeywordReportService    adgroupKeywordReportService;
@@ -43,6 +45,20 @@ public class AnalysisController {
     private final CampaignShoppingReportService  campaignShoppingReportService;
     private final PeriodReportService            periodReportService;
     private final TargetReportService            targetReportService;
+
+    /** 진단 리포트 (캠페인 1개일 때 하위 단위 fallback) */
+    @GetMapping("/diagnosisreport")
+    public Map<String, Object> diagnosisReport(
+            @RequestParam String userid,
+            @RequestParam String fromdate,
+            @RequestParam String todate,
+            @RequestParam(required = false) String comparefromdate,
+            @RequestParam(required = false) String comparetodate,
+            @RequestParam(required = false, defaultValue = "naver") String media,
+            @RequestParam(required = false, defaultValue = "") String campaignid) {
+        return diagnosisReportService.getDiagnosisReport(
+            userid, fromdate, todate, comparefromdate, comparetodate, media, campaignid);
+    }
 
     /** 캠페인 리포트 */
     @GetMapping("/campaignreport")
