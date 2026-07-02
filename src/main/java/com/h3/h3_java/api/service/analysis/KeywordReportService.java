@@ -224,7 +224,8 @@ public class KeywordReportService {
         row.put("adgroup_id",        agid != null ? agid : "");
         row.put("adgroup_name",      agNameMap.getOrDefault(agid,  ""));
         row.put("keyword_id",        kwid != null ? kwid : "");
-        row.put("keyword_name",      kwMaster.getOrDefault("kword", ""));
+        String kwordName = (String) kwMaster.getOrDefault("kword", "");
+        row.put("keyword_name", !kwordName.isEmpty() ? kwordName : (kwid != null ? kwid : ""));
         row.put("keyword_status",    0);
         row.put("keyword_qigrade",   kwMaster.getOrDefault("qigrade", 0));
         row.put("keyword_bidamount", kwMaster.getOrDefault("bidamount", 0));
