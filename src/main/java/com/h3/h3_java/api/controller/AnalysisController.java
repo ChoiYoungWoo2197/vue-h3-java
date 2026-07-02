@@ -13,6 +13,7 @@ import com.h3.h3_java.api.service.analysis.DiagnosisReportService;
 import com.h3.h3_java.api.service.analysis.KeywordReportService;
 import com.h3.h3_java.api.service.analysis.KeywordReReportService;
 import com.h3.h3_java.api.service.analysis.MediaReportService;
+import com.h3.h3_java.api.service.analysis.PeriodDiagnosisReportService;
 import com.h3.h3_java.api.service.analysis.PeriodReportService;
 import com.h3.h3_java.api.service.analysis.ShoppingReportService;
 import com.h3.h3_java.api.service.analysis.TargetReportService;
@@ -43,6 +44,7 @@ public class AnalysisController {
     private final ShoppingReportService          shoppingReportService;
     private final AdgroupShoppingReportService   adgroupShoppingReportService;
     private final CampaignShoppingReportService  campaignShoppingReportService;
+    private final PeriodDiagnosisReportService   periodDiagnosisReportService;
     private final PeriodReportService            periodReportService;
     private final TargetReportService            targetReportService;
 
@@ -183,6 +185,20 @@ public class AnalysisController {
             @RequestParam(required = false, defaultValue = "") String campaignid) {
         return campaignShoppingReportService.getCampaignShoppingReport(
             userid, fromdate, todate, comparefromdate, comparetodate, kpi, campaignid);
+    }
+
+    /** 기간 단위 성과 진단 (주차별/월별/요일별) */
+    @GetMapping("/perioddiagnosisreport")
+    public Map<String, Object> periodDiagnosisReport(
+            @RequestParam String userid,
+            @RequestParam String fromdate,
+            @RequestParam String todate,
+            @RequestParam(required = false) String comparefromdate,
+            @RequestParam(required = false) String comparetodate,
+            @RequestParam(required = false, defaultValue = "naver") String media,
+            @RequestParam(required = false, defaultValue = "week") String periodUnit) {
+        return periodDiagnosisReportService.getPeriodDiagnosisReport(
+            userid, fromdate, todate, comparefromdate, comparetodate, media, periodUnit);
     }
 
     /** 기간별 리포트 */
