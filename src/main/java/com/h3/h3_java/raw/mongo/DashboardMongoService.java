@@ -290,6 +290,41 @@ public class DashboardMongoService {
         return result;
     }
 
+    // ─── campaign_id × date 집계 (groups 주차별 breakdown용) ───────────────
+
+    /** campaign_id × daily_dt 기준 집계 → key: "cid|date" → {im,clk,cst,cv,cr} */
+    public Map<String, Map<String, Object>> aggregateByCampaignDate(
+            String advid, String from, String to, String collection, String advField) {
+        Aggregation agg = Aggregation.newAggregation(
+            Aggregation.match(Criteria.where(advField).is(advid)
+                .and("daily_dt").gte(from).lte(to)),
+            Aggregation.group(Aggregation.fields()
+                    .and("campaign_id", "campaign_id")
+                    .and("daily_dt",    "daily_dt"))
+                .sum("daily_im").as("im")
+                .sum("daily_clk").as("clk")
+                .sum("daily_cst").as("cst")
+                .sum("daily_cv").as("cv")
+                .sum("daily_cr").as("cr")
+        );
+        Map<String, Map<String, Object>> result = new LinkedHashMap<>();
+        for (Document d : mongo.aggregate(agg, collection, Document.class).getMappedResults()) {
+            Document id = (Document) d.get("_id");
+            if (id == null) continue;
+            String cid  = id.getString("campaign_id");
+            String date = id.getString("daily_dt");
+            if (cid == null || date == null) continue;
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("im",  toDouble(d, "im"));
+            row.put("clk", toDouble(d, "clk"));
+            row.put("cst", toDouble(d, "cst"));
+            row.put("cv",  toDouble(d, "cv"));
+            row.put("cr",  toDouble(d, "cr"));
+            result.put(cid + "|" + date, row);
+        }
+        return result;
+    }
+
     // ─── 전환유형 집계 (Naver SA/GFA only) ──────────────────────────────────
 
     public Map<String, Map<String, Object>> aggregateConvtype(String advid, String from, String to, String collection) {

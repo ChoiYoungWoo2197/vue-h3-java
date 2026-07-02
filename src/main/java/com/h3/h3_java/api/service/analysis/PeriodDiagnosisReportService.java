@@ -4,6 +4,7 @@ import com.h3.h3_java.api.dto.AccountDto;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
 import lombok.RequiredArgsConstructor;
+import org.bson.Document;
 import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
@@ -14,35 +15,79 @@ import java.util.stream.Collectors;
 
 /**
  * 기간 단위(주차/월별/요일별) 성과 진단 리포트.
- * trend / insights / groups 세 섹션을 반환하며,
- * 프론트가 UI 전환·렌더링만 담당하도록 집계·랭킹·진단 메시지를 백엔드에서 처리한다.
+ * trend / insights(diff 기준 B안) / groups(campaign_type 별) 세 섹션을 반환한다.
  */
 @Service
 @RequiredArgsConstructor
 public class PeriodDiagnosisReportService {
 
-    private final AccountMongoService  accountMongo;
+    private final AccountMongoService   accountMongo;
     private final DashboardMongoService mongoService;
 
     private static final DateTimeFormatter FMT  = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter MFMT = DateTimeFormatter.ofPattern("MM.dd");
+
     private static final String[] DAYWEEK_ORDER = {"sun","mon","tue","wed","thu","fri","sat"};
     private static final Map<String,String> DAYWEEK_LABEL = Map.of(
         "sun","일요일","mon","월요일","tue","화요일","wed","수요일",
         "thu","목요일","fri","금요일","sat","토요일"
     );
 
-    record MediaCfg(String campCol, String advField) {}
+    record MediaCfg(String campCol, String advField, String campMasterCol) {}
 
     private static final Map<String, MediaCfg> MEDIA_MAP = Map.of(
-        "naver",   new MediaCfg("naver_campaign_daily",     "daily_advid"),
-        "naverda", new MediaCfg("naver_gfa_campaign_daily", "daily_advid"),
-        "kakaosa", new MediaCfg("kakao_sa_campaign_daily",  "advkey"),
-        "kakaomo", new MediaCfg("kakao_mo_campaign_daily",  "advkey"),
-        "google",  new MediaCfg("google_campaign_daily",    "daily_advid")
+        "naver",   new MediaCfg("naver_campaign_daily",     "daily_advid", "naver_campaign"),
+        "naverda", new MediaCfg("naver_gfa_campaign_daily", "daily_advid", "naver_gfa_campaign"),
+        "kakaosa", new MediaCfg("kakao_sa_campaign_daily",  "advkey",      "kakao_sa_campaign"),
+        "kakaomo", new MediaCfg("kakao_mo_campaign_daily",  "advkey",      "kakao_mo_campaign"),
+        "google",  new MediaCfg("google_campaign_daily",    "daily_advid", "google_campaign")
     );
 
-    // ─── 진입점 ────────────────────────────────────────────────────────────────
+    // ─── campaign_type 코드 매핑 (네이버SA·구글은 int 코드) ──────────────────
+    private static final Map<Integer, String> NAVER_TYPE_CODE = Map.of(
+        1, "web_site", 2, "shopping", 3, "power_contents", 4, "brand_search", 6, "place"
+    );
+    private static final Map<Integer, String> GOOGLE_TYPE_CODE = Map.ofEntries(
+        Map.entry(1,  "demand_gen"),     Map.entry(2,  "display"),
+        Map.entry(3,  "hotel"),          Map.entry(4,  "local"),
+        Map.entry(5,  "local_services"), Map.entry(6,  "multi_channel"),
+        Map.entry(7,  "performance_max"),Map.entry(8,  "search"),
+        Map.entry(9,  "shopping"),       Map.entry(10, "smart"),
+        Map.entry(11, "travel"),         Map.entry(12, "video"),
+        Map.entry(13, "unknown")
+    );
+
+    // ─── campaign_type → 표시명 ───────────────────────────────────────────
+    private static final Map<String, Map<String, String>> GROUP_NAMES;
+    static {
+        Map<String, Map<String, String>> m = new LinkedHashMap<>();
+        m.put("naver", Map.of(
+            "web_site","파워링크","shopping","쇼핑검색","power_contents","파워컨텐츠",
+            "brand_search","브랜드검색","place","플레이스"
+        ));
+        m.put("naverda", Map.of(
+            "conversion","웹사이트 전환","web_site_traffic","인지도 및 트래픽",
+            "install_app","앱 전환","watch_video","동영상 조회",
+            "catalog","카탈로그","shopping","쇼핑","lead","리드","pmax","퍼포먼스맥스"
+        ));
+        m.put("kakaosa", Map.of("none","캠페인목록"));
+        m.put("kakaomo", Map.of(
+            "talk_biz_board","카카오톡비즈보드","display","디스플레이",
+            "talk_channel","카카오톡 채널","daum_shopping","다음쇼핑",
+            "video","비디오","sponsored_board","브랜드보드"
+        ));
+        Map<String, String> googleNames = new LinkedHashMap<>();
+        googleNames.put("demand_gen","디멘드젠 캠페인"); googleNames.put("display","디스플레이");
+        googleNames.put("hotel","호텔");           googleNames.put("search","검색 광고");
+        googleNames.put("shopping","쇼핑");        googleNames.put("performance_max","퍼포먼스맥스");
+        googleNames.put("video","비디오");         googleNames.put("smart","스마트");
+        googleNames.put("local","로컬");           googleNames.put("multi_channel","멀티채널");
+        googleNames.put("travel","여행");          googleNames.put("local_services","로컬서비스");
+        m.put("google", googleNames);
+        GROUP_NAMES = Collections.unmodifiableMap(m);
+    }
+
+    // ─── 진입점 ──────────────────────────────────────────────────────────
 
     public Map<String, Object> getPeriodDiagnosisReport(
             String userId, String fromdate, String todate,
@@ -64,13 +109,12 @@ public class PeriodDiagnosisReportService {
         String cfrom = hasCompare ? comparefromdate : null;
         String cto   = hasCompare ? comparetodate   : null;
 
-        // 일별 원본 데이터 조회
-        Map<String, Map<String, Object>> curDaily  = mongoService.aggregateByDate(advid, fromdate, todate, cfg.campCol());
-        Map<String, Map<String, Object>> cmpDaily  = hasCompare
+        Map<String, Map<String, Object>> curDaily = mongoService.aggregateByDate(advid, fromdate, todate, cfg.campCol());
+        Map<String, Map<String, Object>> cmpDaily = hasCompare
             ? mongoService.aggregateByDate(advid, cfrom, cto, cfg.campCol())
             : Collections.emptyMap();
 
-        String pu    = (periodUnit != null) ? periodUnit : "week";
+        String pu = (periodUnit != null) ? periodUnit : "week";
         String label;
         String msg;
         List<Map<String, Object>> trend;
@@ -93,6 +137,7 @@ public class PeriodDiagnosisReportService {
         }
 
         Map<String, List<Map<String, Object>>> insights = buildInsights(trend);
+        List<Map<String, Object>> groups = buildGroups(advid, m, cfg, fromdate, todate, cfrom, cto, hasCompare);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("period_unit",  pu);
@@ -100,12 +145,11 @@ public class PeriodDiagnosisReportService {
         data.put("message",      msg);
         data.put("trend",        trend);
         data.put("insights",     insights);
-        data.put("groups",       new ArrayList<>());
-
+        data.put("groups",       groups);
         return Map.of("result", "success", "status", "200", "data", data);
     }
 
-    // ─── 주차별 trend ────────────────────────────────────────────────────────
+    // ─── 주차별 trend ────────────────────────────────────────────────────
 
     private List<Map<String, Object>> buildWeeklyTrend(
             Map<String, Map<String, Object>> curDaily,
@@ -116,33 +160,36 @@ public class PeriodDiagnosisReportService {
 
         List<double[]> curBuckets = weekBuckets(curDaily, fromdate, todate);
         List<String>   curRanges  = weekRanges(fromdate, todate);
+        List<int[]>    curDays    = weekDayCounts(fromdate, todate);
 
-        List<double[]> cmpBuckets = hasCompare
-            ? weekBuckets(cmpDaily, cfrom, cto)
-            : Collections.emptyList();
+        List<double[]> cmpBuckets = hasCompare ? weekBuckets(cmpDaily, cfrom, cto) : Collections.emptyList();
+        List<String>   cmpRanges  = hasCompare ? weekRanges(cfrom, cto) : Collections.emptyList();
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (int i = 0; i < curBuckets.size(); i++) {
             double[] cur = curBuckets.get(i);
             double[] cmp = (i < cmpBuckets.size()) ? cmpBuckets.get(i) : new double[5];
+            int[]    dc  = curDays.get(i);
 
             Map<String, Object> curM = toMetrics(cur);
             Map<String, Object> cmpM = toMetrics(cmp);
 
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("key",        "week_" + (i + 1));
-            row.put("label",      (i + 1) + "주차");
-            row.put("range_text", curRanges.get(i));
-            row.put("current",    curM);
-            row.put("compare",    cmpM);
-            row.put("diff",       buildDiff(curM, cmpM));
-            row.put("per",        buildPer(curM, cmpM));
+            row.put("key",                 "week_" + (i + 1));
+            row.put("label",               (i + 1) + "주차");
+            row.put("range_text",          curRanges.get(i));
+            row.put("compare_range_text",  (i < cmpRanges.size()) ? cmpRanges.get(i) : "");
+            row.put("days",                dc[0]);
+            row.put("is_partial",          dc[1] == 1);
+            row.put("current",             curM);
+            row.put("compare",             cmpM);
+            row.put("diff",                buildDiff(curM, cmpM));
+            row.put("per",                 buildPer(curM, cmpM));
             result.add(row);
         }
         return result;
     }
 
-    /** fromdate~todate 구간을 7일씩 나눠 각 버킷의 im/clk/cst/cv/cr 합계 반환 */
     private List<double[]> weekBuckets(Map<String, Map<String, Object>> daily, String from, String to) {
         LocalDate start = LocalDate.parse(from, FMT);
         LocalDate end   = LocalDate.parse(to,   FMT);
@@ -166,7 +213,6 @@ public class PeriodDiagnosisReportService {
         return buckets;
     }
 
-    /** fromdate~todate 구간 주차별 range_text 목록 */
     private List<String> weekRanges(String from, String to) {
         LocalDate start = LocalDate.parse(from, FMT);
         LocalDate end   = LocalDate.parse(to,   FMT);
@@ -181,7 +227,24 @@ public class PeriodDiagnosisReportService {
         return ranges;
     }
 
-    // ─── 월별 trend ──────────────────────────────────────────────────────────
+    /** 주차별 [일수, is_partial(1=부분주차)] */
+    private List<int[]> weekDayCounts(String from, String to) {
+        LocalDate start = LocalDate.parse(from, FMT);
+        LocalDate end   = LocalDate.parse(to,   FMT);
+        List<int[]> list = new ArrayList<>();
+        LocalDate ws = start;
+        while (!ws.isAfter(end)) {
+            LocalDate we = ws.plusDays(6);
+            boolean partial = we.isAfter(end);
+            if (partial) we = end;
+            int days = (int)(we.toEpochDay() - ws.toEpochDay() + 1);
+            list.add(new int[]{ days, partial ? 1 : 0 });
+            ws = we.plusDays(1);
+        }
+        return list;
+    }
+
+    // ─── 월별 trend ──────────────────────────────────────────────────────
 
     private List<Map<String, Object>> buildMonthlyTrend(
             Map<String, Map<String, Object>> curDaily,
@@ -190,7 +253,8 @@ public class PeriodDiagnosisReportService {
 
         Map<String, double[]> curMonth = groupByMonth(curDaily);
         Map<String, double[]> cmpMonth = hasCompare ? groupByMonth(cmpDaily) : Collections.emptyMap();
-
+        List<String> cmpMonths = new ArrayList<>(cmpMonth.keySet());
+        Collections.sort(cmpMonths);
         List<String> months = new ArrayList<>(curMonth.keySet());
         Collections.sort(months);
 
@@ -198,19 +262,21 @@ public class PeriodDiagnosisReportService {
         for (int i = 0; i < months.size(); i++) {
             String key = months.get(i);
             double[] cur = curMonth.get(key);
-            double[] cmp = cmpMonth.getOrDefault(key, new double[5]);
-
+            double[] cmp = (i < cmpMonths.size()) ? cmpMonth.getOrDefault(cmpMonths.get(i), new double[5]) : new double[5];
             Map<String, Object> curM = toMetrics(cur);
             Map<String, Object> cmpM = toMetrics(cmp);
 
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("key",        "month_" + (i + 1));
-            row.put("label",      key);
-            row.put("range_text", key);
-            row.put("current",    curM);
-            row.put("compare",    cmpM);
-            row.put("diff",       buildDiff(curM, cmpM));
-            row.put("per",        buildPer(curM, cmpM));
+            row.put("key",                "month_" + (i + 1));
+            row.put("label",              key);
+            row.put("range_text",         key);
+            row.put("compare_range_text", (i < cmpMonths.size()) ? cmpMonths.get(i) : "");
+            row.put("days",               0);
+            row.put("is_partial",         false);
+            row.put("current",            curM);
+            row.put("compare",            cmpM);
+            row.put("diff",               buildDiff(curM, cmpM));
+            row.put("per",                buildPer(curM, cmpM));
             result.add(row);
         }
         return result;
@@ -225,7 +291,7 @@ public class PeriodDiagnosisReportService {
         return result;
     }
 
-    // ─── 요일별 trend ────────────────────────────────────────────────────────
+    // ─── 요일별 trend ────────────────────────────────────────────────────
 
     private List<Map<String, Object>> buildWeekdayTrend(
             Map<String, Map<String, Object>> curDaily,
@@ -236,22 +302,23 @@ public class PeriodDiagnosisReportService {
         Map<String, double[]> cmpDay = hasCompare ? groupByDayweek(cmpDaily) : Collections.emptyMap();
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (int i = 0; i < DAYWEEK_ORDER.length; i++) {
-            String dk  = DAYWEEK_ORDER[i];
+        for (String dk : DAYWEEK_ORDER) {
             double[] cur = curDay.getOrDefault(dk, new double[5]);
             double[] cmp = cmpDay.getOrDefault(dk, new double[5]);
-
             Map<String, Object> curM = toMetrics(cur);
             Map<String, Object> cmpM = toMetrics(cmp);
 
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("key",        "dayweek_" + dk);
-            row.put("label",      DAYWEEK_LABEL.getOrDefault(dk, dk));
-            row.put("range_text", DAYWEEK_LABEL.getOrDefault(dk, dk));
-            row.put("current",    curM);
-            row.put("compare",    cmpM);
-            row.put("diff",       buildDiff(curM, cmpM));
-            row.put("per",        buildPer(curM, cmpM));
+            row.put("key",                "dayweek_" + dk);
+            row.put("label",              DAYWEEK_LABEL.getOrDefault(dk, dk));
+            row.put("range_text",         DAYWEEK_LABEL.getOrDefault(dk, dk));
+            row.put("compare_range_text", "");
+            row.put("days",               0);
+            row.put("is_partial",         false);
+            row.put("current",            curM);
+            row.put("compare",            cmpM);
+            row.put("diff",               buildDiff(curM, cmpM));
+            row.put("per",                buildPer(curM, cmpM));
             result.add(row);
         }
         return result;
@@ -269,7 +336,7 @@ public class PeriodDiagnosisReportService {
         return result;
     }
 
-    // ─── insights ────────────────────────────────────────────────────────────
+    // ─── insights — B안: diff 기준 정렬 ──────────────────────────────────
 
     private Map<String, List<Map<String, Object>>> buildInsights(List<Map<String, Object>> trend) {
         Map<String, List<Map<String, Object>>> ins = new LinkedHashMap<>();
@@ -280,6 +347,7 @@ public class PeriodDiagnosisReportService {
         return ins;
     }
 
+    /** |diff.cst| 내림차순 — 변화폭이 가장 큰 주차 TOP3 */
     private List<Map<String, Object>> buildMainInsights(List<Map<String, Object>> trend) {
         return trend.stream()
             .sorted((a, b) -> Double.compare(
@@ -290,33 +358,38 @@ public class PeriodDiagnosisReportService {
             .collect(Collectors.toList());
     }
 
+    /** diff.cst 내림차순 — 광고비 증가 TOP3 */
     private List<Map<String, Object>> buildCostInsights(List<Map<String, Object>> trend) {
         return trend.stream()
+            .filter(w -> dbl((Map<?,?>) w.get("current"), "cst") > 0
+                      || dbl((Map<?,?>) w.get("compare"), "cst") > 0)
             .sorted((a, b) -> Double.compare(
-                dbl((Map<?,?>) b.get("current"), "cst"),
-                dbl((Map<?,?>) a.get("current"), "cst")))
+                dbl((Map<?,?>) b.get("diff"), "cst"),
+                dbl((Map<?,?>) a.get("diff"), "cst")))
             .limit(3)
             .map(w -> toInsightItem(w, "cost"))
             .collect(Collectors.toList());
     }
 
+    /** diff.cv 오름차순 — 전환수 감소 TOP3 */
     private List<Map<String, Object>> buildConversionInsights(List<Map<String, Object>> trend) {
         return trend.stream()
             .filter(w -> dbl((Map<?,?>) w.get("current"), "cst") > 0)
             .sorted((a, b) -> Double.compare(
-                dbl((Map<?,?>) a.get("current"), "cv"),
-                dbl((Map<?,?>) b.get("current"), "cv")))
+                dbl((Map<?,?>) a.get("diff"), "cv"),
+                dbl((Map<?,?>) b.get("diff"), "cv")))
             .limit(3)
             .map(w -> toInsightItem(w, "conversion"))
             .collect(Collectors.toList());
     }
 
+    /** diff.purchase_roas 오름차순 — 구매완료수익률 하락 TOP3 */
     private List<Map<String, Object>> buildRoasInsights(List<Map<String, Object>> trend) {
         return trend.stream()
             .filter(w -> dbl((Map<?,?>) w.get("current"), "cst") > 0)
             .sorted((a, b) -> Double.compare(
-                dbl((Map<?,?>) a.get("current"), "purchase_roas"),
-                dbl((Map<?,?>) b.get("current"), "purchase_roas")))
+                dbl((Map<?,?>) a.get("diff"), "purchase_roas"),
+                dbl((Map<?,?>) b.get("diff"), "purchase_roas")))
             .limit(3)
             .map(w -> toInsightItem(w, "roas"))
             .collect(Collectors.toList());
@@ -335,31 +408,34 @@ public class PeriodDiagnosisReportService {
 
         switch (type) {
             case "cost": {
-                double cst = dbl(cur, "cst");
-                reason    = "광고비 " + formatPrice(cst) + "원 집행";
-                valueText = formatPrice(cst) + "원";
+                double dCst = dbl(diff, "cst");
+                double cst  = dbl(cur,  "cst");
+                reason    = "광고비 " + sign(dCst) + formatPrice(Math.abs(dCst)) + "원 변동 (합계 " + formatPrice(cst) + "원)";
+                valueText = sign(dCst) + formatPrice(Math.abs(dCst)) + "원";
+                tone = dCst > 0 ? "warning" : (dCst < 0 ? "good" : "info");
                 break;
             }
             case "conversion": {
-                double cv  = dbl(cur, "cv");
-                double cvr = dbl(cur, "cvr");
-                reason    = "전환수 " + round2(cv) + "건 · CVR " + round2(cvr) + "%";
-                valueText = round2(cv) + "건";
-                if (cv < 1) tone = "warning";
+                double dCv = dbl(diff, "cv");
+                double cv  = dbl(cur,  "cv");
+                reason    = "전환수 " + sign(dCv) + round2(Math.abs(dCv)) + "건 변동 (합계 " + round2(cv) + "건)";
+                valueText = sign(dCv) + round2(Math.abs(dCv)) + "건";
+                tone = dCv < 0 ? "warning" : "info";
                 break;
             }
             case "roas": {
-                double pr = dbl(cur, "purchase_roas");
-                reason    = "구매완료수익률 " + round2(pr) + "%";
-                valueText = round2(pr) + "%";
-                if (pr < 100) tone = "warning";
+                double dPr = dbl(diff, "purchase_roas");
+                double pr  = dbl(cur,  "purchase_roas");
+                reason    = "구매완료수익률 " + sign(dPr) + round2(Math.abs(dPr)) + "%p 변동 (" + round2(pr) + "%)";
+                valueText = sign(dPr) + round2(Math.abs(dPr)) + "%p";
+                tone = dPr < 0 ? "warning" : "info";
                 break;
             }
-            default: { // main / impact
+            default: { // main
                 double dCst = dbl(diff, "cst");
                 double dCv  = dbl(diff, "cv");
-                reason    = "광고비 " + (dCst >= 0 ? "+" : "") + formatPrice(dCst) + "원";
-                if (dCv != 0) reason += " · 전환 " + (dCv >= 0 ? "+" : "") + round2(dCv) + "건";
+                reason    = "광고비 " + sign(dCst) + formatPrice(Math.abs(dCst)) + "원";
+                if (dCv != 0) reason += " · 전환 " + sign(dCv) + round2(Math.abs(dCv)) + "건";
                 valueText = formatPrice(dbl(cur, "cst")) + "원";
                 if (dCst < 0 || dCv < 0) tone = "warning";
             }
@@ -380,7 +456,157 @@ public class PeriodDiagnosisReportService {
         return item;
     }
 
-    // ─── metrics 빌더 ─────────────────────────────────────────────────────────
+    // ─── groups (campaign_type 별 집계) ─────────────────────────────────
+
+    private List<Map<String, Object>> buildGroups(
+            String advid, String media, MediaCfg cfg,
+            String from, String to,
+            String cfrom, String cto, boolean hasCompare) {
+
+        // 1. 캠페인 마스터 → campaign_id → type 매핑
+        List<Document> masters;
+        try {
+            masters = mongoService.findCampaigns(advid, cfg.campMasterCol());
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+        if (masters == null || masters.isEmpty()) return new ArrayList<>();
+
+        Map<String, String> idToType = buildIdToTypeMap(masters, media);
+        if (idToType.isEmpty()) return new ArrayList<>();
+
+        // 2. campaign_id × date 집계
+        Map<String, Map<String, Object>> curByCampDate =
+            mongoService.aggregateByCampaignDate(advid, from, to, cfg.campCol(), cfg.advField());
+        Map<String, Map<String, Object>> cmpByCampDate = hasCompare
+            ? mongoService.aggregateByCampaignDate(advid, cfrom, cto, cfg.campCol(), cfg.advField())
+            : Collections.emptyMap();
+
+        // 3. type별로 일별 데이터 merge → type → date → sums
+        Map<String, Map<String, double[]>> curByType = new LinkedHashMap<>();
+        Map<String, Map<String, double[]>> cmpByType = new LinkedHashMap<>();
+        mergeByType(curByCampDate, idToType, curByType);
+        mergeByType(cmpByCampDate, idToType, cmpByType);
+
+        // 4. type별 합산 → group row 생성
+        Map<String, String> names = GROUP_NAMES.getOrDefault(media, Collections.emptyMap());
+        Set<String> seenTypes = new LinkedHashSet<>(curByType.keySet());
+        seenTypes.addAll(cmpByType.keySet());
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (String type : seenTypes) {
+            double[] curSums = sumBucket(curByType.getOrDefault(type, Collections.emptyMap()));
+            double[] cmpSums = sumBucket(cmpByType.getOrDefault(type, Collections.emptyMap()));
+
+            if (curSums[2] <= 0 && cmpSums[2] <= 0) continue; // cst 모두 0이면 스킵
+
+            Map<String, Object> curM  = toMetrics(curSums);
+            Map<String, Object> cmpM  = toMetrics(cmpSums);
+            Map<String, Object> diffM = buildDiff(curM, cmpM);
+            Map<String, Object> perM  = buildPer(curM, cmpM);
+
+            String groupName = names.getOrDefault(type, type);
+            String[] statusInfo = calcGroupStatus(curM, diffM, hasCompare);
+
+            Map<String, Object> g = new LinkedHashMap<>();
+            g.put("group_key",    type);
+            g.put("group_name",   groupName);
+            g.put("status",       statusInfo[0]);
+            g.put("status_class", statusInfo[1]);
+            g.put("icon",         statusInfo[2]);
+            g.put("message",      buildGroupMessage(groupName, curM, diffM, hasCompare));
+            g.put("current",      curM);
+            g.put("compare",      cmpM);
+            g.put("diff",         diffM);
+            g.put("per",          perM);
+            result.add(g);
+        }
+
+        // cst 내림차순
+        result.sort((a, b) -> Double.compare(
+            dbl((Map<?,?>) b.get("current"), "cst"),
+            dbl((Map<?,?>) a.get("current"), "cst")));
+        return result;
+    }
+
+    private void mergeByType(Map<String, Map<String, Object>> byCampDate,
+                              Map<String, String> idToType,
+                              Map<String, Map<String, double[]>> byType) {
+        for (Map.Entry<String, Map<String, Object>> e : byCampDate.entrySet()) {
+            String[] parts = e.getKey().split("\\|", 2);
+            if (parts.length < 2) continue;
+            String type = idToType.get(parts[0]);
+            if (type == null) continue;
+            String date = parts[1];
+            byType.computeIfAbsent(type, k -> new LinkedHashMap<>())
+                  .merge(date, toArr(e.getValue()), this::mergeArr);
+        }
+    }
+
+    private double[] sumBucket(Map<String, double[]> dateMap) {
+        return dateMap.values().stream().reduce(new double[5], this::mergeArr);
+    }
+
+    private Map<String, String> buildIdToTypeMap(List<Document> masters, String media) {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (Document d : masters) {
+            String cid = d.getString("cid");
+            if (cid == null) continue;
+            String type;
+            switch (media) {
+                case "naver": {
+                    int code = d.getInteger("campaigntype", 0);
+                    type = NAVER_TYPE_CODE.getOrDefault(code, null);
+                    break;
+                }
+                case "google": {
+                    int code = d.getInteger("type", -1);
+                    type = GOOGLE_TYPE_CODE.getOrDefault(code, "unknown");
+                    break;
+                }
+                default: {
+                    // kakaosa, kakaomo, naverda: campaign_type 문자열 직접
+                    type = d.getString("campaign_type");
+                    if (type == null || type.isBlank()) type = "none";
+                }
+            }
+            if (type != null) map.put(cid, type);
+        }
+        return map;
+    }
+
+    private String[] calcGroupStatus(Map<String, Object> cur, Map<String, Object> diff, boolean hasCompare) {
+        if (!hasCompare) {
+            double roas = dbl(cur, "purchase_roas");
+            if (roas > 500) return new String[]{"우수", "success", "bi bi-check-circle"};
+            if (roas > 0)   return new String[]{"안정", "info",    "bi bi-info-circle"};
+            return new String[]{"점검", "neutral", "bi bi-dash-circle"};
+        }
+        double dCst = dbl(diff, "cst");
+        double dCv  = dbl(diff, "cv");
+        double dCpa = dbl(diff, "cpa");
+        if (dCst > 0 && dCv < 0)                 return new String[]{"핵심 점검", "danger",  "bi bi-exclamation-circle"};
+        if (dCv < -3 || dCpa > 0)                return new String[]{"주의",     "warning", "bi bi-exclamation-triangle"};
+        if (dCv > 0 && dCst <= 0)                return new String[]{"우수",     "success", "bi bi-check-circle"};
+        return new String[]{"안정", "info", "bi bi-info-circle"};
+    }
+
+    private String buildGroupMessage(String groupName, Map<String, Object> cur, Map<String, Object> diff, boolean hasCompare) {
+        double dCst = dbl(diff, "cst");
+        double dCv  = dbl(diff, "cv");
+        StringBuilder sb = new StringBuilder(groupName).append(": ");
+        if (!hasCompare) {
+            sb.append("광고비 ").append(formatPrice(dbl(cur, "cst"))).append("원");
+            if (dbl(cur, "cv") > 0) sb.append(", 전환 ").append(round2(dbl(cur, "cv"))).append("건");
+        } else {
+            if (dCst != 0) sb.append("광고비 ").append(sign(dCst)).append(formatPrice(Math.abs(dCst))).append("원 변동");
+            if (dCv  != 0) sb.append(", 전환 ").append(sign(dCv)).append(round2(Math.abs(dCv))).append("건 변동");
+            if (dCst > 0 && dCv < 0) sb.append(" — 비용 효율 점검 필요");
+        }
+        return sb.toString();
+    }
+
+    // ─── metrics 빌더 ────────────────────────────────────────────────────
 
     private Map<String, Object> toMetrics(double[] v) {
         double im = v[0], clk = v[1], cst = v[2], cv = v[3], cr = v[4];
@@ -396,35 +622,47 @@ public class PeriodDiagnosisReportService {
         m.put("cvr",  (cv  > 0 && clk > 0) ? round2(cv  / clk * 100) : 0);
         m.put("roas", (cr  > 0 && cst > 0) ? round2(cr  / cst * 100) : 0);
         m.put("purchase_roas", (cr > 0 && cst > 0) ? round2(cr / cst * 100) : 0);
+        // 전환유형 (aggregateByDate 확장 시 실값 대체)
+        m.put("purchase_cv", 0); m.put("purchase_cr", 0);
+        m.put("signup_cv",   0); m.put("signup_cr",   0);
+        m.put("cart_cv",     0); m.put("cart_cr",     0);
+        m.put("lead_cv",     0); m.put("lead_cr",     0);
+        m.put("other_cv",    0); m.put("other_cr",    0);
         return m;
     }
 
+    private static final String[] DIFF_KEYS = {
+        "im","clk","cst","cv","cr","ctr","cpc","cpa","cvr","roas","purchase_roas",
+        "purchase_cv","purchase_cr","signup_cv","signup_cr",
+        "cart_cv","cart_cr","lead_cv","lead_cr","other_cv","other_cr"
+    };
+
     private Map<String, Object> buildDiff(Map<String, Object> cur, Map<String, Object> cmp) {
         Map<String, Object> d = new LinkedHashMap<>();
-        for (String k : new String[]{"im","clk","cst","cv","cr","ctr","cpc","cpa","cvr","roas","purchase_roas"}) {
-            d.put(k, round2(dbl(cur, k) - dbl(cmp, k)));
-        }
+        for (String k : DIFF_KEYS) d.put(k, round2(dbl(cur, k) - dbl(cmp, k)));
         return d;
     }
 
     private Map<String, Object> buildPer(Map<String, Object> cur, Map<String, Object> cmp) {
         Map<String, Object> p = new LinkedHashMap<>();
-        for (String k : new String[]{"im","clk","cst","cv","cr","ctr","cpc","cpa","cvr","roas","purchase_roas"}) {
+        for (String k : DIFF_KEYS) {
             double a = dbl(cur, k), b = dbl(cmp, k);
             p.put(k, b > 0 ? round2((a - b) / b * 100) : 0);
         }
         return p;
     }
 
-    // ─── 헬퍼 ────────────────────────────────────────────────────────────────
+    // ─── 헬퍼 ────────────────────────────────────────────────────────────
 
     private double[] toArr(Map<String, Object> row) {
         return new double[]{ num(row,"im"), num(row,"clk"), num(row,"cst"), num(row,"cv"), num(row,"cr") };
     }
 
+    /** Map.merge 용 — 새 배열 반환 */
     private double[] mergeArr(double[] a, double[] b) {
-        for (int i = 0; i < a.length; i++) a[i] += b[i];
-        return a;
+        double[] r = new double[a.length];
+        for (int i = 0; i < a.length; i++) r[i] = a[i] + b[i];
+        return r;
     }
 
     private double num(Map<String, Object> m, String key) {
@@ -443,6 +681,8 @@ public class PeriodDiagnosisReportService {
     private String formatPrice(double v) {
         return String.format("%,d", (long) Math.round(v));
     }
+
+    private String sign(double v) { return v >= 0 ? "+" : ""; }
 
     private String getAdvid(AccountDto acc, String media) {
         return switch (media) {
