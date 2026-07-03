@@ -410,32 +410,35 @@ public class PeriodDiagnosisReportService {
             case "cost": {
                 double dCst = dbl(diff, "cst");
                 double cst  = dbl(cur,  "cst");
-                reason    = "광고비 " + sign(dCst) + formatPrice(Math.abs(dCst)) + "원 변동 (합계 " + formatPrice(cst) + "원)";
-                valueText = sign(dCst) + formatPrice(Math.abs(dCst)) + "원";
+                String cDir = dCst > 0 ? "증가" : (dCst < 0 ? "감소" : "변동없음");
+                reason    = "광고비 " + formatPrice(Math.abs(dCst)) + "원 " + cDir + " (현재 " + formatPrice(cst) + "원)";
+                valueText = (dCst >= 0 ? "+" : "-") + formatPrice(Math.abs(dCst)) + "원";
                 tone = dCst > 0 ? "warning" : (dCst < 0 ? "good" : "info");
                 break;
             }
             case "conversion": {
                 double dCv = dbl(diff, "cv");
                 double cv  = dbl(cur,  "cv");
-                reason    = "전환수 " + sign(dCv) + round2(Math.abs(dCv)) + "건 변동 (합계 " + round2(cv) + "건)";
-                valueText = sign(dCv) + round2(Math.abs(dCv)) + "건";
+                String cvDir = dCv < 0 ? "감소" : (dCv > 0 ? "증가" : "변동없음");
+                reason    = "전환수 " + round2(Math.abs(dCv)) + "건 " + cvDir + " (현재 " + round2(cv) + "건)";
+                valueText = (dCv >= 0 ? "+" : "-") + round2(Math.abs(dCv)) + "건";
                 tone = dCv < 0 ? "warning" : "info";
                 break;
             }
             case "roas": {
                 double dPr = dbl(diff, "purchase_roas");
                 double pr  = dbl(cur,  "purchase_roas");
-                reason    = "구매완료수익률 " + sign(dPr) + round2(Math.abs(dPr)) + "%p 변동 (" + round2(pr) + "%)";
-                valueText = sign(dPr) + round2(Math.abs(dPr)) + "%p";
+                String rDir = dPr < 0 ? "하락" : (dPr > 0 ? "상승" : "변동없음");
+                reason    = "구매완료수익률 " + round2(Math.abs(dPr)) + "%p " + rDir + " (현재 " + round2(pr) + "%)";
+                valueText = (dPr >= 0 ? "+" : "-") + round2(Math.abs(dPr)) + "%p";
                 tone = dPr < 0 ? "warning" : "info";
                 break;
             }
             default: { // main
                 double dCst = dbl(diff, "cst");
                 double dCv  = dbl(diff, "cv");
-                reason    = "광고비 " + sign(dCst) + formatPrice(Math.abs(dCst)) + "원";
-                if (dCv != 0) reason += " · 전환 " + sign(dCv) + round2(Math.abs(dCv)) + "건";
+                reason    = "광고비 " + (dCst >= 0 ? "+" : "-") + formatPrice(Math.abs(dCst)) + "원";
+                if (dCv != 0) reason += " · 전환 " + round2(Math.abs(dCv)) + "건" + (dCv < 0 ? " 감소" : " 증가");
                 valueText = formatPrice(dbl(cur, "cst")) + "원";
                 if (dCst < 0 || dCv < 0) tone = "warning";
             }
@@ -550,22 +553,28 @@ public class PeriodDiagnosisReportService {
     private Map<String, String> buildIdToTypeMap(List<Document> masters, String media) {
         Map<String, String> map = new LinkedHashMap<>();
         for (Document d : masters) {
-            String cid = d.getString("cid");
-            if (cid == null) continue;
+            String cid;
             String type;
             switch (media) {
                 case "naver": {
+                    // naver_campaign 마스터는 campaign ID를 "campaignid" 필드에 저장
+                    cid = d.getString("campaignid");
+                    if (cid == null) continue;
                     int code = d.getInteger("campaigntype", 0);
                     type = NAVER_TYPE_CODE.getOrDefault(code, null);
                     break;
                 }
                 case "google": {
+                    cid = d.getString("cid");
+                    if (cid == null) continue;
                     int code = d.getInteger("type", -1);
                     type = GOOGLE_TYPE_CODE.getOrDefault(code, "unknown");
                     break;
                 }
                 default: {
-                    // kakaosa, kakaomo, naverda: campaign_type 문자열 직접
+                    // kakaosa, kakaomo, naverda: cid 필드 + campaign_type 문자열
+                    cid = d.getString("cid");
+                    if (cid == null) continue;
                     type = d.getString("campaign_type");
                     if (type == null || type.isBlank()) type = "none";
                 }
@@ -599,8 +608,15 @@ public class PeriodDiagnosisReportService {
             sb.append("광고비 ").append(formatPrice(dbl(cur, "cst"))).append("원");
             if (dbl(cur, "cv") > 0) sb.append(", 전환 ").append(round2(dbl(cur, "cv"))).append("건");
         } else {
-            if (dCst != 0) sb.append("광고비 ").append(sign(dCst)).append(formatPrice(Math.abs(dCst))).append("원 변동");
-            if (dCv  != 0) sb.append(", 전환 ").append(sign(dCv)).append(round2(Math.abs(dCv))).append("건 변동");
+            if (dCst != 0) {
+                String cDir = dCst > 0 ? "증가" : "감소";
+                sb.append("광고비 ").append(formatPrice(Math.abs(dCst))).append("원 ").append(cDir);
+            }
+            if (dCv != 0) {
+                String cvDir = dCv > 0 ? "증가" : "감소";
+                if (dCst != 0) sb.append(", ");
+                sb.append("전환 ").append(round2(Math.abs(dCv))).append("건 ").append(cvDir);
+            }
             if (dCst > 0 && dCv < 0) sb.append(" — 비용 효율 점검 필요");
         }
         return sb.toString();
