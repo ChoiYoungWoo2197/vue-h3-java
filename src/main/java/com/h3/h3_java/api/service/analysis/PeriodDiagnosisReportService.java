@@ -561,10 +561,12 @@ public class PeriodDiagnosisReportService {
             switch (media) {
                 case "naver": {
                     // naver_campaign 마스터는 campaign ID를 "campaignid" 필드에 저장
+                    // campaigntype은 String "1"로 저장되어 있어 직접 파싱
                     cid = d.getString("campaignid");
                     if (cid == null) continue;
-                    int code = d.getInteger("campaigntype", 0);
-                    type = NAVER_TYPE_CODE.getOrDefault(code, null);
+                    int code = 0;
+                    try { code = Integer.parseInt(String.valueOf(d.get("campaigntype"))); } catch (Exception ignored) {}
+                    type = NAVER_TYPE_CODE.getOrDefault(code, "unknown");
                     break;
                 }
                 case "google": {
