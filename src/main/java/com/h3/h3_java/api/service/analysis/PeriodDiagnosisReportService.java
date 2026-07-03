@@ -553,7 +553,7 @@ public class PeriodDiagnosisReportService {
                 Map<String, Object> diffM = buildDiff(curM, cmpM);
                 Map<String, Object> perM  = buildPer(curM, cmpM);
 
-                String groupName = names.getOrDefault(type, type);
+                String groupName = "unknown".equals(type) ? "기타" : names.getOrDefault(type, type);
                 String[] statusInfo = calcGroupStatus(curM, diffM, hasCompare);
 
                 Map<String, Object> g = new LinkedHashMap<>();
@@ -589,8 +589,7 @@ public class PeriodDiagnosisReportService {
         for (Map.Entry<String, Map<String, Object>> e : byCampDate.entrySet()) {
             String[] parts = e.getKey().split("\\|", 2);
             if (parts.length < 2) continue;
-            String type = idToType.get(parts[0]);
-            if (type == null) continue;
+            String type = idToType.getOrDefault(parts[0], "unknown"); // 매핑 없는 캠페인 → 기타
             String date = parts[1];
             byType.computeIfAbsent(type, k -> new LinkedHashMap<>())
                   .merge(date, toArr(e.getValue()), this::mergeArr);
@@ -616,8 +615,7 @@ public class PeriodDiagnosisReportService {
             if (sep < 0) continue;
             String cid  = key.substring(0, sep);
             String code = key.substring(sep + 1);
-            String type = idToType.get(cid);
-            if (type == null) continue;
+            String type = idToType.getOrDefault(cid, "unknown"); // 매핑 없는 캠페인 → 기타
             double cnt   = dbl(e.getValue(), "cnt");
             double value = dbl(e.getValue(), "value");
             double[] sums = result.computeIfAbsent(type, k -> new double[10]);
@@ -682,8 +680,10 @@ public class PeriodDiagnosisReportService {
         double dPurchaseRoas = dbl(diff, "purchase_roas");
         if (dCst > 0 && dCv < 0)                         return new String[]{"핵심 점검", "danger",  "bi bi-exclamation-circle"};
         if (dCst > 0 && dPurchaseRoas < 0)               return new String[]{"주의",     "warning", "bi bi-exclamation-triangle"};
-        if (dCv < -3 || dCpa > 0)                        return new String[]{"주의",     "warning", "bi bi-exclamation-triangle"};
+        // 전환+구매완료수익률 모두 개선 시 → 광고비/CPA 상승이 있어도 안정 이상 유지
         if (dCv > 0 && dPurchaseRoas > 0 && dCst <= 0)   return new String[]{"우수",     "success", "bi bi-check-circle"};
+        if (dCv > 0 && dPurchaseRoas > 0)                 return new String[]{"안정",     "info",    "bi bi-info-circle"};
+        if (dCv < -3 || dCpa > 0)                        return new String[]{"주의",     "warning", "bi bi-exclamation-triangle"};
         if (dCv > 0 && dCst <= 0)                        return new String[]{"우수",     "success", "bi bi-check-circle"};
         return new String[]{"안정", "info", "bi bi-info-circle"};
     }
@@ -704,7 +704,12 @@ public class PeriodDiagnosisReportService {
         } else if (dCv > 0 && dPurchaseRoas < 0) {
             sb.append("전환수는 증가했지만 구매완료 광고수익률이 하락했습니다.");
         } else if (dCv > 0 && dCr > 0 && dPurchaseRoas > 0) {
-            sb.append("전환수와 구매완료 광고수익률이 함께 개선되었습니다.");
+            double dCpa = dbl(diff, "cpa");
+            if (dCst > 0 && dCpa > 0) {
+                sb.append("전환수와 구매완료 광고수익률은 개선됐지만, 광고비와 전환당 비용도 함께 증가했습니다.");
+            } else {
+                sb.append("전환수와 구매완료 광고수익률이 함께 개선되었습니다.");
+            }
         } else {
             if (dCst != 0) {
                 String cDir = dCst > 0 ? "증가" : "감소";
