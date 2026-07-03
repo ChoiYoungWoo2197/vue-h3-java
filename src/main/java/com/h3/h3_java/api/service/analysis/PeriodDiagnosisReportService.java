@@ -413,10 +413,11 @@ public class PeriodDiagnosisReportService {
             .collect(Collectors.toList());
     }
 
-    /** diff.purchase_roas 오름차순 — 구매완료수익률 하락 TOP3 */
+    /** diff.purchase_roas 오름차순 — 구매완료수익률 하락 TOP3 (하락 주차만) */
     private List<Map<String, Object>> buildRoasInsights(List<Map<String, Object>> trend) {
         return trend.stream()
-            .filter(w -> dbl((Map<?,?>) w.get("current"), "cst") > 0)
+            .filter(w -> dbl((Map<?,?>) w.get("current"), "cst") > 0
+                      && dbl((Map<?,?>) w.get("diff"), "purchase_roas") < 0)
             .sorted((a, b) -> Double.compare(
                 dbl((Map<?,?>) a.get("diff"), "purchase_roas"),
                 dbl((Map<?,?>) b.get("diff"), "purchase_roas")))
@@ -516,6 +517,20 @@ public class PeriodDiagnosisReportService {
             mergeByType(curByCampDate, idToType, curByType);
             mergeByType(cmpByCampDate, idToType, cmpByType);
 
+            // 3-1. convtype 집계 (naver/naverda only) → type별 convtype 합산
+            Map<String, double[]> curTypeCtSums = Collections.emptyMap();
+            Map<String, double[]> cmpTypeCtSums = Collections.emptyMap();
+            if (cfg.convtypeCol() != null) {
+                Map<String, Map<String, Object>> curCtByCamp =
+                    mongoService.aggregateConvtypeByCampaignId(advid, from, to, cfg.convtypeCol());
+                curTypeCtSums = buildTypeConvtypeSums(curCtByCamp, idToType);
+                if (hasCompare) {
+                    Map<String, Map<String, Object>> cmpCtByCamp =
+                        mongoService.aggregateConvtypeByCampaignId(advid, cfrom, cto, cfg.convtypeCol());
+                    cmpTypeCtSums = buildTypeConvtypeSums(cmpCtByCamp, idToType);
+                }
+            }
+
             // 4. type별 합산 → group row 생성
             Map<String, String> names = GROUP_NAMES.getOrDefault(media, Collections.emptyMap());
             Set<String> seenTypes = new LinkedHashSet<>(curByType.keySet());
@@ -525,6 +540,11 @@ public class PeriodDiagnosisReportService {
             for (String type : seenTypes) {
                 double[] curSums = sumBucket(curByType.getOrDefault(type, Collections.emptyMap()));
                 double[] cmpSums = sumBucket(cmpByType.getOrDefault(type, Collections.emptyMap()));
+                // convtype 값 주입 (인덱스 5~14)
+                double[] curCt = curTypeCtSums.getOrDefault(type, new double[10]);
+                double[] cmpCt = cmpTypeCtSums.getOrDefault(type, new double[10]);
+                System.arraycopy(curCt, 0, curSums, 5, 10);
+                System.arraycopy(cmpCt, 0, cmpSums, 5, 10);
 
                 if (curSums[2] <= 0 && cmpSums[2] <= 0) continue; // cst 모두 0이면 스킵
 
@@ -579,6 +599,38 @@ public class PeriodDiagnosisReportService {
 
     private double[] sumBucket(Map<String, double[]> dateMap) {
         return dateMap.values().stream().reduce(new double[15], this::mergeArr);
+    }
+
+    /**
+     * campaignId|convTypeCode → type별 convtype 합산.
+     * 반환 배열 10개: [0]=purchase_cv, [1]=purchase_cr, [2]=signup_cv, [3]=signup_cr,
+     *               [4]=cart_cv, [5]=cart_cr, [6]=lead_cv, [7]=lead_cr,
+     *               [8]=other_cv, [9]=other_cr
+     */
+    private Map<String, double[]> buildTypeConvtypeSums(Map<String, Map<String, Object>> ctByCamp,
+                                                          Map<String, String> idToType) {
+        Map<String, double[]> result = new LinkedHashMap<>();
+        for (Map.Entry<String, Map<String, Object>> e : ctByCamp.entrySet()) {
+            String key = e.getKey(); // "campaignId|convTypeCode"
+            int sep = key.lastIndexOf('|');
+            if (sep < 0) continue;
+            String cid  = key.substring(0, sep);
+            String code = key.substring(sep + 1);
+            String type = idToType.get(cid);
+            if (type == null) continue;
+            double cnt   = dbl(e.getValue(), "cnt");
+            double value = dbl(e.getValue(), "value");
+            double[] sums = result.computeIfAbsent(type, k -> new double[10]);
+            switch (code) {
+                case "purchase":    sums[0] += cnt; sums[1] += value; break;
+                case "sign_up":     sums[2] += cnt; sums[3] += value; break;
+                case "add_to_cart": sums[4] += cnt; sums[5] += value; break;
+                case "lead":        sums[6] += cnt; sums[7] += value; break;
+                default:
+                    if (code.startsWith("custom")) { sums[8] += cnt; sums[9] += value; }
+            }
+        }
+        return result;
     }
 
     private Map<String, String> buildIdToTypeMap(List<Document> masters, String media) {
