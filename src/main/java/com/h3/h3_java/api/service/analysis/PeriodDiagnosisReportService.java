@@ -35,14 +35,14 @@ public class PeriodDiagnosisReportService {
         "thu","목요일","fri","금요일","sat","토요일"
     );
 
-    record MediaCfg(String campCol, String advField, String campMasterCol) {}
+    record MediaCfg(String campCol, String advField, String campMasterCol, String convtypeCol) {}
 
     private static final Map<String, MediaCfg> MEDIA_MAP = Map.of(
-        "naver",   new MediaCfg("naver_campaign_daily",     "daily_advid", "naver_campaign"),
-        "naverda", new MediaCfg("naver_gfa_campaign_daily", "daily_advid", "naver_gfa_campaign"),
-        "kakaosa", new MediaCfg("kakao_sa_campaign_daily",  "advkey",      "kakao_sa_campaign"),
-        "kakaomo", new MediaCfg("kakao_mo_campaign_daily",  "advkey",      "kakao_mo_campaign"),
-        "google",  new MediaCfg("google_campaign_daily",    "daily_advid", "google_campaign")
+        "naver",   new MediaCfg("naver_campaign_daily",     "daily_advid", "naver_campaign",     "naver_campaign_convtype"),
+        "naverda", new MediaCfg("naver_gfa_campaign_daily", "daily_advid", "naver_gfa_campaign", "naver_gfa_campaign_convtype"),
+        "kakaosa", new MediaCfg("kakao_sa_campaign_daily",  "advkey",      "kakao_sa_campaign",  null),
+        "kakaomo", new MediaCfg("kakao_mo_campaign_daily",  "advkey",      "kakao_mo_campaign",  null),
+        "google",  new MediaCfg("google_campaign_daily",    "daily_advid", "google_campaign",    null)
     );
 
     // ─── campaign_type 코드 매핑 (네이버SA·구글은 int 코드) ──────────────────
@@ -116,6 +116,15 @@ public class PeriodDiagnosisReportService {
             ? mongoService.aggregateByDate(advid, cfrom, cto, cfg.campCol())
             : Collections.emptyMap();
 
+        if (cfg.convtypeCol() != null) {
+            Map<String, Map<String, Object>> curCt = mongoService.aggregateConvtypeByDate(advid, fromdate, todate, cfg.convtypeCol());
+            mergeConvtypeIntoDaily(curDaily, curCt);
+            if (hasCompare) {
+                Map<String, Map<String, Object>> cmpCt = mongoService.aggregateConvtypeByDate(advid, cfrom, cto, cfg.convtypeCol());
+                mergeConvtypeIntoDaily(cmpDaily, cmpCt);
+            }
+        }
+
         String pu = (periodUnit != null) ? periodUnit : "week";
         String label;
         String msg;
@@ -170,7 +179,7 @@ public class PeriodDiagnosisReportService {
         List<Map<String, Object>> result = new ArrayList<>();
         for (int i = 0; i < curBuckets.size(); i++) {
             double[] cur = curBuckets.get(i);
-            double[] cmp = (i < cmpBuckets.size()) ? cmpBuckets.get(i) : new double[5];
+            double[] cmp = (i < cmpBuckets.size()) ? cmpBuckets.get(i) : new double[7];
             int[]    dc  = curDays.get(i);
 
             Map<String, Object> curM = toMetrics(cur);
@@ -200,7 +209,7 @@ public class PeriodDiagnosisReportService {
         while (!ws.isAfter(end)) {
             LocalDate we = ws.plusDays(6);
             if (we.isAfter(end)) we = end;
-            double[] sums = new double[5];
+            double[] sums = new double[7];
             for (LocalDate d = ws; !d.isAfter(we); d = d.plusDays(1)) {
                 Map<String, Object> row = daily.getOrDefault(d.format(FMT), Collections.emptyMap());
                 sums[0] += num(row, "im");
@@ -208,6 +217,8 @@ public class PeriodDiagnosisReportService {
                 sums[2] += num(row, "cst");
                 sums[3] += num(row, "cv");
                 sums[4] += num(row, "cr");
+                sums[5] += num(row, "purchase_cv");
+                sums[6] += num(row, "purchase_cr");
             }
             buckets.add(sums);
             ws = we.plusDays(1);
@@ -550,7 +561,7 @@ public class PeriodDiagnosisReportService {
     }
 
     private double[] sumBucket(Map<String, double[]> dateMap) {
-        return dateMap.values().stream().reduce(new double[5], this::mergeArr);
+        return dateMap.values().stream().reduce(new double[7], this::mergeArr);
     }
 
     private Map<String, String> buildIdToTypeMap(List<Document> masters, String media) {
@@ -631,6 +642,8 @@ public class PeriodDiagnosisReportService {
 
     private Map<String, Object> toMetrics(double[] v) {
         double im = v[0], clk = v[1], cst = v[2], cv = v[3], cr = v[4];
+        double purchaseCv = v.length > 5 ? v[5] : 0;
+        double purchaseCr = v.length > 6 ? v[6] : 0;
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("im",  (long) im);
         m.put("clk", (long) clk);
@@ -641,10 +654,9 @@ public class PeriodDiagnosisReportService {
         m.put("cpc",  (cst > 0 && clk > 0) ? round2(cst / clk)       : 0);
         m.put("cpa",  (cst > 0 && cv  > 0) ? round2(cst / cv)        : 0);
         m.put("cvr",  (cv  > 0 && clk > 0) ? round2(cv  / clk * 100) : 0);
-        m.put("roas", (cr  > 0 && cst > 0) ? round2(cr  / cst * 100) : 0);
-        m.put("purchase_roas", (cr > 0 && cst > 0) ? round2(cr / cst * 100) : 0);
-        // 전환유형 (aggregateByDate 확장 시 실값 대체)
-        m.put("purchase_cv", 0); m.put("purchase_cr", 0);
+        m.put("roas",          (cr         > 0 && cst > 0) ? round2(cr         / cst * 100) : 0);
+        m.put("purchase_roas", (purchaseCr > 0 && cst > 0) ? round2(purchaseCr / cst * 100) : 0);
+        m.put("purchase_cv", round2(purchaseCv)); m.put("purchase_cr", round2(purchaseCr));
         m.put("signup_cv",   0); m.put("signup_cr",   0);
         m.put("cart_cv",     0); m.put("cart_cr",     0);
         m.put("lead_cv",     0); m.put("lead_cr",     0);
@@ -675,8 +687,21 @@ public class PeriodDiagnosisReportService {
 
     // ─── 헬퍼 ────────────────────────────────────────────────────────────
 
+    /** convtype 날짜별 맵 → daily 맵에 purchase_cv/purchase_cr 필드 머지 */
+    private void mergeConvtypeIntoDaily(Map<String, Map<String, Object>> daily,
+                                         Map<String, Map<String, Object>> ctMap) {
+        for (Map.Entry<String, Map<String, Object>> e : daily.entrySet()) {
+            String date = e.getKey();
+            Map<String, Object> row = e.getValue();
+            Map<String, Object> purchase = ctMap.getOrDefault(date + "|purchase", Collections.emptyMap());
+            row.put("purchase_cv", dbl(purchase, "cnt"));
+            row.put("purchase_cr", dbl(purchase, "value"));
+        }
+    }
+
     private double[] toArr(Map<String, Object> row) {
-        return new double[]{ num(row,"im"), num(row,"clk"), num(row,"cst"), num(row,"cv"), num(row,"cr") };
+        return new double[]{ num(row,"im"), num(row,"clk"), num(row,"cst"), num(row,"cv"), num(row,"cr"),
+                             num(row,"purchase_cv"), num(row,"purchase_cr") };
     }
 
     /** Map.merge 용 — 새 배열 반환 */
