@@ -179,7 +179,7 @@ public class PeriodDiagnosisReportService {
         List<Map<String, Object>> result = new ArrayList<>();
         for (int i = 0; i < curBuckets.size(); i++) {
             double[] cur = curBuckets.get(i);
-            double[] cmp = (i < cmpBuckets.size()) ? cmpBuckets.get(i) : new double[7];
+            double[] cmp = (i < cmpBuckets.size()) ? cmpBuckets.get(i) : new double[15];
             int[]    dc  = curDays.get(i);
 
             Map<String, Object> curM = toMetrics(cur);
@@ -209,16 +209,24 @@ public class PeriodDiagnosisReportService {
         while (!ws.isAfter(end)) {
             LocalDate we = ws.plusDays(6);
             if (we.isAfter(end)) we = end;
-            double[] sums = new double[7];
+            double[] sums = new double[15];
             for (LocalDate d = ws; !d.isAfter(we); d = d.plusDays(1)) {
                 Map<String, Object> row = daily.getOrDefault(d.format(FMT), Collections.emptyMap());
-                sums[0] += num(row, "im");
-                sums[1] += num(row, "clk");
-                sums[2] += num(row, "cst");
-                sums[3] += num(row, "cv");
-                sums[4] += num(row, "cr");
-                sums[5] += num(row, "purchase_cv");
-                sums[6] += num(row, "purchase_cr");
+                sums[0]  += num(row, "im");
+                sums[1]  += num(row, "clk");
+                sums[2]  += num(row, "cst");
+                sums[3]  += num(row, "cv");
+                sums[4]  += num(row, "cr");
+                sums[5]  += num(row, "purchase_cv");
+                sums[6]  += num(row, "purchase_cr");
+                sums[7]  += num(row, "signup_cv");
+                sums[8]  += num(row, "signup_cr");
+                sums[9]  += num(row, "cart_cv");
+                sums[10] += num(row, "cart_cr");
+                sums[11] += num(row, "lead_cv");
+                sums[12] += num(row, "lead_cr");
+                sums[13] += num(row, "other_cv");
+                sums[14] += num(row, "other_cr");
             }
             buckets.add(sums);
             ws = we.plusDays(1);
@@ -275,7 +283,7 @@ public class PeriodDiagnosisReportService {
         for (int i = 0; i < months.size(); i++) {
             String key = months.get(i);
             double[] cur = curMonth.get(key);
-            double[] cmp = (i < cmpMonths.size()) ? cmpMonth.getOrDefault(cmpMonths.get(i), new double[5]) : new double[5];
+            double[] cmp = (i < cmpMonths.size()) ? cmpMonth.getOrDefault(cmpMonths.get(i), new double[15]) : new double[15];
             Map<String, Object> curM = toMetrics(cur);
             Map<String, Object> cmpM = toMetrics(cmp);
 
@@ -316,8 +324,8 @@ public class PeriodDiagnosisReportService {
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (String dk : DAYWEEK_ORDER) {
-            double[] cur = curDay.getOrDefault(dk, new double[5]);
-            double[] cmp = cmpDay.getOrDefault(dk, new double[5]);
+            double[] cur = curDay.getOrDefault(dk, new double[15]);
+            double[] cmp = cmpDay.getOrDefault(dk, new double[15]);
             Map<String, Object> curM = toMetrics(cur);
             Map<String, Object> cmpM = toMetrics(cmp);
 
@@ -352,12 +360,21 @@ public class PeriodDiagnosisReportService {
     // ─── insights — B안: diff 기준 정렬 ──────────────────────────────────
 
     private Map<String, List<Map<String, Object>>> buildInsights(List<Map<String, Object>> trend) {
+        List<Map<String, Object>> filtered = filterForInsights(trend);
         Map<String, List<Map<String, Object>>> ins = new LinkedHashMap<>();
-        ins.put("main",       buildMainInsights(trend));
-        ins.put("cost",       buildCostInsights(trend));
-        ins.put("conversion", buildConversionInsights(trend));
-        ins.put("roas",       buildRoasInsights(trend));
+        ins.put("main",       buildMainInsights(filtered));
+        ins.put("cost",       buildCostInsights(filtered));
+        ins.put("conversion", buildConversionInsights(filtered));
+        ins.put("roas",       buildRoasInsights(filtered));
         return ins;
+    }
+
+    /** nonPartialRows ≥ 3이면 partial 제외, 3개 미만이면 전체 포함 */
+    private List<Map<String, Object>> filterForInsights(List<Map<String, Object>> trend) {
+        List<Map<String, Object>> nonPartial = trend.stream()
+            .filter(r -> !Boolean.TRUE.equals(r.get("is_partial")))
+            .collect(Collectors.toList());
+        return nonPartial.size() >= 3 ? nonPartial : trend;
     }
 
     /** |diff.cst| 내림차순 — 변화폭이 가장 큰 주차 TOP3 */
@@ -561,7 +578,7 @@ public class PeriodDiagnosisReportService {
     }
 
     private double[] sumBucket(Map<String, double[]> dateMap) {
-        return dateMap.values().stream().reduce(new double[7], this::mergeArr);
+        return dateMap.values().stream().reduce(new double[15], this::mergeArr);
     }
 
     private Map<String, String> buildIdToTypeMap(List<Document> masters, String media) {
@@ -602,27 +619,40 @@ public class PeriodDiagnosisReportService {
 
     private String[] calcGroupStatus(Map<String, Object> cur, Map<String, Object> diff, boolean hasCompare) {
         if (!hasCompare) {
-            double roas = dbl(cur, "purchase_roas");
-            if (roas > 500) return new String[]{"우수", "success", "bi bi-check-circle"};
-            if (roas > 0)   return new String[]{"안정", "info",    "bi bi-info-circle"};
+            double purchaseRoas = dbl(cur, "purchase_roas");
+            if (purchaseRoas > 500) return new String[]{"우수", "success", "bi bi-check-circle"};
+            if (purchaseRoas > 0)   return new String[]{"안정", "info",    "bi bi-info-circle"};
             return new String[]{"점검", "neutral", "bi bi-dash-circle"};
         }
-        double dCst = dbl(diff, "cst");
-        double dCv  = dbl(diff, "cv");
-        double dCpa = dbl(diff, "cpa");
-        if (dCst > 0 && dCv < 0)                 return new String[]{"핵심 점검", "danger",  "bi bi-exclamation-circle"};
-        if (dCv < -3 || dCpa > 0)                return new String[]{"주의",     "warning", "bi bi-exclamation-triangle"};
-        if (dCv > 0 && dCst <= 0)                return new String[]{"우수",     "success", "bi bi-check-circle"};
+        double dCst          = dbl(diff, "cst");
+        double dCv           = dbl(diff, "cv");
+        double dCpa          = dbl(diff, "cpa");
+        double dPurchaseRoas = dbl(diff, "purchase_roas");
+        if (dCst > 0 && dCv < 0)                         return new String[]{"핵심 점검", "danger",  "bi bi-exclamation-circle"};
+        if (dCst > 0 && dPurchaseRoas < 0)               return new String[]{"주의",     "warning", "bi bi-exclamation-triangle"};
+        if (dCv < -3 || dCpa > 0)                        return new String[]{"주의",     "warning", "bi bi-exclamation-triangle"};
+        if (dCv > 0 && dPurchaseRoas > 0 && dCst <= 0)   return new String[]{"우수",     "success", "bi bi-check-circle"};
+        if (dCv > 0 && dCst <= 0)                        return new String[]{"우수",     "success", "bi bi-check-circle"};
         return new String[]{"안정", "info", "bi bi-info-circle"};
     }
 
     private String buildGroupMessage(String groupName, Map<String, Object> cur, Map<String, Object> diff, boolean hasCompare) {
-        double dCst = dbl(diff, "cst");
-        double dCv  = dbl(diff, "cv");
+        double dCst          = dbl(diff, "cst");
+        double dCv           = dbl(diff, "cv");
+        double dCr           = dbl(diff, "cr");
+        double dPurchaseRoas = dbl(diff, "purchase_roas");
         StringBuilder sb = new StringBuilder(groupName).append(": ");
         if (!hasCompare) {
             sb.append("광고비 ").append(formatPrice(dbl(cur, "cst"))).append("원");
             if (dbl(cur, "cv") > 0) sb.append(", 전환 ").append(round2(dbl(cur, "cv"))).append("건");
+        } else if (dCst > 0 && dCv < 0 && dPurchaseRoas < 0) {
+            sb.append("광고비 증가 대비 전환수와 구매완료 광고수익률이 함께 하락했습니다.");
+        } else if (dCst > 0 && dPurchaseRoas < 0) {
+            sb.append("광고비 증가 대비 구매완료 광고수익률이 하락했습니다.");
+        } else if (dCv > 0 && dPurchaseRoas < 0) {
+            sb.append("전환수는 증가했지만 구매완료 광고수익률이 하락했습니다.");
+        } else if (dCv > 0 && dCr > 0 && dPurchaseRoas > 0) {
+            sb.append("전환수와 구매완료 광고수익률이 함께 개선되었습니다.");
         } else {
             if (dCst != 0) {
                 String cDir = dCst > 0 ? "증가" : "감소";
@@ -640,10 +670,22 @@ public class PeriodDiagnosisReportService {
 
     // ─── metrics 빌더 ────────────────────────────────────────────────────
 
+    // v[0]=im, [1]=clk, [2]=cst, [3]=cv, [4]=cr
+    // [5]=purchase_cv, [6]=purchase_cr, [7]=signup_cv, [8]=signup_cr
+    // [9]=cart_cv, [10]=cart_cr, [11]=lead_cv, [12]=lead_cr
+    // [13]=other_cv, [14]=other_cr
     private Map<String, Object> toMetrics(double[] v) {
         double im = v[0], clk = v[1], cst = v[2], cv = v[3], cr = v[4];
-        double purchaseCv = v.length > 5 ? v[5] : 0;
-        double purchaseCr = v.length > 6 ? v[6] : 0;
+        double purchaseCv = v.length > 5  ? v[5]  : 0;
+        double purchaseCr = v.length > 6  ? v[6]  : 0;
+        double signupCv   = v.length > 7  ? v[7]  : 0;
+        double signupCr   = v.length > 8  ? v[8]  : 0;
+        double cartCv     = v.length > 9  ? v[9]  : 0;
+        double cartCr     = v.length > 10 ? v[10] : 0;
+        double leadCv     = v.length > 11 ? v[11] : 0;
+        double leadCr     = v.length > 12 ? v[12] : 0;
+        double otherCv    = v.length > 13 ? v[13] : 0;
+        double otherCr    = v.length > 14 ? v[14] : 0;
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("im",  (long) im);
         m.put("clk", (long) clk);
@@ -657,10 +699,10 @@ public class PeriodDiagnosisReportService {
         m.put("roas",          (cr         > 0 && cst > 0) ? round2(cr         / cst * 100) : 0);
         m.put("purchase_roas", (purchaseCr > 0 && cst > 0) ? round2(purchaseCr / cst * 100) : 0);
         m.put("purchase_cv", round2(purchaseCv)); m.put("purchase_cr", round2(purchaseCr));
-        m.put("signup_cv",   0); m.put("signup_cr",   0);
-        m.put("cart_cv",     0); m.put("cart_cr",     0);
-        m.put("lead_cv",     0); m.put("lead_cr",     0);
-        m.put("other_cv",    0); m.put("other_cr",    0);
+        m.put("signup_cv",   round2(signupCv));   m.put("signup_cr",   round2(signupCr));
+        m.put("cart_cv",     round2(cartCv));     m.put("cart_cr",     round2(cartCr));
+        m.put("lead_cv",     round2(leadCv));     m.put("lead_cr",     round2(leadCr));
+        m.put("other_cv",    round2(otherCv));    m.put("other_cr",    round2(otherCr));
         return m;
     }
 
@@ -669,6 +711,9 @@ public class PeriodDiagnosisReportService {
         "purchase_cv","purchase_cr","signup_cv","signup_cr",
         "cart_cv","cart_cr","lead_cv","lead_cr","other_cv","other_cr"
     };
+
+    // %p 지표: diff는 단순 차이(%p), per는 증감률 의미가 없으므로 0 처리
+    private static final Set<String> PCT_POINT_KEYS = Set.of("ctr", "cvr", "roas", "purchase_roas");
 
     private Map<String, Object> buildDiff(Map<String, Object> cur, Map<String, Object> cmp) {
         Map<String, Object> d = new LinkedHashMap<>();
@@ -679,29 +724,54 @@ public class PeriodDiagnosisReportService {
     private Map<String, Object> buildPer(Map<String, Object> cur, Map<String, Object> cmp) {
         Map<String, Object> p = new LinkedHashMap<>();
         for (String k : DIFF_KEYS) {
-            double a = dbl(cur, k), b = dbl(cmp, k);
-            p.put(k, b > 0 ? round2((a - b) / b * 100) : 0);
+            if (PCT_POINT_KEYS.contains(k)) {
+                p.put(k, 0); // %p 지표는 증감률 계산 불가
+            } else {
+                double a = dbl(cur, k), b = dbl(cmp, k);
+                p.put(k, b > 0 ? round2((a - b) / b * 100) : 0);
+            }
         }
         return p;
     }
 
     // ─── 헬퍼 ────────────────────────────────────────────────────────────
 
-    /** convtype 날짜별 맵 → daily 맵에 purchase_cv/purchase_cr 필드 머지 */
+    /** convtype 날짜별 맵 → daily 맵에 전체 전환유형 cv/cr 필드 머지 */
     private void mergeConvtypeIntoDaily(Map<String, Map<String, Object>> daily,
                                          Map<String, Map<String, Object>> ctMap) {
         for (Map.Entry<String, Map<String, Object>> e : daily.entrySet()) {
             String date = e.getKey();
             Map<String, Object> row = e.getValue();
-            Map<String, Object> purchase = ctMap.getOrDefault(date + "|purchase", Collections.emptyMap());
-            row.put("purchase_cv", dbl(purchase, "cnt"));
-            row.put("purchase_cr", dbl(purchase, "value"));
+            // 4대 전환유형
+            Map<String, Object> purchase = ctMap.getOrDefault(date + "|purchase",    Collections.emptyMap());
+            Map<String, Object> signup   = ctMap.getOrDefault(date + "|sign_up",     Collections.emptyMap());
+            Map<String, Object> cart     = ctMap.getOrDefault(date + "|add_to_cart", Collections.emptyMap());
+            Map<String, Object> lead     = ctMap.getOrDefault(date + "|lead",        Collections.emptyMap());
+            row.put("purchase_cv", dbl(purchase, "cnt"));  row.put("purchase_cr", dbl(purchase, "value"));
+            row.put("signup_cv",   dbl(signup,   "cnt"));  row.put("signup_cr",   dbl(signup,   "value"));
+            row.put("cart_cv",     dbl(cart,     "cnt"));  row.put("cart_cr",     dbl(cart,     "value"));
+            row.put("lead_cv",     dbl(lead,     "cnt"));  row.put("lead_cr",     dbl(lead,     "value"));
+            // other = custom1~custom10 합산
+            double otherCv = 0, otherCr = 0;
+            for (int i = 1; i <= 10; i++) {
+                Map<String, Object> custom = ctMap.getOrDefault(date + "|custom" + i, Collections.emptyMap());
+                otherCv += dbl(custom, "cnt");
+                otherCr += dbl(custom, "value");
+            }
+            row.put("other_cv", otherCv);
+            row.put("other_cr", otherCr);
         }
     }
 
     private double[] toArr(Map<String, Object> row) {
-        return new double[]{ num(row,"im"), num(row,"clk"), num(row,"cst"), num(row,"cv"), num(row,"cr"),
-                             num(row,"purchase_cv"), num(row,"purchase_cr") };
+        return new double[]{
+            num(row,"im"), num(row,"clk"), num(row,"cst"), num(row,"cv"), num(row,"cr"),
+            num(row,"purchase_cv"), num(row,"purchase_cr"),
+            num(row,"signup_cv"),   num(row,"signup_cr"),
+            num(row,"cart_cv"),     num(row,"cart_cr"),
+            num(row,"lead_cv"),     num(row,"lead_cr"),
+            num(row,"other_cv"),    num(row,"other_cr")
+        };
     }
 
     /** Map.merge 용 — 새 배열 반환 */
