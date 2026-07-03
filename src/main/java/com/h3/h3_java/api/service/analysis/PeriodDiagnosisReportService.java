@@ -4,6 +4,7 @@ import com.h3.h3_java.api.dto.AccountDto;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.DashboardMongoService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
  * 기간 단위(주차/월별/요일별) 성과 진단 리포트.
  * trend / insights(diff 기준 B안) / groups(campaign_type 별) 세 섹션을 반환한다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PeriodDiagnosisReportService {
@@ -465,71 +467,72 @@ public class PeriodDiagnosisReportService {
             String advid, String media, MediaCfg cfg,
             String from, String to,
             String cfrom, String cto, boolean hasCompare) {
-
-        // 1. 캠페인 마스터 → campaign_id → type 매핑
-        List<Document> masters;
         try {
-            masters = mongoService.findCampaigns(advid, cfg.campMasterCol());
+            // 1. 캠페인 마스터 → campaign_id → type 매핑
+            List<Document> masters = mongoService.findCampaigns(advid, cfg.campMasterCol());
+            if (masters == null || masters.isEmpty()) return new ArrayList<>();
+
+            Map<String, String> idToType = buildIdToTypeMap(masters, media);
+            if (idToType.isEmpty()) return new ArrayList<>();
+
+            // 2. campaign_id × date 집계
+            Map<String, Map<String, Object>> curByCampDate =
+                mongoService.aggregateByCampaignDate(advid, from, to, cfg.campCol(), cfg.advField());
+            Map<String, Map<String, Object>> cmpByCampDate = hasCompare
+                ? mongoService.aggregateByCampaignDate(advid, cfrom, cto, cfg.campCol(), cfg.advField())
+                : Collections.emptyMap();
+
+            // 3. type별로 일별 데이터 merge → type → date → sums
+            Map<String, Map<String, double[]>> curByType = new LinkedHashMap<>();
+            Map<String, Map<String, double[]>> cmpByType = new LinkedHashMap<>();
+            mergeByType(curByCampDate, idToType, curByType);
+            mergeByType(cmpByCampDate, idToType, cmpByType);
+
+            // 4. type별 합산 → group row 생성
+            Map<String, String> names = GROUP_NAMES.getOrDefault(media, Collections.emptyMap());
+            Set<String> seenTypes = new LinkedHashSet<>(curByType.keySet());
+            seenTypes.addAll(cmpByType.keySet());
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (String type : seenTypes) {
+                double[] curSums = sumBucket(curByType.getOrDefault(type, Collections.emptyMap()));
+                double[] cmpSums = sumBucket(cmpByType.getOrDefault(type, Collections.emptyMap()));
+
+                if (curSums[2] <= 0 && cmpSums[2] <= 0) continue; // cst 모두 0이면 스킵
+
+                Map<String, Object> curM  = toMetrics(curSums);
+                Map<String, Object> cmpM  = toMetrics(cmpSums);
+                Map<String, Object> diffM = buildDiff(curM, cmpM);
+                Map<String, Object> perM  = buildPer(curM, cmpM);
+
+                String groupName = names.getOrDefault(type, type);
+                String[] statusInfo = calcGroupStatus(curM, diffM, hasCompare);
+
+                Map<String, Object> g = new LinkedHashMap<>();
+                g.put("group_key",    type);
+                g.put("group_name",   groupName);
+                g.put("status",       statusInfo[0]);
+                g.put("status_class", statusInfo[1]);
+                g.put("icon",         statusInfo[2]);
+                g.put("message",      buildGroupMessage(groupName, curM, diffM, hasCompare));
+                g.put("current",      curM);
+                g.put("compare",      cmpM);
+                g.put("diff",         diffM);
+                g.put("per",          perM);
+                result.add(g);
+            }
+
+            // cst 내림차순
+            result.sort((a, b) -> Double.compare(
+                dbl((Map<?,?>) b.get("current"), "cst"),
+                dbl((Map<?,?>) a.get("current"), "cst")));
+            return result;
+
         } catch (Exception e) {
+            log.error("[perioddiagnosisreport] buildGroups 오류 media={} advid={} from={} to={}: {}",
+                media, advid, from, to, e.getMessage(), e);
             return new ArrayList<>();
         }
-        if (masters == null || masters.isEmpty()) return new ArrayList<>();
-
-        Map<String, String> idToType = buildIdToTypeMap(masters, media);
-        if (idToType.isEmpty()) return new ArrayList<>();
-
-        // 2. campaign_id × date 집계
-        Map<String, Map<String, Object>> curByCampDate =
-            mongoService.aggregateByCampaignDate(advid, from, to, cfg.campCol(), cfg.advField());
-        Map<String, Map<String, Object>> cmpByCampDate = hasCompare
-            ? mongoService.aggregateByCampaignDate(advid, cfrom, cto, cfg.campCol(), cfg.advField())
-            : Collections.emptyMap();
-
-        // 3. type별로 일별 데이터 merge → type → date → sums
-        Map<String, Map<String, double[]>> curByType = new LinkedHashMap<>();
-        Map<String, Map<String, double[]>> cmpByType = new LinkedHashMap<>();
-        mergeByType(curByCampDate, idToType, curByType);
-        mergeByType(cmpByCampDate, idToType, cmpByType);
-
-        // 4. type별 합산 → group row 생성
-        Map<String, String> names = GROUP_NAMES.getOrDefault(media, Collections.emptyMap());
-        Set<String> seenTypes = new LinkedHashSet<>(curByType.keySet());
-        seenTypes.addAll(cmpByType.keySet());
-
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (String type : seenTypes) {
-            double[] curSums = sumBucket(curByType.getOrDefault(type, Collections.emptyMap()));
-            double[] cmpSums = sumBucket(cmpByType.getOrDefault(type, Collections.emptyMap()));
-
-            if (curSums[2] <= 0 && cmpSums[2] <= 0) continue; // cst 모두 0이면 스킵
-
-            Map<String, Object> curM  = toMetrics(curSums);
-            Map<String, Object> cmpM  = toMetrics(cmpSums);
-            Map<String, Object> diffM = buildDiff(curM, cmpM);
-            Map<String, Object> perM  = buildPer(curM, cmpM);
-
-            String groupName = names.getOrDefault(type, type);
-            String[] statusInfo = calcGroupStatus(curM, diffM, hasCompare);
-
-            Map<String, Object> g = new LinkedHashMap<>();
-            g.put("group_key",    type);
-            g.put("group_name",   groupName);
-            g.put("status",       statusInfo[0]);
-            g.put("status_class", statusInfo[1]);
-            g.put("icon",         statusInfo[2]);
-            g.put("message",      buildGroupMessage(groupName, curM, diffM, hasCompare));
-            g.put("current",      curM);
-            g.put("compare",      cmpM);
-            g.put("diff",         diffM);
-            g.put("per",          perM);
-            result.add(g);
-        }
-
-        // cst 내림차순
-        result.sort((a, b) -> Double.compare(
-            dbl((Map<?,?>) b.get("current"), "cst"),
-            dbl((Map<?,?>) a.get("current"), "cst")));
-        return result;
     }
 
     private void mergeByType(Map<String, Map<String, Object>> byCampDate,
