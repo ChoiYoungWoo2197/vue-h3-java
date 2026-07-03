@@ -313,7 +313,8 @@ public class DashboardMongoService {
             if (id == null) continue;
             String cid  = id.getString("campaign_id");
             String date = id.getString("daily_dt");
-            if (cid == null || date == null) continue;
+            if (date == null) continue;
+            if (cid == null) cid = "__null_campaign__"; // null campaign_id도 포함 → unknown 그룹으로 매핑
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("im",  toDouble(d, "im"));
             row.put("clk", toDouble(d, "clk"));

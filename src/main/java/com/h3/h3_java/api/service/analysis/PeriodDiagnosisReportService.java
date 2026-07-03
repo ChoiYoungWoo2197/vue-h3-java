@@ -546,7 +546,10 @@ public class PeriodDiagnosisReportService {
                 System.arraycopy(curCt, 0, curSums, 5, 10);
                 System.arraycopy(cmpCt, 0, cmpSums, 5, 10);
 
-                if (curSums[2] <= 0 && cmpSums[2] <= 0) continue; // cst 모두 0이면 스킵
+                // cst/cv/cr 모두 0인 경우만 스킵 (cst=0이어도 cv/cr이 있으면 포함)
+                boolean curEmpty = curSums[2] <= 0 && curSums[3] <= 0 && curSums[4] <= 0;
+                boolean cmpEmpty = cmpSums[2] <= 0 && cmpSums[3] <= 0 && cmpSums[4] <= 0;
+                if (curEmpty && cmpEmpty) continue;
 
                 Map<String, Object> curM  = toMetrics(curSums);
                 Map<String, Object> cmpM  = toMetrics(cmpSums);
@@ -574,6 +577,15 @@ public class PeriodDiagnosisReportService {
             result.sort((a, b) -> Double.compare(
                 dbl((Map<?,?>) b.get("current"), "cst"),
                 dbl((Map<?,?>) a.get("current"), "cst")));
+
+            // [검증 로그] trend와 groups 합계 정합성 확인용
+            double sumGroupsCst = result.stream().mapToDouble(g -> dbl((Map<?,?>) g.get("current"), "cst")).sum();
+            double sumGroupsCv  = result.stream().mapToDouble(g -> dbl((Map<?,?>) g.get("current"), "cv")).sum();
+            double sumGroupsCr  = result.stream().mapToDouble(g -> dbl((Map<?,?>) g.get("current"), "cr")).sum();
+            double sumGroupsPurchaseCr = result.stream().mapToDouble(g -> dbl((Map<?,?>) g.get("current"), "purchase_cr")).sum();
+            log.info("[groups 검증] advid={} count={} cst={} cv={} cr={} purchase_cr={}",
+                advid, result.size(), (long) sumGroupsCst, sumGroupsCv, (long) sumGroupsCr, (long) sumGroupsPurchaseCr);
+
             return result;
 
         } catch (Exception e) {
