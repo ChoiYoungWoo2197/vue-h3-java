@@ -48,6 +48,11 @@ public class PeriodDiagnosisReportService {
     private static final Map<Integer, String> NAVER_TYPE_CODE = Map.of(
         1, "web_site", 2, "shopping", 3, "power_contents", 4, "brand_search", 6, "place"
     );
+    // NaverGfaMasterJob.TYPE_SET의 역매핑 (Integer → String)
+    private static final Map<Integer, String> GFA_TYPE_CODE = Map.of(
+        0, "conversion", 1, "web_site_traffic", 2, "install_app", 3, "watch_video",
+        4, "catalog",    5, "shopping",          6, "lead",         7, "pmax"
+    );
     private static final Map<Integer, String> GOOGLE_TYPE_CODE = Map.ofEntries(
         Map.entry(1,  "demand_gen"),     Map.entry(2,  "display"),
         Map.entry(3,  "hotel"),          Map.entry(4,  "local"),
@@ -716,6 +721,14 @@ public class PeriodDiagnosisReportService {
                     type = NAVER_TYPE_CODE.getOrDefault(code, "unknown");
                     break;
                 }
+                case "naverda": {
+                    // naver_gfa_campaign: cid=String, type=Integer (NaverGfaMasterJob.TYPE_SET)
+                    cid = d.getString("cid");
+                    if (cid == null) continue;
+                    int code = d.getInteger("type", -1);
+                    type = GFA_TYPE_CODE.getOrDefault(code, "unknown");
+                    break;
+                }
                 case "google": {
                     cid = d.getString("cid");
                     if (cid == null) continue;
@@ -727,7 +740,7 @@ public class PeriodDiagnosisReportService {
                     cid = d.getString("cid");
                     if (cid == null) continue;
                     type = d.getString("campaign_type");
-                    if (type == null || type.isBlank()) type = "none";
+                    if (type == null || type.isBlank()) type = "unknown";
                 }
             }
             if (type != null) map.put(cid, type);
