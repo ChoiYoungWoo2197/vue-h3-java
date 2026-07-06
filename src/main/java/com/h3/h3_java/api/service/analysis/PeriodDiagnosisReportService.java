@@ -729,6 +729,21 @@ public class PeriodDiagnosisReportService {
                     type = GFA_TYPE_CODE.getOrDefault(code, "unknown");
                     break;
                 }
+                case "kakaosa": {
+                    // kakao_sa_campaign: cid=String, 타입 필드 없음 → 단일 그룹 "none"
+                    cid = d.getString("cid");
+                    if (cid == null) continue;
+                    type = "none";
+                    break;
+                }
+                case "kakaomo": {
+                    // kakao_mo_campaign: cid=String, type=String (lowercase, e.g. "talk_biz_board")
+                    cid = d.getString("cid");
+                    if (cid == null) continue;
+                    type = d.getString("type");
+                    if (type == null || type.isBlank()) type = "unknown";
+                    break;
+                }
                 case "google": {
                     cid = d.getString("cid");
                     if (cid == null) continue;
