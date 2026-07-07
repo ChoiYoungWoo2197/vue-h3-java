@@ -29,7 +29,7 @@ public class PeriodDiagnosisReportService {
     private static final DateTimeFormatter FMT  = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter MFMT = DateTimeFormatter.ofPattern("MM.dd");
 
-    private static final String[] DAYWEEK_ORDER = {"sun","mon","tue","wed","thu","fri","sat"};
+    private static final String[] DAYWEEK_ORDER = {"mon","tue","wed","thu","fri","sat","sun"};
     private static final Map<String,String> DAYWEEK_LABEL = Map.of(
         "sun","일요일","mon","월요일","tue","화요일","wed","수요일",
         "thu","목요일","fri","금요일","sat","토요일"
@@ -135,7 +135,7 @@ public class PeriodDiagnosisReportService {
 
         switch (pu) {
             case "month":
-                trend = buildMonthlyTrend(curDaily, cmpDaily, hasCompare);
+                trend = buildMonthlyTrend(curDaily, cmpDaily, fromdate, todate, cfrom, cto, hasCompare);
                 label = "월별";
                 msg   = "선택한 기간을 월별로 나누어 성과 흐름을 분석했습니다.";
                 break;
@@ -272,6 +272,8 @@ public class PeriodDiagnosisReportService {
     private List<Map<String, Object>> buildMonthlyTrend(
             Map<String, Map<String, Object>> curDaily,
             Map<String, Map<String, Object>> cmpDaily,
+            String fromdate, String todate,
+            String cfrom, String cto,
             boolean hasCompare) {
 
         Map<String, double[]> curMonth = groupByMonth(curDaily);
@@ -283,17 +285,23 @@ public class PeriodDiagnosisReportService {
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (int i = 0; i < months.size(); i++) {
-            String key = months.get(i);
+            String key = months.get(i); // "2026-06"
             double[] cur = curMonth.get(key);
             double[] cmp = (i < cmpMonths.size()) ? cmpMonth.getOrDefault(cmpMonths.get(i), new double[15]) : new double[15];
             Map<String, Object> curM = toMetrics(cur);
             Map<String, Object> cmpM = toMetrics(cmp);
 
+            String[] parts = key.split("-");
+            String label = parts[0] + "년 " + Integer.parseInt(parts[1]) + "월";
+            String rangeText = computeMonthRangeText(key, fromdate, todate);
+            String cmpRangeText = (hasCompare && i < cmpMonths.size())
+                ? computeMonthRangeText(cmpMonths.get(i), cfrom, cto) : "";
+
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("key",                "month_" + (i + 1));
-            row.put("label",              key);
-            row.put("range_text",         key);
-            row.put("compare_range_text", (i < cmpMonths.size()) ? cmpMonths.get(i) : "");
+            row.put("key",                key);
+            row.put("label",              label);
+            row.put("range_text",         rangeText);
+            row.put("compare_range_text", cmpRangeText);
             row.put("days",               0);
             row.put("is_partial",         false);
             row.put("current",            curM);
@@ -332,7 +340,7 @@ public class PeriodDiagnosisReportService {
             Map<String, Object> cmpM = toMetrics(cmp);
 
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("key",                "dayweek_" + dk);
+            row.put("key",                dk);
             row.put("label",              DAYWEEK_LABEL.getOrDefault(dk, dk));
             row.put("range_text",         DAYWEEK_LABEL.getOrDefault(dk, dk));
             row.put("compare_range_text", "");
@@ -551,10 +559,18 @@ public class PeriodDiagnosisReportService {
                 String groupName = "unknown".equals(type) ? "기타" : names.getOrDefault(type, type);
                 String[] statusInfo = calcGroupStatus(curM, diffM, hasCompare);
 
-                // period_items — week 단위 구현 (month/weekday는 추후 확장)
-                List<Map<String, Object>> periodItems = "week".equals(periodUnit)
-                    ? buildGroupPeriodItems(curDateMap, cmpDateMap, from, to, cfrom, cto, hasCompare)
-                    : Collections.emptyList();
+                List<Map<String, Object>> periodItems;
+                switch (periodUnit) {
+                    case "weekday":
+                        periodItems = buildGroupWeekdayPeriodItems(curDateMap, cmpDateMap, hasCompare);
+                        break;
+                    case "month":
+                        periodItems = buildGroupMonthPeriodItems(curDateMap, cmpDateMap, from, to, cfrom, cto, hasCompare);
+                        break;
+                    default: // "week"
+                        periodItems = buildGroupPeriodItems(curDateMap, cmpDateMap, from, to, cfrom, cto, hasCompare);
+                        break;
+                }
 
                 Map<String, Object> g = new LinkedHashMap<>();
                 g.put("group_key",    type);
@@ -705,6 +721,106 @@ public class PeriodDiagnosisReportService {
             items.add(item);
         }
         return items;
+    }
+
+    private List<Map<String, Object>> buildGroupWeekdayPeriodItems(
+            Map<String, double[]> curDateMap, Map<String, double[]> cmpDateMap, boolean hasCompare) {
+        Map<String, double[]> curByDay = groupByDayweekFromDateMap(curDateMap);
+        Map<String, double[]> cmpByDay = hasCompare ? groupByDayweekFromDateMap(cmpDateMap) : Collections.emptyMap();
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (String dk : DAYWEEK_ORDER) {
+            double[] cur = curByDay.getOrDefault(dk, new double[15]);
+            double[] cmp = cmpByDay.getOrDefault(dk, new double[15]);
+            Map<String, Object> curM = toMetrics(cur);
+            Map<String, Object> cmpM = toMetrics(cmp);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("key",                dk);
+            item.put("label",              DAYWEEK_LABEL.getOrDefault(dk, dk));
+            item.put("range_text",         DAYWEEK_LABEL.getOrDefault(dk, dk));
+            item.put("compare_range_text", "");
+            item.put("days",               0);
+            item.put("is_partial",         false);
+            item.put("current",            curM);
+            item.put("compare",            cmpM);
+            item.put("diff",               buildDiff(curM, cmpM));
+            item.put("per",                buildPer(curM, cmpM));
+            items.add(item);
+        }
+        return items;
+    }
+
+    private Map<String, double[]> groupByDayweekFromDateMap(Map<String, double[]> dateMap) {
+        Map<String, double[]> result = new LinkedHashMap<>();
+        for (Map.Entry<String, double[]> e : dateMap.entrySet()) {
+            try {
+                DayOfWeek dow = LocalDate.parse(e.getKey(), FMT).getDayOfWeek();
+                String dk = dow.toString().substring(0, 3).toLowerCase();
+                result.merge(dk, e.getValue().clone(), this::mergeArr);
+            } catch (Exception ignored) {}
+        }
+        return result;
+    }
+
+    private List<Map<String, Object>> buildGroupMonthPeriodItems(
+            Map<String, double[]> curDateMap, Map<String, double[]> cmpDateMap,
+            String from, String to, String cfrom, String cto, boolean hasCompare) {
+        Map<String, double[]> curByMonth = groupByMonthFromDateMap(curDateMap);
+        Map<String, double[]> cmpByMonth = hasCompare ? groupByMonthFromDateMap(cmpDateMap) : Collections.emptyMap();
+        List<String> curMonths = new ArrayList<>(curByMonth.keySet());
+        Collections.sort(curMonths);
+        List<String> cmpMonths = new ArrayList<>(cmpByMonth.keySet());
+        Collections.sort(cmpMonths);
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (int i = 0; i < curMonths.size(); i++) {
+            String monthKey = curMonths.get(i);
+            double[] cur = curByMonth.get(monthKey);
+            double[] cmp = (i < cmpMonths.size()) ? cmpByMonth.getOrDefault(cmpMonths.get(i), new double[15]) : new double[15];
+            Map<String, Object> curM = toMetrics(cur);
+            Map<String, Object> cmpM = toMetrics(cmp);
+            String[] parts = monthKey.split("-");
+            String label = parts[0] + "년 " + Integer.parseInt(parts[1]) + "월";
+            String rangeText = computeMonthRangeText(monthKey, from, to);
+            String cmpRangeText = (hasCompare && i < cmpMonths.size())
+                ? computeMonthRangeText(cmpMonths.get(i), cfrom, cto) : "";
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("key",                monthKey);
+            item.put("label",              label);
+            item.put("range_text",         rangeText);
+            item.put("compare_range_text", cmpRangeText);
+            item.put("days",               0);
+            item.put("is_partial",         false);
+            item.put("current",            curM);
+            item.put("compare",            cmpM);
+            item.put("diff",               buildDiff(curM, cmpM));
+            item.put("per",                buildPer(curM, cmpM));
+            items.add(item);
+        }
+        return items;
+    }
+
+    private Map<String, double[]> groupByMonthFromDateMap(Map<String, double[]> dateMap) {
+        Map<String, double[]> result = new LinkedHashMap<>();
+        for (Map.Entry<String, double[]> e : dateMap.entrySet()) {
+            String month = e.getKey().substring(0, 7);
+            result.merge(month, e.getValue().clone(), this::mergeArr);
+        }
+        return result;
+    }
+
+    private String computeMonthRangeText(String monthKey, String from, String to) {
+        if (from == null || to == null) return monthKey;
+        try {
+            LocalDate fromDate  = LocalDate.parse(from, FMT);
+            LocalDate toDate    = LocalDate.parse(to, FMT);
+            String[] parts      = monthKey.split("-");
+            LocalDate monthStart = LocalDate.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), 1);
+            LocalDate monthEnd   = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+            LocalDate rangeStart = fromDate.isAfter(monthStart) ? fromDate : monthStart;
+            LocalDate rangeEnd   = toDate.isBefore(monthEnd)   ? toDate   : monthEnd;
+            return rangeStart.format(MFMT) + " ~ " + rangeEnd.format(MFMT);
+        } catch (Exception e) {
+            return monthKey;
+        }
     }
 
     private Map<String, String> buildIdToTypeMap(List<Document> masters, String media) {
