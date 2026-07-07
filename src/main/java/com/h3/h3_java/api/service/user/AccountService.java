@@ -2,6 +2,7 @@ package com.h3.h3_java.api.service.user;
 
 import com.h3.h3_java.media.naver.NaverApiClient;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
+import com.h3.h3_java.util.CryptoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
@@ -32,8 +33,8 @@ public class AccountService {
                 case "naver":
                     account.put("naverid",       doc.get("account_naver"));
                     account.put("navercustomer",  doc.get("account_naver_customer"));
-                    account.put("naveraccess",    doc.get("account_naver_access"));
-                    account.put("naversecret",    doc.get("account_naver_secret"));
+                    account.put("naveraccess",    CryptoUtil.safeDecrypt(doc.getString("account_naver_access")));
+                    account.put("naversecret",    CryptoUtil.safeDecrypt(doc.getString("account_naver_secret")));
                     break;
                 case "kakaosa":
                     account.put("kakaosaid",     doc.get("account_kakaosa"));

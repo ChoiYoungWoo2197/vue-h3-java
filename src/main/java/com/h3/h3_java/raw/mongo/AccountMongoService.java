@@ -6,6 +6,7 @@ import com.h3.h3_java.media.kakao.dto.KakaoMoAccountDto;
 import com.h3.h3_java.media.kakao.dto.KakaoSaAccountDto;
 import com.h3.h3_java.media.naver.dto.NaverAccountDto;
 import com.h3.h3_java.media.naver.dto.NaverGfaAccountDto;
+import com.h3.h3_java.util.CryptoUtil;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -46,8 +47,8 @@ public class AccountMongoService {
         Update update = new Update()
                 .set("account_naver",          naverid)
                 .set("account_naver_customer",  navercustomer)
-                .set("account_naver_access",    naveraccess)
-                .set("account_naver_secret",    naversecret)
+                .set("account_naver_access",    CryptoUtil.encrypt(naveraccess))
+                .set("account_naver_secret",    CryptoUtil.encrypt(naversecret))
                 .set("account_date",            now())
                 .setOnInsert("user_id",         userId)
                 .setOnInsert("account_regdate", now());
@@ -175,8 +176,8 @@ public class AccountMongoService {
     private NaverAccountDto toNaverDto(Document doc) {
         NaverAccountDto dto = new NaverAccountDto();
         dto.setUserId(doc.getString("user_id"));
-        dto.setAccountNaverAccess(doc.getString("account_naver_access"));
-        dto.setAccountNaverSecret(doc.getString("account_naver_secret"));
+        dto.setAccountNaverAccess(CryptoUtil.safeDecrypt(doc.getString("account_naver_access")));
+        dto.setAccountNaverSecret(CryptoUtil.safeDecrypt(doc.getString("account_naver_secret")));
         dto.setAccountNaverCustomer(doc.getString("account_naver_customer"));
         return dto;
     }
@@ -274,8 +275,8 @@ public class AccountMongoService {
         if (doc == null) return null;
         AccountDto dto = new AccountDto();
         dto.setUserId(doc.getString("user_id"));
-        dto.setAccountNaverAccess(doc.getString("account_naver_access"));
-        dto.setAccountNaverSecret(doc.getString("account_naver_secret"));
+        dto.setAccountNaverAccess(CryptoUtil.safeDecrypt(doc.getString("account_naver_access")));
+        dto.setAccountNaverSecret(CryptoUtil.safeDecrypt(doc.getString("account_naver_secret")));
         dto.setAccountNaverCustomer(doc.getString("account_naver_customer"));
         dto.setAccountKakaosa(doc.getString("account_kakaosa"));
         dto.setAccountKakaomoment(doc.getString("account_kakaomoment"));
