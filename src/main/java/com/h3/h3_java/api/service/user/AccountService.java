@@ -33,8 +33,8 @@ public class AccountService {
                 case "naver":
                     account.put("naverid",       doc.get("account_naver"));
                     account.put("navercustomer",  doc.get("account_naver_customer"));
-                    account.put("naveraccess",    CryptoUtil.safeDecrypt(doc.getString("account_naver_access")));
-                    account.put("naversecret",    CryptoUtil.safeDecrypt(doc.getString("account_naver_secret")));
+                    account.put("naveraccess",    doc.getString("account_naver_access") != null ? "***" : null);
+                    account.put("naversecret",    doc.getString("account_naver_secret") != null ? "***" : null);
                     break;
                 case "kakaosa":
                     account.put("kakaosaid",     doc.get("account_kakaosa"));
@@ -72,7 +72,10 @@ public class AccountService {
         try {
             switch (media) {
                 case "naver":
-                    accountMongo.upsertNaver(userId, naverid, navercustomer, naveraccess, naversecret);
+                    // ***는 기존 자격증명 유지 의미 → null로 변환해서 업데이트 스킵
+                    accountMongo.upsertNaver(userId, naverid, navercustomer,
+                        "***".equals(naveraccess) ? null : naveraccess,
+                        "***".equals(naversecret)  ? null : naversecret);
                     break;
                 case "kakaosa":
                     accountMongo.upsertKakaoSa(userId, kakaosaid);
@@ -141,6 +144,10 @@ public class AccountService {
     private Map<String, Object> validateNaver(String navercustomer, String naveraccess, String naversecret) {
         if (isBlank(navercustomer) || isBlank(naveraccess) || isBlank(naversecret)) {
             return validateFail("필수값(navercustomer, naveraccess, naversecret)이 없습니다.", "naver");
+        }
+        // 기존 자격증명 유지(마스킹) 요청 → 검증 스킵
+        if ("***".equals(naveraccess) && "***".equals(naversecret)) {
+            return validateOk("기존 네이버 API 자격증명 유지", "naver");
         }
         try {
             NaverApiClient client = new NaverApiClient(naveraccess, naversecret, navercustomer);

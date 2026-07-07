@@ -45,13 +45,14 @@ public class AccountMongoService {
     public void upsertNaver(String userId, String naverid, String navercustomer,
                             String naveraccess, String naversecret) {
         Update update = new Update()
-                .set("account_naver",          naverid)
-                .set("account_naver_customer",  navercustomer)
-                .set("account_naver_access",    CryptoUtil.encrypt(naveraccess))
-                .set("account_naver_secret",    CryptoUtil.encrypt(naversecret))
-                .set("account_date",            now())
+                .set("account_naver",         naverid)
+                .set("account_naver_customer", navercustomer)
+                .set("account_date",           now())
                 .setOnInsert("user_id",         userId)
                 .setOnInsert("account_regdate", now());
+        // null은 "기존값 유지" 의미 — 마스킹(***) 상태로 저장 요청한 경우
+        if (naveraccess != null) update.set("account_naver_access", CryptoUtil.encrypt(naveraccess));
+        if (naversecret  != null) update.set("account_naver_secret",  CryptoUtil.encrypt(naversecret));
         mongo.upsert(Query.query(Criteria.where("user_id").is(userId)), update, COL);
     }
 
