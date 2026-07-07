@@ -1,26 +1,29 @@
+server:
+  port: ${H3_SERVER_PORT:8080}
+
 spring:
   application:
     name: h3-java
 
   # MySQL
   datasource:
-    url: jdbc:mysql://db-k3dlu.cdb.ntruss.com:3306/heeil?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
-    username: heeil
-    password: heeil@0801
     driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${H3_MYSQL_URL}
+    username: ${H3_MYSQL_USERNAME}
+    password: ${H3_MYSQL_PASSWORD}
 
   # MongoDB Atlas
   data:
     mongodb:
-      uri: mongodb+srv://dev:heeil%400801%21%40%23@cluster0.u0ykepl.mongodb.net/h3?appName=Cluster0&connectTimeoutMS=10000&socketTimeoutMS=30000&serverSelectionTimeoutMS=10000
+      uri: ${H3_MONGODB_URI}
 
   # RabbitMQ
   rabbitmq:
-    host: 192.168.100.12
-    port: 5672
-    username: heeilh3
-    password: heeil@0801!@#
-    virtual-host: heeil.h3
+    host: ${H3_RABBITMQ_HOST}
+    port: ${H3_RABBITMQ_PORT:5672}
+    username: ${H3_RABBITMQ_USERNAME}
+    password: ${H3_RABBITMQ_PASSWORD}
+    virtual-host: ${H3_RABBITMQ_VHOST}
 
   # Spring Batch 메타 테이블 자동 생성 안 함
   batch:
@@ -33,37 +36,45 @@ naver:
 
 kakao:
   sa:
-    client-id: 1bc34ca0c3ea23dbb3e1259e08912e9d
-    client-secret: CgtEYS9tWvpaQxCY3ZY1H7JKQYV4EJky
+    client-id: ${KAKAO_SA_CLIENT_ID}
+    client-secret: ${KAKAO_SA_CLIENT_SECRET}
     redirect-uri: https://api.heeil.com/java/v1/h3/token/kakao-sa/callback
   mo:
-    client-id: 2b040d0b66341dae01d26ad852ce7046
-    client-secret: MXCcnuEjTOVKJ1NE4t6UPF8JntgkMuos
+    client-id: ${KAKAO_MO_CLIENT_ID}
+    client-secret: ${KAKAO_MO_CLIENT_SECRET}
     redirect-uri: https://api.heeil.com/java/v1/h3/token/kakao-mo/callback
 
 google:
-  client-id: 126509907351-8kuaiak2qnmgd6q0hi9l36jiae4tgibb.apps.googleusercontent.com
-  client-secret: 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
+  client-id: ${GOOGLE_CLIENT_ID}
+  client-secret: ${GOOGLE_CLIENT_SECRET}
   redirect-uri: https://api.heeil.com/java/v1/h3/token/google/callback
-  developer-token: vxKM6J4s-oTW3gbvMLMjlg
-  manager-id: "6769413271"
+  developer-token: ${GOOGLE_DEVELOPER_TOKEN}
+  manager-id: ${GOOGLE_MANAGER_ID}
 
 # SendGrid
 sendgrid:
-  api-key: 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
+  api-key: ${SENDGRID_API_KEY}
   from-email: web@heeil.com
   from-name: 희일커뮤니케이션
 
 # OpenAI
 openai:
-  api-key: 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
+  api-key: ${OPENAI_API_KEY}
   model: gpt-4.1-mini
   temperature: 0.2
 
 # JWT
 jwt:
-  secret: h3-heeil-jwt-secret-key-must-be-at-least-32-characters-long
-  expiration-ms: 86400000  # 24시간
+  secret: ${H3_JWT_SECRET}
+  expiration-ms: ${H3_JWT_EXPIRATION:86400000}
+
+# Meta API (추후 연동 시 사용 - 현재 빈값 허용)
+meta:
+  app-id: ${META_APP_ID:}
+  app-secret: ${META_APP_SECRET:}
+  access-token: ${META_ACCESS_TOKEN:}
+  business-id: ${META_BUSINESS_ID:}
+  ad-account-id: ${META_AD_ACCOUNT_ID:}
 
 # MyBatis
 mybatis:
