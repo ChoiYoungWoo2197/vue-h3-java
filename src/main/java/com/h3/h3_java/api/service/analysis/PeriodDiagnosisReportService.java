@@ -296,14 +296,15 @@ public class PeriodDiagnosisReportService {
             String rangeText = computeMonthRangeText(key, fromdate, todate);
             String cmpRangeText = (hasCompare && i < cmpMonths.size())
                 ? computeMonthRangeText(cmpMonths.get(i), cfrom, cto) : "";
+            int[] meta = computeMonthDaysPartial(key, fromdate, todate);
 
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("key",                key);
             row.put("label",              label);
             row.put("range_text",         rangeText);
             row.put("compare_range_text", cmpRangeText);
-            row.put("days",               0);
-            row.put("is_partial",         false);
+            row.put("days",               meta[0]);
+            row.put("is_partial",         meta[1] == 1);
             row.put("current",            curM);
             row.put("compare",            cmpM);
             row.put("diff",               buildDiff(curM, cmpM));
@@ -782,13 +783,14 @@ public class PeriodDiagnosisReportService {
             String rangeText = computeMonthRangeText(monthKey, from, to);
             String cmpRangeText = (hasCompare && i < cmpMonths.size())
                 ? computeMonthRangeText(cmpMonths.get(i), cfrom, cto) : "";
+            int[] meta = computeMonthDaysPartial(monthKey, from, to);
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("key",                monthKey);
             item.put("label",              label);
             item.put("range_text",         rangeText);
             item.put("compare_range_text", cmpRangeText);
-            item.put("days",               0);
-            item.put("is_partial",         false);
+            item.put("days",               meta[0]);
+            item.put("is_partial",         meta[1] == 1);
             item.put("current",            curM);
             item.put("compare",            cmpM);
             item.put("diff",               buildDiff(curM, cmpM));
@@ -810,16 +812,35 @@ public class PeriodDiagnosisReportService {
     private String computeMonthRangeText(String monthKey, String from, String to) {
         if (from == null || to == null) return monthKey;
         try {
-            LocalDate fromDate  = LocalDate.parse(from, FMT);
-            LocalDate toDate    = LocalDate.parse(to, FMT);
-            String[] parts      = monthKey.split("-");
+            LocalDate fromDate   = LocalDate.parse(from, FMT);
+            LocalDate toDate     = LocalDate.parse(to, FMT);
+            String[] parts       = monthKey.split("-");
             LocalDate monthStart = LocalDate.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), 1);
             LocalDate monthEnd   = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
             LocalDate rangeStart = fromDate.isAfter(monthStart) ? fromDate : monthStart;
-            LocalDate rangeEnd   = toDate.isBefore(monthEnd)   ? toDate   : monthEnd;
+            LocalDate rangeEnd   = toDate.isBefore(monthEnd)    ? toDate   : monthEnd;
             return rangeStart.format(MFMT) + " ~ " + rangeEnd.format(MFMT);
         } catch (Exception e) {
             return monthKey;
+        }
+    }
+
+    /** [days, isPartial(0|1)] — 해당 월이 쿼리 기간에서 몇 일 포함되는지, 부분 월인지 */
+    private int[] computeMonthDaysPartial(String monthKey, String from, String to) {
+        if (from == null || to == null) return new int[]{0, 0};
+        try {
+            LocalDate fromDate   = LocalDate.parse(from, FMT);
+            LocalDate toDate     = LocalDate.parse(to, FMT);
+            String[] parts       = monthKey.split("-");
+            LocalDate monthStart = LocalDate.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), 1);
+            LocalDate monthEnd   = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+            LocalDate rangeStart = fromDate.isAfter(monthStart) ? fromDate : monthStart;
+            LocalDate rangeEnd   = toDate.isBefore(monthEnd)    ? toDate   : monthEnd;
+            int days    = (int)(rangeEnd.toEpochDay() - rangeStart.toEpochDay() + 1);
+            int partial = (!rangeStart.equals(monthStart) || !rangeEnd.equals(monthEnd)) ? 1 : 0;
+            return new int[]{days, partial};
+        } catch (Exception e) {
+            return new int[]{0, 0};
         }
     }
 
