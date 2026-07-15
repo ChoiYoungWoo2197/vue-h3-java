@@ -3,6 +3,7 @@ package com.h3.h3_java.batch.scheduler;
 import com.h3.h3_java.media.naver.dto.NaverGfaAdminDto;
 import com.h3.h3_java.raw.mongo.AccountMongoService;
 import com.h3.h3_java.raw.mongo.NaverGfaTokenMongoService;
+import com.h3.h3_java.util.CryptoUtil;
 import org.bson.Document;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +38,7 @@ public class NaverGfaTokenManager {
         }
         adminAccount = new NaverGfaAdminDto();
         adminAccount.setAccountGfa(acct.getString("account_gfa"));
-        adminAccount.setAccountNaverSecret(acct.getString("account_naver_secret"));
+        adminAccount.setAccountNaverSecret(CryptoUtil.safeDecrypt(acct.getString("account_naver_secret")));
         adminAccount.setAccountNaverCustomer(acct.getString("account_naver_customer"));
 
         Document tok = tokenMongoService.findToken();
