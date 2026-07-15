@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
@@ -76,7 +77,7 @@ public class NaverGfaCampaignDayCollectionJob {
             : buildAutoDates(advkey);
 
         for (String date : dates) {
-            collectDay(advkey, token, managerNo, campaignIds, date);
+            if (!collectDay(advkey, token, managerNo, campaignIds, date)) break;
             try {
                 Thread.sleep(1000 + new Random().nextInt(400));
             } catch (InterruptedException e) {
@@ -88,9 +89,9 @@ public class NaverGfaCampaignDayCollectionJob {
     }
 
     @SuppressWarnings("unchecked")
-    private void collectDay(String advkey, String token, String managerNo,
-                            Set<String> campaignIds, String date) {
-        if (!LocalDate.parse(date, DATE_FMT).isBefore(LocalDate.now())) return;
+    private boolean collectDay(String advkey, String token, String managerNo,
+                               Set<String> campaignIds, String date) {
+        if (!LocalDate.parse(date, DATE_FMT).isBefore(LocalDate.now())) return true;
 
         String baseUrl = GFA_DAILY_BASE + "/adAccounts/" + advkey
             + "/performance/past/campaigns?startDate=" + date + "&endDate=" + date + "&limit=1000";
@@ -109,6 +110,13 @@ public class NaverGfaCampaignDayCollectionJob {
             try {
                 ResponseEntity<Map> res = rt.exchange(url, HttpMethod.GET, entity, Map.class);
                 body = res.getBody();
+            } catch (HttpClientErrorException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GFA][CAMPAIGN-DAY] 접근 권한 없음 advkey={} → 계정 스킵", advkey);
+                    return false;
+                }
+                log.error("[GFA][CAMPAIGN-DAY] API 오류 advkey={} date={} error={}", advkey, date, e.getMessage());
+                break;
             } catch (Exception e) {
                 log.error("[GFA][CAMPAIGN-DAY] API 오류 advkey={} date={} error={}", advkey, date, e.getMessage());
                 break;
@@ -152,6 +160,7 @@ public class NaverGfaCampaignDayCollectionJob {
         } while (true);
 
         log.info("[GFA][CAMPAIGN-DAY] advkey={} date={} saved={}", advkey, date, saved);
+        return true;
     }
 
     private List<String> buildAutoDates(String advkey) {

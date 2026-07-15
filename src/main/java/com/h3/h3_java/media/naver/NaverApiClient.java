@@ -27,6 +27,9 @@ public class NaverApiClient {
     // 계정(API KEY)당 동시 요청 수 제한 - 429 방지
     private final Semaphore rateLimiter = new Semaphore(3);
 
+    // 같은 밀리초에 동일 서명 생성 방지 - Naver는 동일 서명 재사용을 invalid로 거부
+    private final AtomicLong lastTs = new AtomicLong(0);
+
     private final String apiKey;
     private final String secretKey;
     private final String customerId;
@@ -53,8 +56,13 @@ public class NaverApiClient {
         }
     }
 
+    private long uniqueTs() {
+        long now = System.currentTimeMillis();
+        return lastTs.updateAndGet(prev -> Math.max(prev + 1, now));
+    }
+
     private HttpHeaders headers(String method, String path) {
-        long ts = System.currentTimeMillis();
+        long ts = uniqueTs();
         HttpHeaders h = new HttpHeaders();
         h.setContentType(MediaType.APPLICATION_JSON);
         h.set("X-Timestamp", String.valueOf(ts));
