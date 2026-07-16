@@ -56,6 +56,8 @@ public class NaverGfaCampaignDayCollectionJob {
         collectAccount(acc, fromDate, toDate);
     }
 
+    private record DateRange(String from, String to) {}
+
     private void collectAccount(NaverGfaAccountDto acc, String fromDate, String toDate) {
         String advkey = acc.getAccountGfa();
         String token = tokenManager.getAccessToken();
@@ -72,20 +74,99 @@ public class NaverGfaCampaignDayCollectionJob {
             return;
         }
 
-        List<String> dates = (fromDate != null && toDate != null)
-            ? buildDateRange(fromDate, toDate)
-            : buildAutoDates(advkey);
-
-        for (String date : dates) {
-            if (!collectDay(advkey, token, managerNo, campaignIds, date)) break;
-            try {
-                Thread.sleep(1000 + new Random().nextInt(400));
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
+        if (fromDate != null && toDate != null) {
+            for (DateRange chunk : buildChunkedRanges(fromDate, toDate)) {
+                if (!collectChunk(advkey, token, managerNo, campaignIds, chunk.from(), chunk.to())) break;
+                try { Thread.sleep(1000 + new Random().nextInt(400)); }
+                catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
+            }
+        } else {
+            for (String date : buildAutoDates(advkey)) {
+                if (!collectDay(advkey, token, managerNo, campaignIds, date)) break;
+                try { Thread.sleep(1000 + new Random().nextInt(400)); }
+                catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
             }
         }
         accountLogMongo.updateField(advkey, "naverda", "campaign");
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean collectChunk(String advkey, String token, String managerNo,
+                                 Set<String> campaignIds, String fromDate, String toDate) {
+        String baseUrl = GFA_DAILY_BASE + "/adAccounts/" + advkey
+            + "/performance/past/campaigns?startDate=" + fromDate + "&endDate=" + toDate + "&limit=1000";
+
+        RestTemplate rt = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + token);
+        headers.set("AccessManagerAccountNo", managerNo);
+        HttpEntity<?> entity = new HttpEntity<>(headers);
+
+        String url = baseUrl;
+        int saved = 0;
+
+        do {
+            Map<String, Object> body;
+            try {
+                ResponseEntity<Map> res = rt.exchange(url, HttpMethod.GET, entity, Map.class);
+                body = res.getBody();
+            } catch (HttpClientErrorException e) {
+                if (e.getStatusCode().value() == 403) {
+                    log.warn("[GFA][CAMPAIGN-DAY] 접근 권한 없음 advkey={} → 계정 스킵", advkey);
+                    return false;
+                }
+                log.error("[GFA][CAMPAIGN-DAY] API 오류 advkey={} from={} to={} error={}", advkey, fromDate, toDate, e.getMessage());
+                break;
+            } catch (Exception e) {
+                log.error("[GFA][CAMPAIGN-DAY] API 오류 advkey={} from={} to={} error={}", advkey, fromDate, toDate, e.getMessage());
+                break;
+            }
+
+            if (body == null) break;
+
+            List<Map<String, Object>> rows = (List<Map<String, Object>>) body.get("rows");
+            if (rows != null) {
+                for (Map<String, Object> r : rows) {
+                    String campaignNo = String.valueOf(r.getOrDefault("campaignNo", ""));
+                    if (!campaignIds.contains(campaignNo)) continue;
+
+                    String date = toDateStr(r);
+                    if (date == null) {
+                        log.warn("[GFA][CAMPAIGN-DAY] chunk 응답 date 필드 없음 advkey={} rowKeys={}", advkey, r.keySet());
+                        continue;
+                    }
+
+                    long im  = toLong(r.get("impCount"));
+                    long clk = toLong(r.get("clickCount"));
+                    long cv  = toLong(r.get("convCount"));
+                    double cst = toDouble(r.get("sales"));
+                    double cr  = toDouble(r.get("convSales"));
+
+                    if (im == 0 && clk == 0 && cst == 0 && cv == 0 && cr == 0) continue;
+
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("daily_dt",    date);
+                    row.put("daily_advid", advkey);
+                    row.put("campaign_id", campaignNo);
+                    row.put("daily_im",    im);
+                    row.put("daily_clk",   clk);
+                    row.put("daily_cst",   cst);
+                    row.put("daily_cv",    cv);
+                    row.put("daily_cr",    cr);
+
+                    mongoService.upsertGfaCampaignDaily(row);
+                    saved++;
+                }
+            }
+
+            String next = body.get("next") != null ? String.valueOf(body.get("next")) : null;
+            if (next == null || next.equals("null")) break;
+            url = baseUrl + "&next=" + next;
+
+        } while (true);
+
+        log.info("[GFA][CAMPAIGN-DAY] chunk advkey={} from={} to={} saved={}", advkey, fromDate, toDate, saved);
+        return true;
     }
 
     @SuppressWarnings("unchecked")
@@ -181,15 +262,27 @@ public class NaverGfaCampaignDayCollectionJob {
         return new ArrayList<>(dates);
     }
 
-    private List<String> buildDateRange(String from, String to) {
-        List<String> dates = new ArrayList<>();
-        LocalDate cur = LocalDate.parse(from, DATE_FMT);
-        LocalDate end = LocalDate.parse(to, DATE_FMT);
-        while (!cur.isAfter(end)) {
-            dates.add(cur.format(DATE_FMT));
-            cur = cur.plusDays(1);
+    private List<DateRange> buildChunkedRanges(String from, String to) {
+        List<DateRange> chunks = new ArrayList<>();
+        LocalDate start = LocalDate.parse(from, DATE_FMT);
+        LocalDate end   = LocalDate.parse(to,   DATE_FMT);
+        while (!start.isAfter(end)) {
+            LocalDate chunkEnd = start.plusDays(29);
+            if (chunkEnd.isAfter(end)) chunkEnd = end;
+            chunks.add(new DateRange(start.format(DATE_FMT), chunkEnd.format(DATE_FMT)));
+            start = chunkEnd.plusDays(1);
         }
-        return dates;
+        return chunks;
+    }
+
+    // GFA API 응답 row에서 날짜 추출 (필드명: "date" 또는 8자리 "20260301" → "2026-03-01")
+    private String toDateStr(Map<String, Object> row) {
+        Object v = row.get("date");
+        if (v == null) return null;
+        String s = String.valueOf(v);
+        if (s.length() == 8 && !s.contains("-"))
+            return s.substring(0, 4) + "-" + s.substring(4, 6) + "-" + s.substring(6, 8);
+        return s;
     }
 
     private long toLong(Object val) {
