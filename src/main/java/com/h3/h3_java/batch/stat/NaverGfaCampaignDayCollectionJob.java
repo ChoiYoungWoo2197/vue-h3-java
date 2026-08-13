@@ -275,9 +275,10 @@ public class NaverGfaCampaignDayCollectionJob {
         return chunks;
     }
 
-    // GFA API 응답 row에서 날짜 추출 (필드명: "date" 또는 8자리 "20260301" → "2026-03-01")
+    // GFA API 응답 row에서 날짜 추출 (필드명: "targetDate" 우선, "date" fallback, 8자리 "20260301" → "2026-03-01")
     private String toDateStr(Map<String, Object> row) {
-        Object v = row.get("date");
+        Object v = row.get("targetDate");
+        if (v == null) v = row.get("date");
         if (v == null) return null;
         String s = String.valueOf(v);
         if (s.length() == 8 && !s.contains("-"))

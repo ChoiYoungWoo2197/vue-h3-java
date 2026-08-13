@@ -291,7 +291,8 @@ public class NaverGfaAdDayCollectionJob {
     }
 
     private String toDateStr(Map<String, Object> row) {
-        Object v = row.get("date");
+        Object v = row.get("targetDate");
+        if (v == null) v = row.get("date");
         if (v == null) return null;
         String s = String.valueOf(v);
         if (s.length() == 8 && !s.contains("-"))
