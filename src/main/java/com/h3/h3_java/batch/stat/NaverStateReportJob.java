@@ -145,7 +145,7 @@ public class NaverStateReportJob {
         String status = str(res != null ? res.get("status") : null);
 
         if (jobId.isEmpty() || status.isEmpty()) {
-            log.warn("[NaverStateReport] 리포트 생성 실패 customerId={} spec={}", customerId, spec);
+            log.warn("[NaverStateReport] 리포트 생성 실패 customerId={} spec={} response={}", customerId, spec, res);
             return;
         }
 
