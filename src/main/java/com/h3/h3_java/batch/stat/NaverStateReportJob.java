@@ -166,6 +166,8 @@ public class NaverStateReportJob {
                     if (data != null) {
                         tsvData.put(spec, data);
                         log.info("[NaverStateReport] TSV 다운로드 완료 customerId={} spec={} bytes={}", customerId, spec, data.length);
+                        // TODO 임시 디버그용 — 확인 후 제거
+                        saveTsvTemp(customerId, statDt, spec, data);
                     }
                 }
             } else {
@@ -378,6 +380,19 @@ public class NaverStateReportJob {
             log.error("[NaverStateReport] TSV 파싱 오류: {}", e.getMessage());
         }
         return rows;
+    }
+
+    // TODO 임시 디버그용 — 확인 후 제거
+    private void saveTsvTemp(String customerId, String statDt, String spec, byte[] data) {
+        try {
+            java.nio.file.Path dir = java.nio.file.Paths.get("/tmp/naver-statreport");
+            java.nio.file.Files.createDirectories(dir);
+            java.nio.file.Path file = dir.resolve(customerId + "_" + statDt + "_" + spec + ".tsv");
+            java.nio.file.Files.write(file, data);
+            log.info("[NaverStateReport][DEBUG] TSV 저장 path={}", file.toAbsolutePath());
+        } catch (Exception e) {
+            log.warn("[NaverStateReport][DEBUG] TSV 저장 실패: {}", e.getMessage());
+        }
     }
 
     private boolean shouldSkip(String userId) {
